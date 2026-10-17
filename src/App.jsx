@@ -1,0 +1,101 @@
+import { useEffect } from 'react';
+import { Route, Routes, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { ROLES, ROUTES } from './config/constants';
+import { restoreSession } from './store/authSlice';
+
+import Navbar from './components/Navbar';
+import MobileBottomNav from './components/MobileBottomNav';
+import PreferenceModal from './components/PreferenceModal';
+import LogoutConfirmModal from './components/LogoutConfirmModal';
+import GuestGate from './components/GuestGate';
+import ProtectedRoute from './components/ProtectedRoute';
+import Footer from './components/Footer';
+
+import Home from './pages/Home';
+import Browse from './pages/Browse';
+import Details from './pages/Details';
+import Person from './pages/Person';
+import Blogs from './pages/Blogs';
+import BlogDetail from './pages/BlogDetail';
+import Community from './pages/Community';
+import Auth from './pages/Auth';
+import Profile from './pages/Profile';
+import Admin from './pages/Admin';
+
+export default function App() {
+  const dispatch = useDispatch();
+  const theme = useSelector((s) => s.theme.mode);
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    dispatch(restoreSession());
+  }, [dispatch]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const isAdminStudioRoute = pathname.startsWith('/admin');
+
+  if (isAdminStudioRoute) {
+    return (
+      <div className='min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#070a10] text-white'>
+        <LogoutConfirmModal />
+        <Routes>
+          <Route
+            path='/admin/*'
+            element={
+              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERADMIN]}>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </div>
+    );
+  }
+
+  return (
+    <div className='flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-[#070a10] pb-16 text-white lg:pb-0'>
+      <Navbar />
+      <PreferenceModal />
+      <LogoutConfirmModal />
+      <GuestGate />
+
+      <main className='min-h-screen flex-1'>
+        <Routes>
+          <Route path={ROUTES.HOME} element={<Home />} />
+          <Route path={ROUTES.BROWSE_ROOT} element={<Browse />} />
+          <Route path={ROUTES.BROWSE} element={<Browse />} />
+          <Route path={ROUTES.DETAILS} element={<Details />} />
+          <Route path={ROUTES.PERSON} element={<Person />} />
+          <Route path={ROUTES.BLOGS} element={<Blogs />} />
+          <Route path={ROUTES.BLOG_DETAIL} element={<BlogDetail />} />
+          <Route path={ROUTES.COMMUNITY} element={<Community />} />
+          <Route path={ROUTES.LOGIN} element={<Auth mode='login' />} />
+          <Route path={ROUTES.SIGNUP} element={<Auth mode='signup' />} />
+          <Route
+            path={ROUTES.PROFILE}
+            element={
+              <ProtectedRoute>
+                <Profile defaultTab='overview' />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.WATCHLIST}
+            element={
+              <ProtectedRoute>
+                <Profile defaultTab='watchlist' />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </main>
+
+      <Footer />
+      <MobileBottomNav />
+    </div>
+  );
+}

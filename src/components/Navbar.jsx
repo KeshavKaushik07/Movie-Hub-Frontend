@@ -1,0 +1,414 @@
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  Film,
+  Search,
+  User,
+  LogOut,
+  Shield,
+  ChevronDown,
+  Bookmark,
+  Sun,
+  Moon,
+  Sparkles,
+  MessageSquare,
+  BookOpen,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
+import { APP_NAME, NAV_MENU, ROLES, ROUTES } from '../config/constants';
+import { openLogoutModal } from '../store/authSlice';
+import { toggleTheme } from '../store/themeSlice';
+import {
+  setRegionAndCurrency,
+  openPreferenceModal,
+} from '../store/preferencesSlice';
+
+export default function Navbar() {
+  const [q, setQ] = useState('');
+  const [openMenu, setOpenMenu] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  const user = useSelector((s) => s.auth.user);
+  const theme = useSelector((s) => s.theme.mode);
+  const { region, currency } = useSelector((s) => s.preferences);
+
+  const dispatch = useDispatch();
+  const nav = useNavigate();
+  const loc = useLocation();
+  const profileRef = useRef(null);
+
+  const isStaff = user && [ROLES.ADMIN, ROLES.SUPERADMIN].includes(user.role);
+  const isLight = theme === 'light';
+
+  useEffect(() => {
+    setOpenMenu(null);
+    setProfileOpen(false);
+    setMobileSearchOpen(false);
+  }, [loc.pathname, loc.search]);
+
+  useEffect(() => {
+    const onOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, []);
+
+  const onSearch = (e) => {
+    e.preventDefault();
+    if (!q.trim()) return;
+    nav(`/browse/movie?q=${encodeURIComponent(q.trim())}`);
+    setQ('');
+    setMobileSearchOpen(false);
+  };
+
+  return (
+    <header
+      className={`sticky top-0 z-40 w-full border-b backdrop-blur-xl transition-colors duration-300 ${
+        isLight
+          ? 'border-slate-200/90 bg-white/95 text-slate-900 shadow-xs'
+          : 'border-white/10 bg-[#070a10]/95 text-white'
+      }`}
+    >
+      <div className='mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3'>
+        {/* Brand Logo (Never wraps) */}
+        <Link
+          to={ROUTES.HOME}
+          className='flex shrink-0 items-center gap-2 whitespace-nowrap font-extrabold tracking-tight'
+        >
+          <span className='flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9'>
+            <Film size={17} />
+          </span>
+          <span
+            style={{ fontFamily: 'var(--font-display)' }}
+            className='text-sm font-extrabold sm:text-lg'
+          >
+            {APP_NAME}
+          </span>
+        </Link>
+
+        {/* Desktop Mega-Menu Navigation (Strictly whitespace-nowrap so words NEVER break) */}
+        <nav className='hidden items-center gap-0.5 xl:flex'>
+          {NAV_MENU.map((m) => (
+            <div
+              key={m.label}
+              className='relative shrink-0'
+              onMouseEnter={() => setOpenMenu(m.label)}
+              onMouseLeave={() => setOpenMenu(null)}
+            >
+              <button
+                type='button'
+                onClick={() =>
+                  setOpenMenu(openMenu === m.label ? null : m.label)
+                }
+                className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
+                  openMenu === m.label
+                    ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                    : isLight
+                      ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
+                      : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <span>{m.label}</span>
+                <ChevronDown
+                  size={13}
+                  className={`shrink-0 transition-transform duration-200 ${
+                    openMenu === m.label ? 'rotate-180 text-[#f5b942]' : ''
+                  }`}
+                />
+              </button>
+
+              {openMenu === m.label && (
+                <div className='absolute top-full left-0 z-50 w-56 pt-1.5'>
+                  <div
+                    className={`rounded-2xl border p-2 shadow-2xl backdrop-blur-xl ${
+                      isLight
+                        ? 'border-slate-200 bg-white text-slate-800'
+                        : 'border-white/15 bg-[#0e131f]/95 text-zinc-200'
+                    }`}
+                  >
+                    {m.items.map((it) => (
+                      <Link
+                        key={it.to}
+                        to={it.to}
+                        className='block whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[#f5b942]/15 hover:text-[#f5b942]'
+                      >
+                        {it.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          <Link
+            to='/blogs'
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
+              loc.pathname.startsWith('/blogs')
+                ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                : isLight
+                  ? 'text-slate-700 hover:bg-slate-100'
+                  : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <BookOpen size={14} className='shrink-0 text-[#f5b942]' />
+            <span>Blogs</span>
+          </Link>
+
+          <Link
+            to='/community'
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
+              loc.pathname.startsWith('/community')
+                ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                : isLight
+                  ? 'text-slate-700 hover:bg-slate-100'
+                  : 'text-zinc-300 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <MessageSquare size={14} className='shrink-0 text-emerald-500' />
+            <span>Community</span>
+          </Link>
+        </nav>
+
+        {/* Desktop Search Bar */}
+        <form
+          onSubmit={onSearch}
+          className='relative hidden flex-1 max-w-[240px] lg:block'
+        >
+          <Search
+            size={14}
+            className='absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400'
+          />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder='Search movies, actors...'
+            className={`w-full rounded-full border py-1.5 pr-4 pl-9 text-xs focus:border-[#f5b942] focus:outline-none ${
+              isLight
+                ? 'border-slate-200 bg-slate-100 text-slate-900 placeholder-slate-400'
+                : 'border-white/10 bg-white/5 text-white placeholder-zinc-500'
+            }`}
+          />
+        </form>
+
+        {/* Right Controls (Compact, Zero-Wrapping App Pills) */}
+        <div className='flex shrink-0 items-center gap-1.5 sm:gap-2'>
+          {/* Mobile Search Button */}
+          <button
+            type='button'
+            onClick={() => setMobileSearchOpen((v) => !v)}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border lg:hidden ${
+              isLight
+                ? 'border-slate-200 bg-slate-100 text-slate-700'
+                : 'border-white/10 bg-white/5 text-zinc-200'
+            }`}
+            aria-label='Search'
+          >
+            {mobileSearchOpen ? <X size={15} /> : <Search size={15} />}
+          </button>
+
+          {/* Region & Rupees/USD Toggle Pill */}
+          <button
+            type='button'
+            onClick={() =>
+              dispatch(setRegionAndCurrency(region === 'IN' ? 'GLOBAL' : 'IN'))
+            }
+            title='Switch Region & Currency (India ₹ INR / Global $ USD)'
+            className={`flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-[11px] font-extrabold transition ${
+              isLight
+                ? 'border-slate-200 bg-slate-100 text-slate-800 hover:border-[#f5b942]'
+                : 'border-white/10 bg-white/5 text-zinc-200 hover:border-[#f5b942]/50'
+            }`}
+          >
+            <span>{region === 'IN' ? '🇮🇳' : '🌍'}</span>
+            <span>{region === 'IN' ? '₹ INR' : '$ USD'}</span>
+          </button>
+
+          {/* Taste Preferences Trigger */}
+          <button
+            type='button'
+            onClick={() => dispatch(openPreferenceModal())}
+            title='Customize Taste & Region'
+            className='flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#f5b942]/40 bg-[#f5b942]/15 px-2.5 text-[11px] font-extrabold text-[#f5b942] hover:bg-[#f5b942]/25'
+          >
+            <SlidersHorizontal size={13} />
+            <span className='hidden md:inline'>Taste</span>
+          </button>
+
+          {/* Dark / Light Mode Toggle (Works on Navbar, Lower Navbar & All Pages) */}
+          <button
+            type='button'
+            onClick={() => dispatch(toggleTheme())}
+            title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
+              isLight
+                ? 'border-slate-200 bg-amber-50 text-amber-600 hover:bg-amber-100'
+                : 'border-white/10 bg-white/5 text-[#f5b942] hover:bg-white/10'
+            }`}
+          >
+            {isLight ? <Moon size={15} /> : <Sun size={15} />}
+          </button>
+
+          {/* Admin / SuperAdmin Studio Button */}
+          {isStaff && (
+            <Link
+              to='/admin'
+              className='hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-[#f5b942] to-amber-500 px-3 py-1.5 text-xs font-extrabold text-black shadow-sm hover:brightness-110 md:flex'
+            >
+              <Shield size={13} />
+              <span>
+                {user.role === ROLES.SUPERADMIN ? 'SuperAdmin' : 'Admin'} Studio
+              </span>
+            </Link>
+          )}
+
+          {/* User Profile Menu or Compact Auth Buttons */}
+          {user ? (
+            <div ref={profileRef} className='relative shrink-0'>
+              <button
+                type='button'
+                onClick={() => setProfileOpen((v) => !v)}
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border p-1 pr-2 text-xs font-bold ${
+                  isLight
+                    ? 'border-slate-200 bg-slate-100 text-slate-900'
+                    : 'border-white/10 bg-white/5 text-white'
+                }`}
+              >
+                <span
+                  style={{ backgroundColor: user.avatarColor || '#f5b942' }}
+                  className='keep-white flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white'
+                >
+                  {(user.name || 'U')[0].toUpperCase()}
+                </span>
+                <span className='hidden max-w-[80px] truncate sm:inline'>
+                  {user.name}
+                </span>
+                <ChevronDown size={12} className='shrink-0 text-zinc-400' />
+              </button>
+
+              {profileOpen && (
+                <div
+                  className={`absolute right-0 z-50 mt-2 w-60 rounded-2xl border p-2 shadow-2xl backdrop-blur-xl ${
+                    isLight
+                      ? 'border-slate-200 bg-white text-slate-900'
+                      : 'border-white/15 bg-[#0e131f]/95 text-white'
+                  }`}
+                >
+                  <div className='mb-1.5 border-b border-white/10 px-3 py-2'>
+                    <p className='truncate text-xs font-extrabold'>
+                      {user.name}
+                    </p>
+                    <p className='truncate text-[11px] text-zinc-400'>
+                      {user.email}
+                    </p>
+                    <span className='mt-1 inline-block rounded-full bg-[#f5b942]/20 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-[#f5b942] uppercase'>
+                      {user.role}
+                    </span>
+                  </div>
+
+                  {isStaff && (
+                    <Link
+                      to='/admin'
+                      className='flex items-center gap-2.5 rounded-xl bg-[#f5b942]/15 px-3 py-2 text-xs font-extrabold text-[#f5b942] hover:bg-[#f5b942]/25'
+                    >
+                      <Shield size={14} />
+                      Open{' '}
+                      {user.role === ROLES.SUPERADMIN
+                        ? 'SuperAdmin'
+                        : 'Admin'}{' '}
+                      Studio
+                    </Link>
+                  )}
+
+                  <Link
+                    to={ROUTES.PROFILE}
+                    className='flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-white/10'
+                  >
+                    <User size={14} /> Profile & Settings
+                  </Link>
+                  <Link
+                    to={ROUTES.WATCHLIST}
+                    className='flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-white/10'
+                  >
+                    <Bookmark size={14} /> My Watchlist
+                  </Link>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setProfileOpen(false);
+                      dispatch(openPreferenceModal());
+                    }}
+                    className='flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold hover:bg-white/10'
+                  >
+                    <Sparkles size={14} className='text-[#f5b942]' /> Taste &
+                    Region ({currency})
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setProfileOpen(false);
+                      dispatch(openLogoutModal());
+                    }}
+                    className='mt-1 flex w-full items-center gap-2.5 rounded-xl border-t border-white/10 px-3 py-2 text-left text-xs font-extrabold text-rose-500 hover:bg-rose-500/10'
+                  >
+                    <LogOut size={14} /> Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className='flex shrink-0 items-center gap-1'>
+              <Link
+                to={ROUTES.LOGIN}
+                className='whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-bold hover:bg-white/10'
+              >
+                Log in
+              </Link>
+              <Link
+                to={ROUTES.SIGNUP}
+                className='whitespace-nowrap rounded-full bg-[#f5b942] px-3 py-1.5 text-xs font-extrabold text-black shadow-xs hover:brightness-110'
+              >
+                Sign up
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Expandable Mobile Search Drawer */}
+      {mobileSearchOpen && (
+        <div
+          className={`border-t px-3 py-2.5 lg:hidden ${
+            isLight
+              ? 'border-slate-200 bg-slate-50'
+              : 'border-white/10 bg-[#0e131f]'
+          }`}
+        >
+          <form onSubmit={onSearch} className='relative'>
+            <Search
+              size={15}
+              className='absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400'
+            />
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder='Search movies, web series, actors...'
+              className={`w-full rounded-full border py-2 pr-4 pl-9 text-xs focus:border-[#f5b942] focus:outline-none ${
+                isLight
+                  ? 'border-slate-300 bg-white text-slate-900'
+                  : 'border-white/15 bg-white/5 text-white'
+              }`}
+            />
+          </form>
+        </div>
+      )}
+    </header>
+  );
+}
