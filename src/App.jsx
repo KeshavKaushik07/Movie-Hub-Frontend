@@ -36,15 +36,22 @@ const userRoutesTree = (
     <Route path={ROUTES.BLOGS} element={<Blogs />} />
     <Route path={ROUTES.BLOG_DETAIL} element={<BlogDetail />} />
     <Route path={ROUTES.COMMUNITY} element={<Community />} />
-    <Route path={ROUTES.SITEMAP} element={<Sitemap />} />
+    <Route
+      path={ROUTES.SITEMAP}
+      element={
+        <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERADMIN]}>
+          <Sitemap />
+        </ProtectedRoute>
+      }
+    />
     <Route path={ROUTES.SITEMAP_XML} element={<Sitemap xmlMode />} />
-    <Route path={ROUTES.LOGIN} element={<Auth mode="login" />} />
-    <Route path={ROUTES.SIGNUP} element={<Auth mode="signup" />} />
+    <Route path={ROUTES.LOGIN} element={<Auth mode='login' />} />
+    <Route path={ROUTES.SIGNUP} element={<Auth mode='signup' />} />
     <Route
       path={ROUTES.PROFILE}
       element={
         <ProtectedRoute>
-          <Profile defaultTab="overview" />
+          <Profile defaultTab='overview' />
         </ProtectedRoute>
       }
     />
@@ -52,7 +59,7 @@ const userRoutesTree = (
       path={ROUTES.WATCHLIST}
       element={
         <ProtectedRoute>
-          <Profile defaultTab="watchlist" />
+          <Profile defaultTab='watchlist' />
         </ProtectedRoute>
       }
     />
@@ -79,11 +86,11 @@ export default function App() {
 
   if (isAdminStudioRoute) {
     return (
-      <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#070a10] text-white">
+      <div className='min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#070a10] text-white'>
         <LogoutConfirmModal />
         <Routes>
           <Route
-            path="/admin/*"
+            path='/admin/*'
             element={
               <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERADMIN]}>
                 <Admin />
@@ -96,12 +103,12 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-[#070a10] pb-16 text-white lg:pb-0">
+    <div className='flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-[#070a10] pb-16 text-white lg:pb-0'>
       <Navbar />
       <PreferenceModal />
       <LogoutConfirmModal />
 
-      <main className="min-h-screen flex-1">
+      <main className='min-h-screen flex-1'>
         <Routes>{userRoutesTree}</Routes>
       </main>
 
