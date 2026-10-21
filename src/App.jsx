@@ -3,6 +3,7 @@ import { Route, Routes, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { ROLES, ROUTES } from './config/constants';
 import { restoreSession } from './store/authSlice';
+import { registerRoutesFromReactTree } from './utils/sitemapGenerator';
 
 import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -18,9 +19,48 @@ import Person from './pages/Person';
 import Blogs from './pages/Blogs';
 import BlogDetail from './pages/BlogDetail';
 import Community from './pages/Community';
+import Sitemap from './pages/Sitemap';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+
+// Define user routes JSX once so `registerRoutesFromReactTree` automatically indexes
+// any new <Route> added here in the future without manual sitemap edits!
+const userRoutesTree = (
+  <>
+    <Route path={ROUTES.HOME} element={<Home />} />
+    <Route path={ROUTES.BROWSE_ROOT} element={<Browse />} />
+    <Route path={ROUTES.BROWSE} element={<Browse />} />
+    <Route path={ROUTES.DETAILS} element={<Details />} />
+    <Route path={ROUTES.PERSON} element={<Person />} />
+    <Route path={ROUTES.BLOGS} element={<Blogs />} />
+    <Route path={ROUTES.BLOG_DETAIL} element={<BlogDetail />} />
+    <Route path={ROUTES.COMMUNITY} element={<Community />} />
+    <Route path={ROUTES.SITEMAP} element={<Sitemap />} />
+    <Route path={ROUTES.SITEMAP_XML} element={<Sitemap xmlMode />} />
+    <Route path={ROUTES.LOGIN} element={<Auth mode="login" />} />
+    <Route path={ROUTES.SIGNUP} element={<Auth mode="signup" />} />
+    <Route
+      path={ROUTES.PROFILE}
+      element={
+        <ProtectedRoute>
+          <Profile defaultTab="overview" />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.WATCHLIST}
+      element={
+        <ProtectedRoute>
+          <Profile defaultTab="watchlist" />
+        </ProtectedRoute>
+      }
+    />
+  </>
+);
+
+// Automatically scan and register all <Route> paths from userRoutesTree into the Sitemap Engine
+registerRoutesFromReactTree(userRoutesTree);
 
 export default function App() {
   const dispatch = useDispatch();
@@ -62,34 +102,7 @@ export default function App() {
       <LogoutConfirmModal />
 
       <main className="min-h-screen flex-1">
-        <Routes>
-          <Route path={ROUTES.HOME} element={<Home />} />
-          <Route path={ROUTES.BROWSE_ROOT} element={<Browse />} />
-          <Route path={ROUTES.BROWSE} element={<Browse />} />
-          <Route path={ROUTES.DETAILS} element={<Details />} />
-          <Route path={ROUTES.PERSON} element={<Person />} />
-          <Route path={ROUTES.BLOGS} element={<Blogs />} />
-          <Route path={ROUTES.BLOG_DETAIL} element={<BlogDetail />} />
-          <Route path={ROUTES.COMMUNITY} element={<Community />} />
-          <Route path={ROUTES.LOGIN} element={<Auth mode="login" />} />
-          <Route path={ROUTES.SIGNUP} element={<Auth mode="signup" />} />
-          <Route
-            path={ROUTES.PROFILE}
-            element={
-              <ProtectedRoute>
-                <Profile defaultTab="overview" />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path={ROUTES.WATCHLIST}
-            element={
-              <ProtectedRoute>
-                <Profile defaultTab="watchlist" />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+        <Routes>{userRoutesTree}</Routes>
       </main>
 
       <Footer />

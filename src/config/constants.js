@@ -5,8 +5,8 @@ export const TMDB = {
 };
 
 export const BACKEND = {
-  URL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
-  ENABLED: import.meta.env.VITE_USE_BACKEND !== 'false',
+  URL: import.meta.env?.VITE_API_URL || 'http://localhost:5000/api/v1',
+  ENABLED: import.meta.env?.VITE_USE_BACKEND !== 'false',
 };
 
 export const GUEST_LIMIT_MS = 15 * 60 * 1000;
@@ -25,6 +25,8 @@ export const ROUTES = {
   BLOGS: '/blogs',
   BLOG_DETAIL: '/blogs/:slug',
   COMMUNITY: '/community',
+  SITEMAP: '/sitemap',
+  SITEMAP_XML: '/sitemap.xml',
   ADMIN: '/admin/*',
 };
 

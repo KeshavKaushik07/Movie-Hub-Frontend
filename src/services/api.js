@@ -254,3 +254,11 @@ export const communityApi = {
 
 export const img = (path, size = 'w500', label = 'Movies Hub', variant = 'poster') =>
   resolveImage(path, size, label, variant);
+
+// Dynamic Sitemap API (Fetches all DB titles, blogs, celebrities & rooms for /sitemap & /sitemap.xml)
+export const sitemapApi = {
+  getJson: (siteUrl = window.location.origin) =>
+    backend.get('/sitemap.json', { params: { siteUrl } }).then((r) => r.data),
+  getXmlUrl: (siteUrl = window.location.origin) =>
+    `${backend.defaults.baseURL}/sitemap.xml?siteUrl=${encodeURIComponent(siteUrl)}`,
+};

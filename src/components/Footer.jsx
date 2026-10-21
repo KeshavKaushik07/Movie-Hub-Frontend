@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Film, BookOpen, MessageSquare, Compass } from 'lucide-react';
+import { Film, BookOpen, MessageSquare, Compass, Globe, FileCode } from 'lucide-react';
 import { APP_NAME } from '../config/constants';
 
 export default function Footer() {
@@ -17,7 +17,7 @@ export default function Footer() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-5">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
           <Link to="/browse/movie" className="flex items-center gap-1 hover:text-[#f5b942]">
             <Compass size={13} /> Browse Catalog
           </Link>
@@ -26,6 +26,12 @@ export default function Footer() {
           </Link>
           <Link to="/community" className="flex items-center gap-1 hover:text-[#f5b942]">
             <MessageSquare size={13} /> Community Chat
+          </Link>
+          <Link to="/sitemap" className="flex items-center gap-1 font-semibold text-[#f5b942] hover:underline">
+            <Globe size={13} /> HTML Sitemap
+          </Link>
+          <Link to="/sitemap.xml" className="flex items-center gap-1 hover:text-[#f5b942]">
+            <FileCode size={13} /> sitemap.xml
           </Link>
         </div>
         <p>© {new Date().getFullYear()} {APP_NAME}. All rights reserved.</p>
