@@ -23,8 +23,6 @@ export default createSlice({
       })
       .addCase(fetchHome.rejected, (s, a) => {
         s.loading = false;
-        s.error =
-          a.error?.message ||
-          'Could not load movies. Ensure backend is running.';
+        s.error = a.error?.message || 'Could not load movies. Ensure backend is running.';
       }),
 }).reducer;

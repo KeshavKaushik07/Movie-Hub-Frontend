@@ -11,19 +11,9 @@ const getInitialPreferences = () => {
     currency: defaultRegion === 'IN' ? 'INR' : 'USD',
     industries:
       defaultRegion === 'IN'
-        ? [
-            'bollywood',
-            'tollywood',
-            'kollywood',
-            'mollywood',
-            'sandalwood',
-            'hollywood',
-          ]
+        ? ['bollywood', 'tollywood', 'kollywood', 'mollywood', 'sandalwood', 'hollywood']
         : ['hollywood', 'korean', 'japanese', 'bollywood'],
-    languages:
-      defaultRegion === 'IN'
-        ? ['hi', 'te', 'ta', 'ml', 'kn', 'en']
-        : ['en', 'ko', 'ja'],
+    languages: defaultRegion === 'IN' ? ['hi', 'te', 'ta', 'ml', 'kn', 'en'] : ['en', 'ko', 'ja'],
     genres: [28, 53, 18, 35, 878],
     contentTypes: ['movie', 'webseries', 'tv'],
     onboardingCompleted: false,
@@ -82,30 +72,17 @@ const preferencesSlice = createSlice({
     const syncFromUser = (state, user) => {
       if (user?.preferences && user.preferences.onboardingCompleted) {
         state.region = user.preferences.region || state.region;
-        state.currency =
-          user.preferences.currency || (state.region === 'IN' ? 'INR' : 'USD');
-        if (
-          Array.isArray(user.preferences.industries) &&
-          user.preferences.industries.length
-        ) {
+        state.currency = user.preferences.currency || (state.region === 'IN' ? 'INR' : 'USD');
+        if (Array.isArray(user.preferences.industries) && user.preferences.industries.length) {
           state.industries = user.preferences.industries;
         }
-        if (
-          Array.isArray(user.preferences.languages) &&
-          user.preferences.languages.length
-        ) {
+        if (Array.isArray(user.preferences.languages) && user.preferences.languages.length) {
           state.languages = user.preferences.languages;
         }
-        if (
-          Array.isArray(user.preferences.genres) &&
-          user.preferences.genres.length
-        ) {
+        if (Array.isArray(user.preferences.genres) && user.preferences.genres.length) {
           state.genres = user.preferences.genres;
         }
-        if (
-          Array.isArray(user.preferences.contentTypes) &&
-          user.preferences.contentTypes.length
-        ) {
+        if (Array.isArray(user.preferences.contentTypes) && user.preferences.contentTypes.length) {
           state.contentTypes = user.preferences.contentTypes;
         }
         state.onboardingCompleted = true;
@@ -113,18 +90,10 @@ const preferencesSlice = createSlice({
       }
     };
 
-    b.addCase(login.fulfilled, (state, { payload }) =>
-      syncFromUser(state, payload?.user),
-    );
-    b.addCase(signup.fulfilled, (state, { payload }) =>
-      syncFromUser(state, payload?.user),
-    );
-    b.addCase(restoreSession.fulfilled, (state, { payload }) =>
-      syncFromUser(state, payload?.user),
-    );
-    b.addCase(updateProfile.fulfilled, (state, { payload }) =>
-      syncFromUser(state, payload),
-    );
+    b.addCase(login.fulfilled, (state, { payload }) => syncFromUser(state, payload?.user));
+    b.addCase(signup.fulfilled, (state, { payload }) => syncFromUser(state, payload?.user));
+    b.addCase(restoreSession.fulfilled, (state, { payload }) => syncFromUser(state, payload?.user));
+    b.addCase(updateProfile.fulfilled, (state, { payload }) => syncFromUser(state, payload));
   },
 });
 

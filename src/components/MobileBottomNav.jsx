@@ -22,43 +22,17 @@ export default function MobileBottomNav() {
 
   const navItems = [
     { to: '/', label: 'Home', icon: Home, active: pathname === '/' },
-    {
-      to: '/browse/movie',
-      label: 'Explore',
-      icon: Compass,
-      active: pathname.startsWith('/browse'),
-    },
-    {
-      to: '/community',
-      label: 'Chat',
-      icon: MessageSquare,
-      active: pathname.startsWith('/community'),
-    },
-    {
-      to: '/blogs',
-      label: 'Blogs',
-      icon: BookOpen,
-      active: pathname.startsWith('/blogs'),
-    },
+    { to: '/browse/movie', label: 'Explore', icon: Compass, active: pathname.startsWith('/browse') },
+    { to: '/community', label: 'Chat', icon: MessageSquare, active: pathname.startsWith('/community') },
+    { to: '/blogs', label: 'Blogs', icon: BookOpen, active: pathname.startsWith('/blogs') },
     ...(isStaff
-      ? [
-          {
-            to: '/admin',
-            label: 'Studio',
-            icon: Shield,
-            active: pathname.startsWith('/admin'),
-            highlight: true,
-          },
-        ]
+      ? [{ to: '/admin', label: 'Studio', icon: Shield, active: pathname.startsWith('/admin'), highlight: true }]
       : []),
     {
       to: user ? '/profile' : '/login',
       label: user ? 'Profile' : 'Sign In',
       icon: User,
-      active:
-        pathname.startsWith('/profile') ||
-        pathname.startsWith('/watchlist') ||
-        pathname === '/login',
+      active: pathname.startsWith('/profile') || pathname.startsWith('/watchlist') || pathname === '/login',
     },
   ];
 
@@ -71,7 +45,7 @@ export default function MobileBottomNav() {
           : 'border-white/10 bg-[#070a10]/95 text-zinc-300 shadow-[0_-4px_24px_rgba(0,0,0,0.6)]'
       }`}
     >
-      <div className='mx-auto flex max-w-md items-center justify-around'>
+      <div className="mx-auto flex max-w-md items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -99,7 +73,7 @@ export default function MobileBottomNav() {
               >
                 <Icon size={17} />
               </span>
-              <span className='whitespace-nowrap'>{item.label}</span>
+              <span className="whitespace-nowrap">{item.label}</span>
             </Link>
           );
         })}
@@ -107,14 +81,14 @@ export default function MobileBottomNav() {
         {/* Quick Logout Button on Mobile Lower Navbar when logged in */}
         {user && (
           <button
-            type='button'
+            type="button"
             onClick={() => dispatch(openLogoutModal())}
-            className='flex min-w-[46px] flex-col items-center gap-0.5 rounded-xl px-1.5 py-1 text-[10px] font-bold text-rose-500 active:scale-95'
+            className="flex min-w-[46px] flex-col items-center gap-0.5 rounded-xl px-1.5 py-1 text-[10px] font-bold text-rose-500 active:scale-95"
           >
-            <span className='flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/10'>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/10">
               <LogOut size={15} />
             </span>
-            <span className='whitespace-nowrap'>Logout</span>
+            <span className="whitespace-nowrap">Logout</span>
           </button>
         )}
       </div>

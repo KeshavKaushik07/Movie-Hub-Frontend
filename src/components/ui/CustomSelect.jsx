@@ -23,23 +23,15 @@ export default function CustomSelect({
 
   const normalized = options.map((opt) =>
     typeof opt === 'object' && opt !== null
-      ? {
-          value: opt.value ?? opt.key ?? '',
-          label: opt.label ?? String(opt.value ?? ''),
-          badge: opt.badge,
-          emoji: opt.emoji,
-        }
+      ? { value: opt.value ?? opt.key ?? '', label: opt.label ?? String(opt.value ?? ''), badge: opt.badge, emoji: opt.emoji }
       : { value: opt, label: String(opt || placeholder) },
   );
 
-  const selected =
-    normalized.find((o) => String(o.value) === String(value)) || null;
+  const selected = normalized.find((o) => String(o.value) === String(value)) || null;
 
   const filtered =
     (searchable || normalized.length > 8) && search.trim()
-      ? normalized.filter((o) =>
-          o.label.toLowerCase().includes(search.toLowerCase()),
-        )
+      ? normalized.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
       : normalized;
 
   useEffect(() => {
@@ -62,12 +54,12 @@ export default function CustomSelect({
   return (
     <div ref={ref} className={`relative ${className}`}>
       {label && (
-        <label className='mb-1.5 block text-[11px] font-semibold tracking-wider text-zinc-400 uppercase'>
+        <label className="mb-1.5 block text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
           {label}
         </label>
       )}
       <button
-        type='button'
+        type="button"
         disabled={disabled}
         onClick={() => {
           if (!disabled) {
@@ -77,12 +69,10 @@ export default function CustomSelect({
         }}
         className={`flex w-full items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-[#0e131f] px-3.5 py-2.5 text-left text-xs font-medium text-white shadow-sm hover:border-[#f5b942]/40 focus:border-[#f5b942] focus:outline-none disabled:opacity-50 ${buttonClassName}`}
       >
-        <span className='flex items-center gap-2 truncate'>
-          {Icon && <Icon size={14} className='shrink-0 text-[#f5b942]' />}
+        <span className="flex items-center gap-2 truncate">
+          {Icon && <Icon size={14} className="shrink-0 text-[#f5b942]" />}
           {selected?.emoji && <span>{selected.emoji}</span>}
-          <span className='truncate'>
-            {selected ? selected.label : placeholder}
-          </span>
+          <span className="truncate">{selected ? selected.label : placeholder}</span>
         </span>
         <ChevronDown
           size={14}
@@ -91,34 +81,29 @@ export default function CustomSelect({
       </button>
 
       {open && (
-        <div className='absolute right-0 left-0 z-50 mt-1.5 min-w-[190px] overflow-auto rounded-2xl border border-white/15 bg-[#0e131f]/95 p-1.5 shadow-2xl backdrop-blur-xl'>
+        <div className="absolute right-0 left-0 z-50 mt-1.5 min-w-[190px] overflow-hidden rounded-2xl border border-white/15 bg-[#0e131f]/95 p-1.5 shadow-2xl backdrop-blur-xl">
           {(searchable || normalized.length > 8) && (
-            <div className='relative mb-1.5 px-1 pt-1'>
-              <Search
-                size={13}
-                className=' absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400'
-              />
+            <div className="relative mb-1.5 px-1 pt-1">
+              <Search size={13} className=" absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400" />
               <input
-                type='text'
+                type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder='Filter options...'
-                className='w-full rounded-xl border border-white/10 bg-white/5 py-1.5 pr-3 pl-8 text-xs text-white placeholder-zinc-500 focus:border-[#f5b942] focus:outline-none'
+                placeholder="Filter options..."
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-1.5 pr-3 pl-8 text-xs text-white placeholder-zinc-500 focus:border-[#f5b942] focus:outline-none"
               />
             </div>
           )}
-          <div className='studio-scroll max-h-60 overflow-y-auto'>
+          <div className="studio-scroll max-h-60 overflow-y-auto">
             {filtered.length === 0 ? (
-              <p className='px-3 py-2.5 text-center text-xs text-zinc-500'>
-                No matching options
-              </p>
+              <p className="px-3 py-2.5 text-center text-xs text-zinc-500">No matching options</p>
             ) : (
               filtered.map((opt) => {
                 const isActive = String(opt.value) === String(value);
                 return (
                   <button
                     key={String(opt.value)}
-                    type='button'
+                    type="button"
                     onClick={() => {
                       onChange(opt.value);
                       setOpen(false);
@@ -129,19 +114,17 @@ export default function CustomSelect({
                         : 'text-zinc-300 hover:bg-white/10 hover:text-white'
                     }`}
                   >
-                    <span className='flex items-center gap-2 truncate'>
+                    <span className="flex items-center gap-2 truncate">
                       {opt.emoji && <span>{opt.emoji}</span>}
-                      <span className={`truncate `}>{opt.label}</span>
+                      <span className="truncate">{opt.label}</span>
                     </span>
-                    <span className='flex items-center gap-1.5'>
+                    <span className="flex items-center gap-1.5">
                       {opt.badge && (
-                        <span className='rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] text-zinc-400'>
+                        <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] text-zinc-400">
                           {opt.badge}
                         </span>
                       )}
-                      {isActive && (
-                        <Check size={13} className='shrink-0 text-[#f5b942]' />
-                      )}
+                      {isActive && <Check size={13} className="shrink-0 text-[#f5b942]" />}
                     </span>
                   </button>
                 );

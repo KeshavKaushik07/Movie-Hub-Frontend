@@ -20,10 +20,9 @@ export default function SafeImage({
     setFailed(false);
   }, [src]);
 
-  const resolvedSrc =
-    failed || !src
-      ? createFallbackSvg(alt, variant)
-      : resolveImage(src, size, alt, variant);
+  const resolvedSrc = failed || !src
+    ? createFallbackSvg(alt, variant)
+    : resolveImage(src, size, alt, variant);
 
   return (
     <img

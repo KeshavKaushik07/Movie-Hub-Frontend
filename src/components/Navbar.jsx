@@ -75,37 +75,35 @@ export default function Navbar() {
           : 'border-white/10 bg-[#070a10]/95 text-white'
       }`}
     >
-      <div className='mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3'>
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
         {/* Brand Logo (Never wraps) */}
         <Link
           to={ROUTES.HOME}
-          className='flex shrink-0 items-center gap-2 whitespace-nowrap font-extrabold tracking-tight'
+          className="flex shrink-0 items-center gap-2 whitespace-nowrap font-extrabold tracking-tight"
         >
-          <span className='flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9'>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9">
             <Film size={17} />
           </span>
           <span
             style={{ fontFamily: 'var(--font-display)' }}
-            className='text-sm font-extrabold sm:text-lg'
+            className="text-sm font-extrabold sm:text-lg"
           >
             {APP_NAME}
           </span>
         </Link>
 
         {/* Desktop Mega-Menu Navigation (Strictly whitespace-nowrap so words NEVER break) */}
-        <nav className='hidden items-center gap-0.5 xl:flex'>
+        <nav className="hidden items-center gap-0.5 xl:flex">
           {NAV_MENU.map((m) => (
             <div
               key={m.label}
-              className='relative shrink-0'
+              className="relative shrink-0"
               onMouseEnter={() => setOpenMenu(m.label)}
               onMouseLeave={() => setOpenMenu(null)}
             >
               <button
-                type='button'
-                onClick={() =>
-                  setOpenMenu(openMenu === m.label ? null : m.label)
-                }
+                type="button"
+                onClick={() => setOpenMenu(openMenu === m.label ? null : m.label)}
                 className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
                   openMenu === m.label
                     ? 'bg-[#f5b942]/15 text-[#f5b942]'
@@ -124,7 +122,7 @@ export default function Navbar() {
               </button>
 
               {openMenu === m.label && (
-                <div className='absolute top-full left-0 z-50 w-56 pt-1.5'>
+                <div className="absolute top-full left-0 z-50 w-56 pt-1.5">
                   <div
                     className={`rounded-2xl border p-2 shadow-2xl backdrop-blur-xl ${
                       isLight
@@ -136,7 +134,7 @@ export default function Navbar() {
                       <Link
                         key={it.to}
                         to={it.to}
-                        className='block whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[#f5b942]/15 hover:text-[#f5b942]'
+                        className="block whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition hover:bg-[#f5b942]/15 hover:text-[#f5b942]"
                       >
                         {it.label}
                       </Link>
@@ -148,7 +146,7 @@ export default function Navbar() {
           ))}
 
           <Link
-            to='/blogs'
+            to="/blogs"
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
               loc.pathname.startsWith('/blogs')
                 ? 'bg-[#f5b942]/15 text-[#f5b942]'
@@ -157,12 +155,12 @@ export default function Navbar() {
                   : 'text-zinc-300 hover:bg-white/5 hover:text-white'
             }`}
           >
-            <BookOpen size={14} className='shrink-0 text-[#f5b942]' />
+            <BookOpen size={14} className="shrink-0 text-[#f5b942]" />
             <span>Blogs</span>
           </Link>
 
           <Link
-            to='/community'
+            to="/community"
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
               loc.pathname.startsWith('/community')
                 ? 'bg-[#f5b942]/15 text-[#f5b942]'
@@ -171,24 +169,18 @@ export default function Navbar() {
                   : 'text-zinc-300 hover:bg-white/5 hover:text-white'
             }`}
           >
-            <MessageSquare size={14} className='shrink-0 text-emerald-500' />
+            <MessageSquare size={14} className="shrink-0 text-emerald-500" />
             <span>Community</span>
           </Link>
         </nav>
 
         {/* Desktop Search Bar */}
-        <form
-          onSubmit={onSearch}
-          className='relative hidden flex-1 max-w-[240px] lg:block'
-        >
-          <Search
-            size={14}
-            className='absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400'
-          />
+        <form onSubmit={onSearch} className="relative hidden flex-1 max-w-[240px] lg:block">
+          <Search size={14} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder='Search movies, actors...'
+            placeholder="Search movies, actors..."
             className={`w-full rounded-full border py-1.5 pr-4 pl-9 text-xs focus:border-[#f5b942] focus:outline-none ${
               isLight
                 ? 'border-slate-200 bg-slate-100 text-slate-900 placeholder-slate-400'
@@ -198,28 +190,26 @@ export default function Navbar() {
         </form>
 
         {/* Right Controls (Compact, Zero-Wrapping App Pills) */}
-        <div className='flex shrink-0 items-center gap-1.5 sm:gap-2'>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {/* Mobile Search Button */}
           <button
-            type='button'
+            type="button"
             onClick={() => setMobileSearchOpen((v) => !v)}
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border lg:hidden ${
               isLight
                 ? 'border-slate-200 bg-slate-100 text-slate-700'
                 : 'border-white/10 bg-white/5 text-zinc-200'
             }`}
-            aria-label='Search'
+            aria-label="Search"
           >
             {mobileSearchOpen ? <X size={15} /> : <Search size={15} />}
           </button>
 
           {/* Region & Rupees/USD Toggle Pill */}
           <button
-            type='button'
-            onClick={() =>
-              dispatch(setRegionAndCurrency(region === 'IN' ? 'GLOBAL' : 'IN'))
-            }
-            title='Switch Region & Currency (India ₹ INR / Global $ USD)'
+            type="button"
+            onClick={() => dispatch(setRegionAndCurrency(region === 'IN' ? 'GLOBAL' : 'IN'))}
+            title="Switch Region & Currency (India ₹ INR / Global $ USD)"
             className={`flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-[11px] font-extrabold transition ${
               isLight
                 ? 'border-slate-200 bg-slate-100 text-slate-800 hover:border-[#f5b942]'
@@ -232,18 +222,18 @@ export default function Navbar() {
 
           {/* Taste Preferences Trigger */}
           <button
-            type='button'
+            type="button"
             onClick={() => dispatch(openPreferenceModal())}
-            title='Customize Taste & Region'
-            className='flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#f5b942]/40 bg-[#f5b942]/15 px-2.5 text-[11px] font-extrabold text-[#f5b942] hover:bg-[#f5b942]/25'
+            title="Customize Taste & Region"
+            className="flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#f5b942]/40 bg-[#f5b942]/15 px-2.5 text-[11px] font-extrabold text-[#f5b942] hover:bg-[#f5b942]/25"
           >
             <SlidersHorizontal size={13} />
-            <span className='hidden md:inline'>Taste</span>
+            <span className="hidden md:inline">Taste</span>
           </button>
 
           {/* Dark / Light Mode Toggle (Works on Navbar, Lower Navbar & All Pages) */}
           <button
-            type='button'
+            type="button"
             onClick={() => dispatch(toggleTheme())}
             title={isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
@@ -258,21 +248,19 @@ export default function Navbar() {
           {/* Admin / SuperAdmin Studio Button */}
           {isStaff && (
             <Link
-              to='/admin'
-              className='hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-[#f5b942] to-amber-500 px-3 py-1.5 text-xs font-extrabold text-black shadow-sm hover:brightness-110 md:flex'
+              to="/admin"
+              className="hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-[#f5b942] to-amber-500 px-3 py-1.5 text-xs font-extrabold text-black shadow-sm hover:brightness-110 md:flex"
             >
               <Shield size={13} />
-              <span>
-                {user.role === ROLES.SUPERADMIN ? 'SuperAdmin' : 'Admin'} Studio
-              </span>
+              <span>{user.role === ROLES.SUPERADMIN ? 'SuperAdmin' : 'Admin'} Studio</span>
             </Link>
           )}
 
           {/* User Profile Menu or Compact Auth Buttons */}
           {user ? (
-            <div ref={profileRef} className='relative shrink-0'>
+            <div ref={profileRef} className="relative shrink-0">
               <button
-                type='button'
+                type="button"
                 onClick={() => setProfileOpen((v) => !v)}
                 className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border p-1 pr-2 text-xs font-bold ${
                   isLight
@@ -282,14 +270,12 @@ export default function Navbar() {
               >
                 <span
                   style={{ backgroundColor: user.avatarColor || '#f5b942' }}
-                  className='keep-white flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white'
+                  className="keep-white flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white"
                 >
                   {(user.name || 'U')[0].toUpperCase()}
                 </span>
-                <span className='hidden max-w-[80px] truncate sm:inline'>
-                  {user.name}
-                </span>
-                <ChevronDown size={12} className='shrink-0 text-zinc-400' />
+                <span className="hidden max-w-[80px] truncate sm:inline">{user.name}</span>
+                <ChevronDown size={12} className="shrink-0 text-zinc-400" />
               </button>
 
               {profileOpen && (
@@ -300,62 +286,53 @@ export default function Navbar() {
                       : 'border-white/15 bg-[#0e131f]/95 text-white'
                   }`}
                 >
-                  <div className='mb-1.5 border-b border-white/10 px-3 py-2'>
-                    <p className='truncate text-xs font-extrabold'>
-                      {user.name}
-                    </p>
-                    <p className='truncate text-[11px] text-zinc-400'>
-                      {user.email}
-                    </p>
-                    <span className='mt-1 inline-block rounded-full bg-[#f5b942]/20 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-[#f5b942] uppercase'>
+                  <div className="mb-1.5 border-b border-white/10 px-3 py-2">
+                    <p className="truncate text-xs font-extrabold">{user.name}</p>
+                    <p className="truncate text-[11px] text-zinc-400">{user.email}</p>
+                    <span className="mt-1 inline-block rounded-full bg-[#f5b942]/20 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-[#f5b942] uppercase">
                       {user.role}
                     </span>
                   </div>
 
                   {isStaff && (
                     <Link
-                      to='/admin'
-                      className='flex items-center gap-2.5 rounded-xl bg-[#f5b942]/15 px-3 py-2 text-xs font-extrabold text-[#f5b942] hover:bg-[#f5b942]/25'
+                      to="/admin"
+                      className="flex items-center gap-2.5 rounded-xl bg-[#f5b942]/15 px-3 py-2 text-xs font-extrabold text-[#f5b942] hover:bg-[#f5b942]/25"
                     >
                       <Shield size={14} />
-                      Open{' '}
-                      {user.role === ROLES.SUPERADMIN
-                        ? 'SuperAdmin'
-                        : 'Admin'}{' '}
-                      Studio
+                      Open {user.role === ROLES.SUPERADMIN ? 'SuperAdmin' : 'Admin'} Studio
                     </Link>
                   )}
 
                   <Link
                     to={ROUTES.PROFILE}
-                    className='flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-white/10'
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-white/10"
                   >
                     <User size={14} /> Profile & Settings
                   </Link>
                   <Link
                     to={ROUTES.WATCHLIST}
-                    className='flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-white/10'
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-white/10"
                   >
                     <Bookmark size={14} /> My Watchlist
                   </Link>
                   <button
-                    type='button'
+                    type="button"
                     onClick={() => {
                       setProfileOpen(false);
                       dispatch(openPreferenceModal());
                     }}
-                    className='flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold hover:bg-white/10'
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold hover:bg-white/10"
                   >
-                    <Sparkles size={14} className='text-[#f5b942]' /> Taste &
-                    Region ({currency})
+                    <Sparkles size={14} className="text-[#f5b942]" /> Taste & Region ({currency})
                   </button>
                   <button
-                    type='button'
+                    type="button"
                     onClick={() => {
                       setProfileOpen(false);
                       dispatch(openLogoutModal());
                     }}
-                    className='mt-1 flex w-full items-center gap-2.5 rounded-xl border-t border-white/10 px-3 py-2 text-left text-xs font-extrabold text-rose-500 hover:bg-rose-500/10'
+                    className="mt-1 flex w-full items-center gap-2.5 rounded-xl border-t border-white/10 px-3 py-2 text-left text-xs font-extrabold text-rose-500 hover:bg-rose-500/10"
                   >
                     <LogOut size={14} /> Sign Out
                   </button>
@@ -363,16 +340,16 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <div className='flex shrink-0 items-center gap-1'>
+            <div className="flex shrink-0 items-center gap-1">
               <Link
                 to={ROUTES.LOGIN}
-                className='whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-bold hover:bg-white/10'
+                className="whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-bold hover:bg-white/10"
               >
                 Log in
               </Link>
               <Link
                 to={ROUTES.SIGNUP}
-                className='whitespace-nowrap rounded-full bg-[#f5b942] px-3 py-1.5 text-xs font-extrabold text-black shadow-xs hover:brightness-110'
+                className="whitespace-nowrap rounded-full bg-[#f5b942] px-3 py-1.5 text-xs font-extrabold text-black shadow-xs hover:brightness-110"
               >
                 Sign up
               </Link>
@@ -385,21 +362,16 @@ export default function Navbar() {
       {mobileSearchOpen && (
         <div
           className={`border-t px-3 py-2.5 lg:hidden ${
-            isLight
-              ? 'border-slate-200 bg-slate-50'
-              : 'border-white/10 bg-[#0e131f]'
+            isLight ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-[#0e131f]'
           }`}
         >
-          <form onSubmit={onSearch} className='relative'>
-            <Search
-              size={15}
-              className='absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400'
-            />
+          <form onSubmit={onSearch} className="relative">
+            <Search size={15} className="absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder='Search movies, web series, actors...'
+              placeholder="Search movies, web series, actors..."
               className={`w-full rounded-full border py-2 pr-4 pl-9 text-xs focus:border-[#f5b942] focus:outline-none ${
                 isLight
                   ? 'border-slate-300 bg-white text-slate-900'

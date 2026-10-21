@@ -26,13 +26,9 @@ export const detectDefaultRegion = () => {
  * into a normalized USD number (or INR number if source is INR).
  */
 export const parseRawCurrencyValue = (raw) => {
-  if (raw === null || raw === undefined || raw === '')
-    return { value: 0, currency: 'USD' };
+  if (raw === null || raw === undefined || raw === '') return { value: 0, currency: 'USD' };
   if (typeof raw === 'number') {
-    return {
-      value: Number.isFinite(raw) && raw > 0 ? raw : 0,
-      currency: 'USD',
-    };
+    return { value: Number.isFinite(raw) && raw > 0 ? raw : 0, currency: 'USD' };
   }
 
   const str = String(raw).trim();
@@ -63,43 +59,21 @@ export const parseRawCurrencyValue = (raw) => {
 export const estimateItemFinancialsUSD = (item = {}) => {
   const seed = Number(item?.id || item?.tmdbId || 105);
   const pop = Math.max(5, Number(item?.popularity) || 20);
-  const rating = Math.max(
-    5.2,
-    Number(item?.siteRating || item?.vote_average || item?.rating) || 6.8,
-  );
+  const rating = Math.max(5.2, Number(item?.siteRating || item?.vote_average || item?.rating) || 6.8);
   const votes = Math.max(15, Number(item?.vote_count || item?.voteCount) || 95);
-  const lang = String(
-    item?.originalLanguage || item?.original_language || 'hi',
-  ).toLowerCase();
-  const isIndian = [
-    'hi',
-    'te',
-    'ta',
-    'ml',
-    'kn',
-    'mr',
-    'bn',
-    'pa',
-    'gu',
-  ].includes(lang);
+  const lang = String(item?.originalLanguage || item?.original_language || 'hi').toLowerCase();
+  const isIndian = ['hi', 'te', 'ta', 'ml', 'kn', 'mr', 'bn', 'pa', 'gu'].includes(lang);
 
   // Base budget in USD ($1M = ₹8.35 Cr)
   const budgetUsd = isIndian
-    ? Math.round(
-        (4_200_000 + (seed % 19) * 1_150_000 + Math.min(pop, 120) * 160_000) /
-          100_000,
-      ) * 100_000
-    : Math.round(
-        (16_000_000 + (seed % 23) * 3_200_000 + Math.min(pop, 150) * 420_000) /
-          100_000,
-      ) * 100_000;
+    ? Math.round((4_200_000 + (seed % 19) * 1_150_000 + Math.min(pop, 120) * 160_000) / 100_000) * 100_000
+    : Math.round((16_000_000 + (seed % 23) * 3_200_000 + Math.min(pop, 150) * 420_000) / 100_000) * 100_000;
 
   const roiMultiplier = Math.max(
     0.85,
-    (rating / 6.1) * (1.18 + (seed % 11) * 0.13) + Math.min(votes / 4500, 1.15),
+    (rating / 6.1) * (1.18 + ((seed % 11) * 0.13)) + Math.min(votes / 4500, 1.15),
   );
-  const revenueUsd =
-    Math.round((budgetUsd * roiMultiplier) / 100_000) * 100_000;
+  const revenueUsd = Math.round((budgetUsd * roiMultiplier) / 100_000) * 100_000;
 
   return { budgetUsd, revenueUsd };
 };
@@ -130,20 +104,15 @@ export const formatBudgetOrBoxOffice = (rawAmount, options = {}) => {
   }
 
   if (parsed.value <= 0) {
-    return preferINR
-      ? fallback.includes('$')
-        ? '₹45.0 Cr'
-        : fallback
-      : '$12.5M';
+    return preferINR ? (fallback.includes('$') ? '₹45.0 Cr' : fallback) : '$12.5M';
   }
 
   const effectiveSource = parsed.currency || sourceCurrency;
 
   if (preferINR) {
-    const inrValue =
-      effectiveSource === 'INR' ? parsed.value : parsed.value * USD_TO_INR_RATE;
+    const inrValue = effectiveSource === 'INR' ? parsed.value : parsed.value * USD_TO_INR_RATE;
     const crore = 10_000_000; // 1 Crore = 1,00,00,000
-    const lakh = 100_000; // 1 Lakh  = 1,00,000
+    const lakh = 100_000;     // 1 Lakh  = 1,00,000
 
     if (inrValue >= crore) {
       const cr = inrValue / crore;
@@ -156,8 +125,7 @@ export const formatBudgetOrBoxOffice = (rawAmount, options = {}) => {
   }
 
   // International USD formatting
-  const usdValue =
-    effectiveSource === 'INR' ? parsed.value / USD_TO_INR_RATE : parsed.value;
+  const usdValue = effectiveSource === 'INR' ? parsed.value / USD_TO_INR_RATE : parsed.value;
   if (usdValue >= 1_000_000_000) {
     return `$${(usdValue / 1_000_000_000).toFixed(2)}B`;
   }
@@ -176,9 +144,7 @@ export const formatBudgetOrBoxOffice = (rawAmount, options = {}) => {
  */
 export const getMovieFinancials = (item = {}, region = 'IN') => {
   const bo = item?.boxOffice || {};
-  const parsedBudget = parseRawCurrencyValue(
-    item?.budget || bo.budget || bo.budgetFormatted,
-  );
+  const parsedBudget = parseRawCurrencyValue(item?.budget || bo.budget || bo.budgetFormatted);
   const parsedRevenue = parseRawCurrencyValue(
     bo.worldwideCollection || item?.revenue || bo.revenue,
   );
@@ -224,10 +190,7 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
                 : 'Below Average';
 
   const profitUsd = Math.max(0, finalRevenueUsd - finalBudgetUsd);
-  const roiPercent =
-    finalBudgetUsd > 0
-      ? Math.round(((finalRevenueUsd - finalBudgetUsd) / finalBudgetUsd) * 100)
-      : 45;
+  const roiPercent = finalBudgetUsd > 0 ? Math.round(((finalRevenueUsd - finalBudgetUsd) / finalBudgetUsd) * 100) : 45;
 
   return {
     isEstimated,
@@ -238,55 +201,34 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
     profitText: formatBudgetOrBoxOffice(profitUsd, { region }),
     indiaNetText:
       indiaNetParsed.value > 0
-        ? formatBudgetOrBoxOffice(indiaNetParsed.value, {
-            region,
-            sourceCurrency: indiaNetParsed.currency,
-          })
+        ? formatBudgetOrBoxOffice(indiaNetParsed.value, { region, sourceCurrency: indiaNetParsed.currency })
         : formatBudgetOrBoxOffice(finalRevenueUsd * 0.48, { region }),
     indiaGrossText:
       indiaGrossParsed.value > 0
-        ? formatBudgetOrBoxOffice(indiaGrossParsed.value, {
-            region,
-            sourceCurrency: indiaGrossParsed.currency,
-          })
+        ? formatBudgetOrBoxOffice(indiaGrossParsed.value, { region, sourceCurrency: indiaGrossParsed.currency })
         : formatBudgetOrBoxOffice(finalRevenueUsd * 0.58, { region }),
     openingWeekendText:
       openingWeekendParsed.value > 0
-        ? formatBudgetOrBoxOffice(openingWeekendParsed.value, {
-            region,
-            sourceCurrency: openingWeekendParsed.currency,
-          })
+        ? formatBudgetOrBoxOffice(openingWeekendParsed.value, { region, sourceCurrency: openingWeekendParsed.currency })
         : formatBudgetOrBoxOffice(finalRevenueUsd * 0.24, { region }),
     openingDayText:
       openingDayParsed.value > 0
-        ? formatBudgetOrBoxOffice(openingDayParsed.value, {
-            region,
-            sourceCurrency: openingDayParsed.currency,
-          })
+        ? formatBudgetOrBoxOffice(openingDayParsed.value, { region, sourceCurrency: openingDayParsed.currency })
         : formatBudgetOrBoxOffice(finalRevenueUsd * 0.09, { region }),
     domesticText:
       domesticParsed.value > 0
-        ? formatBudgetOrBoxOffice(domesticParsed.value, {
-            region,
-            sourceCurrency: domesticParsed.currency,
-          })
+        ? formatBudgetOrBoxOffice(domesticParsed.value, { region, sourceCurrency: domesticParsed.currency })
         : formatBudgetOrBoxOffice(finalRevenueUsd * 0.45, { region }),
     internationalText:
       intlParsed.value > 0
-        ? formatBudgetOrBoxOffice(intlParsed.value, {
-            region,
-            sourceCurrency: intlParsed.currency,
-          })
+        ? formatBudgetOrBoxOffice(intlParsed.value, { region, sourceCurrency: intlParsed.currency })
         : formatBudgetOrBoxOffice(finalRevenueUsd * 0.55, { region }),
     usdBudgetSub: `$${(finalBudgetUsd / 1_000_000).toFixed(1)}M USD`,
     usdRevenueSub: `$${(finalRevenueUsd / 1_000_000).toFixed(1)}M USD`,
   };
 };
 
-export const createFallbackSvg = (
-  label = 'Image Not Available',
-  variant = 'poster',
-) => {
+export const createFallbackSvg = (label = 'Image Not Available', variant = 'poster') => {
   const safeText = String(label || 'Movies Hub')
     .replace(/[&<>"']/g, '')
     .slice(0, 28);
@@ -350,18 +292,9 @@ export const createFallbackSvg = (
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
-export const resolveImage = (
-  path,
-  size = 'w500',
-  fallbackLabel = 'Movies Hub',
-  variant = 'poster',
-) => {
+export const resolveImage = (path, size = 'w500', fallbackLabel = 'Movies Hub', variant = 'poster') => {
   if (!path) return createFallbackSvg(fallbackLabel, variant);
-  if (
-    String(path).startsWith('http://') ||
-    String(path).startsWith('https://') ||
-    String(path).startsWith('data:')
-  ) {
+  if (String(path).startsWith('http://') || String(path).startsWith('https://') || String(path).startsWith('data:')) {
     return path;
   }
   return `${TMDB.IMG}/${size}${path}`;

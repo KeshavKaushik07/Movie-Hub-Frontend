@@ -8,7 +8,6 @@ import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
 import PreferenceModal from './components/PreferenceModal';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
-import GuestGate from './components/GuestGate';
 import ProtectedRoute from './components/ProtectedRoute';
 import Footer from './components/Footer';
 
@@ -40,11 +39,11 @@ export default function App() {
 
   if (isAdminStudioRoute) {
     return (
-      <div className='min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#070a10] text-white'>
+      <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#070a10] text-white">
         <LogoutConfirmModal />
         <Routes>
           <Route
-            path='/admin/*'
+            path="/admin/*"
             element={
               <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERADMIN]}>
                 <Admin />
@@ -57,13 +56,12 @@ export default function App() {
   }
 
   return (
-    <div className='flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-[#070a10] pb-16 text-white lg:pb-0'>
+    <div className="flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-[#070a10] pb-16 text-white lg:pb-0">
       <Navbar />
       <PreferenceModal />
       <LogoutConfirmModal />
-      <GuestGate />
 
-      <main className='min-h-screen flex-1'>
+      <main className="min-h-screen flex-1">
         <Routes>
           <Route path={ROUTES.HOME} element={<Home />} />
           <Route path={ROUTES.BROWSE_ROOT} element={<Browse />} />
@@ -73,13 +71,13 @@ export default function App() {
           <Route path={ROUTES.BLOGS} element={<Blogs />} />
           <Route path={ROUTES.BLOG_DETAIL} element={<BlogDetail />} />
           <Route path={ROUTES.COMMUNITY} element={<Community />} />
-          <Route path={ROUTES.LOGIN} element={<Auth mode='login' />} />
-          <Route path={ROUTES.SIGNUP} element={<Auth mode='signup' />} />
+          <Route path={ROUTES.LOGIN} element={<Auth mode="login" />} />
+          <Route path={ROUTES.SIGNUP} element={<Auth mode="signup" />} />
           <Route
             path={ROUTES.PROFILE}
             element={
               <ProtectedRoute>
-                <Profile defaultTab='overview' />
+                <Profile defaultTab="overview" />
               </ProtectedRoute>
             }
           />
@@ -87,7 +85,7 @@ export default function App() {
             path={ROUTES.WATCHLIST}
             element={
               <ProtectedRoute>
-                <Profile defaultTab='watchlist' />
+                <Profile defaultTab="watchlist" />
               </ProtectedRoute>
             }
           />

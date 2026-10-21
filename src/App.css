@@ -1,12 +1,7 @@
 /* Movies Hub v4 custom utility animations */
 @keyframes pulseGlow {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 0.95;
-  }
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
 }
 
 .glow-badge {
