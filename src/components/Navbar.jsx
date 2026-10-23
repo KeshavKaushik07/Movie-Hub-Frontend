@@ -74,6 +74,28 @@ export default function Navbar() {
     setMobileSearchOpen(false);
   };
 
+  // ---- Active tab detection (based on current URL) ----
+  const currentParams = new URLSearchParams(loc.search);
+  const getActiveItemTo = (items = []) => {
+    let best = null;
+    let bestScore = -1;
+    items.forEach((it) => {
+      const [path, query = ''] = String(it.to).split('?');
+      if (path !== loc.pathname) return;
+      let ok = true;
+      let score = 0;
+      new URLSearchParams(query).forEach((v, k) => {
+        if (currentParams.get(k) === v) score += 1;
+        else ok = false;
+      });
+      if (ok && score > bestScore) {
+        best = it.to;
+        bestScore = score;
+      }
+    });
+    return best;
+  };
+
   return (
     <header
       className={`sticky top-0 z-[200] w-full border-b backdrop-blur-xl transition-colors duration-300 ${
@@ -82,18 +104,18 @@ export default function Navbar() {
           : 'border-white/10 bg-[#070a10]/95 text-white'
       }`}
     >
-      <div className='mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3'>
+      <div className='mx-auto flex max-w-7xl items-center justify-between gap-1.5 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3'>
         {/* Brand Logo (Never wraps) */}
         <Link
           to={ROUTES.HOME}
-          className='flex shrink-0 items-center gap-2 whitespace-nowrap font-extrabold tracking-tight'
+          className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight'
         >
           <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9'>
             <img src='/movie-icon.png' alt='' className='object-cover' />
           </span>
           <span
             style={{ fontFamily: 'var(--font-display)' }}
-            className='text-sm font-extrabold sm:text-lg'
+            className='truncate text-sm font-extrabold sm:text-lg'
           >
             {APP_NAME}
           </span>
@@ -103,6 +125,13 @@ export default function Navbar() {
         <nav className='hidden items-center gap-0.5 lg:flex'>
           {NAV_MENU.map((m) => {
             const isOttMenu = m.key === 'ott' || m.label === 'OTT';
+            const activeItemTo = isOttMenu ? null : getActiveItemTo(m.items);
+            const isMenuActive = isOttMenu
+              ? loc.pathname.startsWith('/ott')
+              : Boolean(activeItemTo);
+            const activeProvider = loc.pathname.startsWith('/ott')
+              ? currentParams.get('provider')
+              : null;
             return (
               <div
                 key={m.key || m.label}
@@ -121,7 +150,7 @@ export default function Navbar() {
                     }
                   }}
                   className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
-                    openMenu === m.label
+                    openMenu === m.label || isMenuActive
                       ? 'bg-[#f5b942]/15 text-[#f5b942]'
                       : isLight
                         ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
@@ -136,7 +165,7 @@ export default function Navbar() {
                     size={13}
                     className={`shrink-0 transition-transform duration-200 ${
                       openMenu === m.label ? 'rotate-180 text-[#f5b942]' : ''
-                    }`}
+                    } ${isMenuActive && openMenu !== m.label ? 'text-[#f5b942]' : ''}`}
                   />
                 </button>
 
@@ -176,10 +205,17 @@ export default function Navbar() {
                                 key={ott.key}
                                 to={`/ott?provider=${ott.key}`}
                                 onClick={() => setOpenMenu(null)}
+                                aria-current={
+                                  activeProvider === ott.key
+                                    ? 'page'
+                                    : undefined
+                                }
                                 className={`flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                                  isLight
-                                    ? 'text-slate-800 hover:bg-amber-50 hover:text-amber-700'
-                                    : 'text-zinc-200 hover:bg-[#f5b942]/15 hover:text-[#f5b942]'
+                                  activeProvider === ott.key
+                                    ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                                    : isLight
+                                      ? 'text-slate-800 hover:bg-amber-50 hover:text-amber-700'
+                                      : 'text-zinc-200 hover:bg-[#f5b942]/15 hover:text-[#f5b942]'
                                 }`}
                               >
                                 <span
@@ -200,10 +236,15 @@ export default function Navbar() {
                             key={it.to}
                             to={it.to}
                             onClick={() => setOpenMenu(null)}
+                            aria-current={
+                              activeItemTo === it.to ? 'page' : undefined
+                            }
                             className={`block whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                              isLight
-                                ? 'text-slate-800 hover:bg-amber-50 hover:text-amber-700'
-                                : 'text-zinc-200 hover:bg-[#f5b942]/15 hover:text-[#f5b942]'
+                              activeItemTo === it.to
+                                ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                                : isLight
+                                  ? 'text-slate-800 hover:bg-amber-50 hover:text-amber-700'
+                                  : 'text-zinc-200 hover:bg-[#f5b942]/15 hover:text-[#f5b942]'
                             }`}
                           >
                             {it.label}
@@ -268,7 +309,7 @@ export default function Navbar() {
         </form>
 
         {/* Right Controls */}
-        <div className='flex shrink-0 items-center gap-1.5 sm:gap-2'>
+        <div className='flex shrink-0 items-center gap-1 sm:gap-2'>
           {/* Mobile Search Button */}
           <button
             type='button'
@@ -297,7 +338,9 @@ export default function Navbar() {
             }`}
           >
             <span>{region === 'IN' ? '🇮🇳' : '🌍'}</span>
-            <span>{region === 'IN' ? '₹ INR' : '$ USD'}</span>
+            <span className='hidden min-[420px]:inline'>
+              {region === 'IN' ? '₹ INR' : '$ USD'}
+            </span>
           </button>
 
           {/* Taste Preferences Trigger */}
@@ -344,7 +387,7 @@ export default function Navbar() {
               <button
                 type='button'
                 onClick={() => setProfileOpen((v) => !v)}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border p-1 pr-2 text-xs font-bold ${
+                className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border p-0.5 pr-1.5 text-xs font-bold sm:gap-1.5 sm:p-1 sm:pr-2 ${
                   isLight
                     ? 'border-slate-200 bg-slate-100 text-slate-900'
                     : 'border-white/10 bg-white/5 text-white'
