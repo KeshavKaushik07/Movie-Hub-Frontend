@@ -108,14 +108,14 @@ export default function Navbar() {
         {/* Brand Logo (Never wraps) */}
         <Link
           to={ROUTES.HOME}
-          className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight sm:mr-8'
+          className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight sm:mr-8 sm:shrink-0'
         >
-          <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9'>
+          <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500  shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9 rounded-xl overflow-hidden'>
             <img src='/movie-icon.png' alt='' className='object-cover' />
           </span>
           <span
             style={{ fontFamily: 'var(--font-display)' }}
-            className='truncate text-sm font-extrabold sm:text-lg'
+            className='truncate text-sm font-extrabold sm:overflow-visible sm:text-base lg:text-sm xl:text-base'
           >
             {APP_NAME}
           </span>
