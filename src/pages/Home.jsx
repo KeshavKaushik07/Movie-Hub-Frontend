@@ -79,7 +79,42 @@ export default function Home() {
   const top10Week = feed?.top10Week || [];
   const celebrities = feed?.celebrities || [];
   const blogs = feed?.blogs || [];
-  const rows = feed?.rows || [];
+  // Requirement 4: Deduplicate titles across rows so the same movie/series never repeats in row after row
+  const rawRows = feed?.rows || [];
+  const usedInEarlierRows = new Set();
+  const getItemIdentity = (it) => {
+    if (!it) return '';
+    const titleSlug = String(it.title || it.name || '').toLowerCase().trim();
+    return `${it.id || ''}::${titleSlug}`;
+  };
+  const rows = rawRows
+    .map((row) => {
+      const rowItems = Array.isArray(row.items) ? row.items : [];
+      const uniqueForRow = [];
+      const seenInThisRow = new Set();
+      for (const item of rowItems) {
+        const idKey = `${item?.type || 'movie'}:${item?.id}`;
+        const nameKey = String(item?.title || item?.name || '').toLowerCase().trim();
+        if (!item?.id || seenInThisRow.has(idKey) || (nameKey && seenInThisRow.has(nameKey))) continue;
+        seenInThisRow.add(idKey);
+        if (nameKey) seenInThisRow.add(nameKey);
+        if (!usedInEarlierRows.has(idKey) && (!nameKey || !usedInEarlierRows.has(nameKey))) {
+          uniqueForRow.push(item);
+        }
+      }
+      // Register selected items so subsequent rows show different content
+      for (const item of uniqueForRow) {
+        const idKey = `${item?.type || 'movie'}:${item?.id}`;
+        const nameKey = String(item?.title || item?.name || '').toLowerCase().trim();
+        usedInEarlierRows.add(idKey);
+        if (nameKey) usedInEarlierRows.add(nameKey);
+      }
+      return {
+        ...row,
+        items: uniqueForRow,
+      };
+    })
+    .filter((r) => r.items && r.items.length > 0);
 
   return (
     <div className="pb-12">
@@ -191,52 +226,61 @@ export default function Home() {
         region={prefs.region}
       />
 
-      {/* 7. Top Celebrities in Your Region (Clickable -> Full Actor Filmography) */}
-      {celebrities.length > 0 && (
+      {/* 7. Top Celebrities in Your Region — Full Extent Uncropped Portrait Cards (Requirement 6) */}
+      {celebrities.filter((c) => c && c.profileUrl).length > 0 && (
         <ScrollRow
           title={prefs.region === 'IN' ? 'Top Indian Celebrities & Filmmakers' : 'Top Global Celebrities & Directors'}
           subtitle="Tap any star or director to open all their movies and web series"
         >
-          {celebrities.map((celeb) => (
-            <Link
-              key={celeb.name}
-              to={`/person/${encodeURIComponent(celeb.name)}${celeb.id ? `?id=${celeb.id}` : ''}`}
-              className="group flex w-32 shrink-0 flex-col items-center rounded-2xl border border-white/10 bg-[#0e131f] p-3 text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-[#f5b942]/50 sm:w-40 sm:p-3.5"
-            >
-              <div className="relative h-20 w-20 overflow-hidden rounded-full border-2 border-[#f5b942]/40 shadow-lg sm:h-24 sm:w-24">
-                <SafeImage
-                  src={celeb.profileUrl}
-                  alt={celeb.name}
-                  size="w342"
-                  variant="avatar"
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                />
-              </div>
-              <h3 className="mt-2.5 w-full truncate text-xs font-bold text-white group-hover:text-[#f5b942] sm:text-sm">
-                {celeb.name}
-              </h3>
-              <span className="mt-0.5 rounded-full bg-[#f5b942]/15 px-2 py-0.5 text-[10px] font-bold text-[#f5b942]">
-                {celeb.industry || celeb.department}
-              </span>
-              <p className="mt-1 line-clamp-2 text-[10px] text-zinc-400">
-                {celeb.knownFor || 'View complete filmography'}
-              </p>
-            </Link>
-          ))}
+          {celebrities
+            .filter((c) => c && c.profileUrl)
+            .map((celeb) => (
+              <Link
+                key={celeb.name}
+                to={`/person/${encodeURIComponent(celeb.name)}${celeb.id ? `?id=${celeb.id}` : ''}`}
+                className="group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-[#f5b942]/50 sm:w-44"
+              >
+                <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-950">
+                  <SafeImage
+                    src={celeb.profileUrl}
+                    alt={celeb.name}
+                    size="h632"
+                    variant="poster"
+                    className="h-full w-full object-contain object-center transition duration-500 group-hover:scale-105"
+                  />
+                </div>
+                <div className="p-3">
+                  <h3 className="w-full truncate text-xs font-bold text-white group-hover:text-[#f5b942] sm:text-sm">
+                    {celeb.name}
+                  </h3>
+                  <span className="mt-1 inline-block rounded-full bg-[#f5b942]/15 px-2 py-0.5 text-[10px] font-bold text-[#f5b942]">
+                    {celeb.industry || celeb.department || 'Actor'}
+                  </span>
+                  <p className="mt-1 line-clamp-2 text-[10px] text-zinc-400">
+                    {celeb.knownFor || 'View complete filmography'}
+                  </p>
+                </div>
+              </Link>
+            ))}
         </ScrollRow>
       )}
 
       {/* 8. OTT Platforms & Cinema Industries — Wrapped Grid on Mobile (No X-Axis Scroll!) */}
       <section className="mx-auto my-6 max-w-7xl space-y-4 px-4 sm:px-6">
         <div>
-          <h3 className="mb-2.5 text-xs font-extrabold tracking-wider text-zinc-400 uppercase">
-            Stream by OTT Platform
-          </h3>
+          <div className="mb-2.5 flex items-center justify-between">
+            <h3 className="text-xs font-extrabold tracking-wider text-zinc-400 uppercase">
+              Stream by OTT Platform
+            </h3>
+            <Link to="/ott" className="text-xs font-extrabold text-[#f5b942] hover:underline">
+              ✨ Open Master OTT Page →
+            </Link>
+          </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {OTT_LIST.map((ott) => (
               <Link
                 key={ott.key}
-                to={`/browse/movie?ott=${ott.key}`}
+                to={`/ott?provider=${ott.key}`}
                 className={`rounded-2xl bg-gradient-to-br ${ott.color} keep-white px-3.5 py-2.5 text-center text-xs font-extrabold text-white shadow-md transition active:scale-95 hover:brightness-110`}
               >
                 {ott.label}

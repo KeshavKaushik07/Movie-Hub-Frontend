@@ -17,6 +17,7 @@ import { openPreferenceModal } from '../store/preferencesSlice';
 import { authService } from '../services/authService';
 import { reviewService } from '../services/reviewService';
 import { MOVIE_GENRES, ROLES } from '../config/constants';
+import { getTitlePath } from '../utils/formatters';
 import SafeImage from '../components/ui/SafeImage';
 
 export default function Profile({ defaultTab = 'overview' }) {
@@ -257,7 +258,7 @@ export default function Profile({ defaultTab = 'overview' }) {
                     key={w.id}
                     className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f]"
                   >
-                    <Link to={`/details/${w.type}/${w.tmdbId}#overview`}>
+                    <Link to={getTitlePath({ ...t, id: w.tmdbId, type: w.type }, w.type, 'overview')}>
                       <SafeImage
                         src={t.posterUrl}
                         alt={t.title}
@@ -307,7 +308,7 @@ export default function Profile({ defaultTab = 'overview' }) {
               >
                 <div>
                   <Link
-                    to={`/details/${r.type}/${r.tmdbId}#reviews`}
+                    to={getTitlePath({ ...(r.title || {}), id: r.tmdbId, type: r.type }, r.type, 'reviews')}
                     className="text-sm font-bold text-[#f5b942] hover:underline"
                   >
                     {r.title?.title || `${r.type.toUpperCase()} #${r.tmdbId}`}

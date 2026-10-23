@@ -1,5 +1,5 @@
 import { backend } from './backendApi';
-import { resolveImage } from '../utils/formatters';
+import { resolveImage, resolveSlugMapping, registerSlugMapping, toSlug } from '../utils/formatters';
 
 const CACHE_PREFIX = 'movieshub_cache_v4:';
 const MAX_CACHE_ENTRIES = 60;
@@ -172,12 +172,60 @@ export const tmdb = {
     );
   },
 
-  detail: (type, id) => {
-    const cleanType = type === 'webseries' ? 'tv' : type;
-    const key = `detail:${cleanType}:${id}`;
+  detail: async (type, slugOrId) => {
+    const cleanType = type === 'webseries' ? 'tv' : type === 'tv' ? 'tv' : 'movie';
+    const rawParam = decodeURIComponent(String(slugOrId || '')).trim();
+    const isNumeric = /^\d+$/.test(rawParam);
+    const mapped = !isNumeric ? resolveSlugMapping(rawParam) : null;
+    const effectiveType = mapped?.type || cleanType;
+    const key = `detail:${effectiveType}:${rawParam.toLowerCase()}`;
+
     return requestBackendWithCache(
       key,
-      () => backend.get(`/titles/${cleanType}/${id}`).then((r) => r.data.detail || r.data.titleObj || r.data),
+      async () => {
+        const targetId = isNumeric ? rawParam : mapped?.id;
+        if (targetId) {
+          try {
+            const r = await backend.get(`/titles/${effectiveType}/${targetId}`);
+            const d = r.data.detail || r.data.titleObj || r.data;
+            if (d?.id) registerSlugMapping(toSlug(d.title || d.name), d);
+            return d;
+          } catch {
+            /* fall through */
+          }
+        }
+        try {
+          const r = await backend.get(`/titles/${effectiveType}/${encodeURIComponent(rawParam)}`);
+          const d = r.data.detail || r.data.titleObj || r.data;
+          if (d?.id) registerSlugMapping(toSlug(d.title || d.name), d);
+          return d;
+        } catch (err) {
+          const searchWords = rawParam.replace(/-/g, ' ').trim();
+          const sRes = await backend.get('/discover/search', { params: { q: searchWords } });
+          const candidates = sRes.data?.items || sRes.data?.results || [];
+          const best =
+            candidates.find((c) => toSlug(c.title || c.name) === rawParam.toLowerCase()) ||
+            candidates[0];
+          if (best?.id) {
+            const bestType = (best.type || best.media_type) === 'tv' ? 'tv' : 'movie';
+            const r3 = await backend.get(`/titles/${bestType}/${best.id}`);
+            const d3 = r3.data.detail || r3.data.titleObj || r3.data;
+            if (d3?.id) registerSlugMapping(rawParam.toLowerCase(), d3);
+            return d3;
+          }
+          throw err;
+        }
+      },
+      () => {
+        const all = getAllCachedTitles();
+        return (
+          all.find(
+            (m) =>
+              String(m.id) === rawParam ||
+              toSlug(m.title || m.name) === rawParam.toLowerCase(),
+          ) || null
+        );
+      },
     );
   },
 

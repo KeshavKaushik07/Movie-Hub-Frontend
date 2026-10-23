@@ -18,9 +18,12 @@ export const ROUTES = {
   SIGNUP: '/signup',
   PROFILE: '/profile',
   WATCHLIST: '/watchlist',
+  OTT_HUB: '/ott',
+  OTT_PROVIDER: '/ott/:providerKey',
   BROWSE: '/browse/:type',
   BROWSE_ROOT: '/browse',
-  DETAILS: '/details/:type/:id',
+  DETAILS: '/detail/:type/:id',
+  DETAILS_LEGACY: '/details/:type/:id',
   PERSON: '/person/:name',
   BLOGS: '/blogs',
   BLOG_DETAIL: '/blogs/:slug',
@@ -64,16 +67,16 @@ export const TV_GENRES = {
 };
 
 export const OTT_LIST = [
-  { key: 'netflix', label: 'Netflix', color: 'from-red-600 to-red-800', badge: '#E50914' },
-  { key: 'prime', label: 'Prime Video', color: 'from-sky-500 to-blue-700', badge: '#00A8E1' },
-  { key: 'hotstar', label: 'JioHotstar', color: 'from-blue-700 to-indigo-950', badge: '#1d4ed8' },
-  { key: 'jiocinema', label: 'JioCinema', color: 'from-pink-600 to-rose-800', badge: '#D9008D' },
-  { key: 'sonyliv', label: 'SonyLIV', color: 'from-orange-500 to-amber-700', badge: '#FF5500' },
-  { key: 'zee5', label: 'ZEE5', color: 'from-purple-600 to-violet-900', badge: '#8230C6' },
-  { key: 'apple', label: 'Apple TV+', color: 'from-zinc-600 to-zinc-900', badge: '#52525b' },
-  { key: 'max', label: 'Max (HBO)', color: 'from-blue-600 to-indigo-900', badge: '#002BE7' },
-  { key: 'hulu', label: 'Hulu', color: 'from-emerald-500 to-teal-800', badge: '#10b981' },
-  { key: 'crunchyroll', label: 'Crunchyroll', color: 'from-orange-500 to-red-600', badge: '#F47521' },
+  { key: 'netflix', label: 'Netflix', sub: 'Global Blockbusters & Originals', color: 'from-red-600 to-red-800', badge: '#E50914', short: 'N', emoji: '🎬' },
+  { key: 'prime', label: 'Prime Video', sub: 'Indian Originals & Pan-India Hits', color: 'from-sky-500 to-blue-700', badge: '#00A8E1', short: 'PV', emoji: '📺' },
+  { key: 'hotstar', label: 'JioHotstar', sub: 'Marvel, Disney & Indian Specials', color: 'from-blue-700 to-indigo-950', badge: '#1d4ed8', short: 'JH', emoji: '⭐' },
+  { key: 'jiocinema', label: 'JioCinema', sub: 'Blockbuster Hindi & Regional Cinema', color: 'from-pink-600 to-rose-800', badge: '#D9008D', short: 'JC', emoji: '🔥' },
+  { key: 'sonyliv', label: 'SonyLIV', sub: 'Acclaimed Indian Web Series', color: 'from-orange-500 to-amber-700', badge: '#FF5500', short: 'SL', emoji: '🎭' },
+  { key: 'zee5', label: 'ZEE5', sub: 'Hindi & Regional Originals', color: 'from-purple-600 to-violet-900', badge: '#8230C6', short: 'Z5', emoji: '✨' },
+  { key: 'apple', label: 'Apple TV+', sub: 'Award-Winning Sci-Fi & Drama', color: 'from-zinc-600 to-zinc-900', badge: '#52525b', short: 'TV+', emoji: '🍎' },
+  { key: 'max', label: 'Max (HBO)', sub: 'Prestige Series & Warner Bros.', color: 'from-blue-600 to-indigo-900', badge: '#002BE7', short: 'MAX', emoji: '👑' },
+  { key: 'hulu', label: 'Hulu', sub: 'FX Originals & US Series', color: 'from-emerald-500 to-teal-800', badge: '#10b981', short: 'HU', emoji: '🟢' },
+  { key: 'crunchyroll', label: 'Crunchyroll', sub: 'Japanese Anime Simulcasts', color: 'from-orange-500 to-red-600', badge: '#F47521', short: 'CR', emoji: '🍥' },
 ];
 
 export const INDUSTRY_LIST = [
@@ -120,38 +123,39 @@ const genreLinks = (type, map) =>
       to: `/browse/${type}?genre=${id}`,
     }));
 
+// Requirement 12: Desktop Navbar shows Movies, Web Series, and OTT (with "All OTT" uppermost)
 export const NAV_MENU = [
   {
+    key: 'movies',
     label: 'Movies',
     items: [
-      { label: 'All Movies', to: '/browse/movie' },
-      { label: 'Upcoming Movies', to: '/browse/movie?list=upcoming' },
-      { label: 'Trending Movies', to: '/browse/movie?list=trending' },
-      { label: 'Top Box Office', to: '/browse/movie?sort=revenue' },
+      { label: '🎬 All Movies', to: '/browse/movie' },
+      { label: '📅 Upcoming Movies', to: '/browse/movie?list=upcoming' },
+      { label: '🔥 Trending Movies', to: '/browse/movie?list=trending' },
+      { label: '💰 Top Box Office', to: '/browse/movie?sort=revenue' },
       ...genreLinks('movie', MOVIE_GENRES),
     ],
   },
   {
-    label: 'Web Series & TV',
+    key: 'webseries',
+    label: 'Web Series',
     items: [
-      { label: 'All Web Series (OTT)', to: '/browse/webseries' },
-      { label: 'All TV Shows', to: '/browse/tv' },
-      { label: 'Trending Series', to: '/browse/tv?list=trending' },
+      { label: '📺 All Web Series (OTT)', to: '/browse/webseries' },
+      { label: '🔥 Trending Web Series', to: '/browse/webseries?list=trending' },
+      { label: '📡 All TV Shows', to: '/browse/tv' },
       ...genreLinks('tv', TV_GENRES),
     ],
   },
   {
-    label: 'Indian & Global',
-    items: INDUSTRY_LIST.map((ind) => ({
-      label: `${ind.emoji} ${ind.label}`,
-      to: `/browse/movie?industry=${ind.key}`,
-    })),
-  },
-  {
-    label: 'OTT Platforms',
-    items: OTT_LIST.slice(0, 8).map((o) => ({
-      label: o.label,
-      to: `/browse/movie?ott=${o.key}`,
-    })),
+    key: 'ott',
+    label: 'OTT',
+    items: [
+      { label: '✨ All OTT', to: '/ott', isMaster: true },
+      ...OTT_LIST.map((o) => ({
+        label: `${o.emoji || '📺'} ${o.label}`,
+        to: `/ott?provider=${o.key}`,
+        badgeColor: o.badge,
+      })),
+    ],
   },
 ];

@@ -21,9 +21,81 @@ export const detectDefaultRegion = () => {
   return 'IN';
 };
 
+const SLUG_CACHE_KEY = 'movieshub_slug_lookup_v8';
+const inMemorySlugMap = new Map();
+
+export const toSlug = (str = '') =>
+  String(str || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'title';
+
+export const registerSlugMapping = (slugOrItem, maybeItem = null) => {
+  const item = maybeItem || (typeof slugOrItem === 'object' ? slugOrItem : null);
+  const slug =
+    typeof slugOrItem === 'string'
+      ? slugOrItem.toLowerCase().trim()
+      : toSlug(item?.slug || item?.title || item?.name || '');
+  if (!slug || (!item?.id && !item?.tmdbId)) return;
+
+  const entry = {
+    id: item.id || item.tmdbId,
+    type: item.subType === 'webseries' ? 'tv' : item.type || item.media_type || 'movie',
+    title: item.title || item.name || '',
+  };
+  inMemorySlugMap.set(slug, entry);
+  try {
+    const raw = sessionStorage.getItem(SLUG_CACHE_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    obj[slug] = entry;
+    sessionStorage.setItem(SLUG_CACHE_KEY, JSON.stringify(obj));
+  } catch {
+    /* ignore */
+  }
+};
+
+export const resolveSlugMapping = (slug) => {
+  if (!slug) return null;
+  const clean = decodeURIComponent(String(slug)).toLowerCase().trim();
+  if (inMemorySlugMap.has(clean)) return inMemorySlugMap.get(clean);
+  try {
+    const raw = sessionStorage.getItem(SLUG_CACHE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj?.[clean]) return obj[clean];
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
+
 /**
- * Parses any raw number or formatted currency string ("$15,000,000", "$150M", "$1.2B", "₹300 Cr", "45000000")
- * into a normalized USD number (or INR number if source is INR).
+ * Generates clean SEO URLs using ONLY the movie/series name slug (no numeric ID in URL!):
+ * e.g. `/detail/movie/mirzapur` or `/detail/movie/pushpa-2-the-rule`
+ */
+export const getTitlePath = (item = {}, typeOverride = null, hash = '') => {
+  if (!item) return '/';
+  const rawType =
+    typeOverride ||
+    (item.isWebSeries || item.subType === 'webseries'
+      ? 'webseries'
+      : item.type || item.media_type || (item.first_air_date ? 'tv' : 'movie'));
+  const routeType = rawType === 'webseries' ? 'webseries' : rawType === 'tv' ? 'tv' : 'movie';
+  const slug = item.slug || toSlug(item.title || item.name || item.originalTitle || `${routeType}-${item.id || item.tmdbId || 'title'}`);
+
+  if (item.id || item.tmdbId) {
+    registerSlugMapping(slug, { ...item, type: routeType });
+  }
+
+  const hashSuffix = hash ? (hash.startsWith('#') ? hash : `#${hash}`) : '';
+  return `/detail/${routeType}/${slug}${hashSuffix}`;
+};
+
+/**
+ * Parses any raw number or formatted currency string into a normalized USD/INR number.
  */
 export const parseRawCurrencyValue = (raw) => {
   if (raw === null || raw === undefined || raw === '') return { value: 0, currency: 'USD' };
@@ -52,67 +124,33 @@ export const parseRawCurrencyValue = (raw) => {
   return { value: num, currency: isInr ? 'INR' : 'USD' };
 };
 
-/**
- * Deterministic financial estimator so movies/series where TMDB returns budget=0 or revenue=0
- * still show realistic, consistent Rupees (₹ Crore) & USD figures everywhere in the app!
- */
-export const estimateItemFinancialsUSD = (item = {}) => {
-  const seed = Number(item?.id || item?.tmdbId || 105);
-  const pop = Math.max(5, Number(item?.popularity) || 20);
-  const rating = Math.max(5.2, Number(item?.siteRating || item?.vote_average || item?.rating) || 6.8);
-  const votes = Math.max(15, Number(item?.vote_count || item?.voteCount) || 95);
-  const lang = String(item?.originalLanguage || item?.original_language || 'hi').toLowerCase();
-  const isIndian = ['hi', 'te', 'ta', 'ml', 'kn', 'mr', 'bn', 'pa', 'gu'].includes(lang);
-
-  // Base budget in USD ($1M = ₹8.35 Cr)
-  const budgetUsd = isIndian
-    ? Math.round((4_200_000 + (seed % 19) * 1_150_000 + Math.min(pop, 120) * 160_000) / 100_000) * 100_000
-    : Math.round((16_000_000 + (seed % 23) * 3_200_000 + Math.min(pop, 150) * 420_000) / 100_000) * 100_000;
-
-  const roiMultiplier = Math.max(
-    0.85,
-    (rating / 6.1) * (1.18 + ((seed % 11) * 0.13)) + Math.min(votes / 4500, 1.15),
-  );
-  const revenueUsd = Math.round((budgetUsd * roiMultiplier) / 100_000) * 100_000;
-
-  return { budgetUsd, revenueUsd };
-};
+export const estimateItemFinancialsUSD = () => ({ budgetUsd: 0, revenueUsd: 0 });
 
 /**
- * Formats any numeric or string amount into Indian Rupees (₹ Crore / ₹ Lakh) when `region === 'IN'`,
+ * Formats a disclosed numeric or string amount into Indian Rupees (₹ Crore / ₹ Lakh) when `region === 'IN'`,
  * and into `$ Million / $ Billion` when `region === 'GLOBAL'`.
- * Never returns `$` when `region === 'IN'`!
+ * Returns `fallback` (default `''`) when the amount is 0 or undisclosed.
  */
 export const formatBudgetOrBoxOffice = (rawAmount, options = {}) => {
   const {
     region = 'IN',
     sourceCurrency = 'USD',
-    fallbackItem = null,
-    fallbackField = 'budget', // 'budget' | 'revenue'
-    fallback = '₹45.0 Cr',
+    fallback = '',
   } = options;
 
   const preferINR = region === 'IN' || options.currency === 'INR';
-
-  let parsed = parseRawCurrencyValue(rawAmount);
-  if (parsed.value <= 0 && fallbackItem) {
-    const est = estimateItemFinancialsUSD(fallbackItem);
-    parsed = {
-      value: fallbackField === 'revenue' ? est.revenueUsd : est.budgetUsd,
-      currency: 'USD',
-    };
-  }
+  const parsed = parseRawCurrencyValue(rawAmount);
 
   if (parsed.value <= 0) {
-    return preferINR ? (fallback.includes('$') ? '₹45.0 Cr' : fallback) : '$12.5M';
+    return fallback;
   }
 
   const effectiveSource = parsed.currency || sourceCurrency;
 
   if (preferINR) {
     const inrValue = effectiveSource === 'INR' ? parsed.value : parsed.value * USD_TO_INR_RATE;
-    const crore = 10_000_000; // 1 Crore = 1,00,00,000
-    const lakh = 100_000;     // 1 Lakh  = 1,00,000
+    const crore = 10_000_000;
+    const lakh = 100_000;
 
     if (inrValue >= crore) {
       const cr = inrValue / crore;
@@ -124,7 +162,6 @@ export const formatBudgetOrBoxOffice = (rawAmount, options = {}) => {
     return `₹${Math.round(inrValue).toLocaleString('en-IN')}`;
   }
 
-  // International USD formatting
   const usdValue = effectiveSource === 'INR' ? parsed.value / USD_TO_INR_RATE : parsed.value;
   if (usdValue >= 1_000_000_000) {
     return `$${(usdValue / 1_000_000_000).toFixed(2)}B`;
@@ -139,32 +176,34 @@ export const formatBudgetOrBoxOffice = (rawAmount, options = {}) => {
 };
 
 /**
- * Computes the complete set of formatted Budget & Box Office numbers for any movie/series
- * so Details.jsx, MovieCard.jsx, Carousel.jsx, and Admin.jsx always have accurate Rupees (₹) or USD ($) figures.
+ * Requirement 1: Only returns genuinely disclosed Budget & Box Office numbers.
+ * If neither budget nor box office collection is disclosed (`0` or missing),
+ * `hasFinancials` is `false` so the Budget & Box Office tab is hidden!
  */
 export const getMovieFinancials = (item = {}, region = 'IN') => {
   const bo = item?.boxOffice || {};
-  const parsedBudget = parseRawCurrencyValue(item?.budget || bo.budget || bo.budgetFormatted);
-  const parsedRevenue = parseRawCurrencyValue(
-    bo.worldwideCollection || item?.revenue || bo.revenue,
-  );
+  const isBackendEstimated = Boolean(item?.financialEstimated);
 
-  const est = estimateItemFinancialsUSD(item);
+  const parsedBudget = isBackendEstimated
+    ? { value: 0, currency: 'USD' }
+    : parseRawCurrencyValue(item?.budget || bo.budget || bo.budgetFormatted);
+  const parsedRevenue = isBackendEstimated
+    ? { value: 0, currency: 'USD' }
+    : parseRawCurrencyValue(bo.worldwideCollection || item?.revenue || bo.revenue);
+
   const finalBudgetUsd =
     parsedBudget.value > 0
       ? parsedBudget.currency === 'INR'
         ? parsedBudget.value / USD_TO_INR_RATE
         : parsedBudget.value
-      : est.budgetUsd;
+      : 0;
 
   const finalRevenueUsd =
     parsedRevenue.value > 0
       ? parsedRevenue.currency === 'INR'
         ? parsedRevenue.value / USD_TO_INR_RATE
         : parsedRevenue.value
-      : est.revenueUsd;
-
-  const isEstimated = parsedBudget.value <= 0 && parsedRevenue.value <= 0;
+      : 0;
 
   const indiaNetParsed = parseRawCurrencyValue(bo.indiaNetCollection);
   const indiaGrossParsed = parseRawCurrencyValue(bo.indiaGrossCollection);
@@ -173,11 +212,25 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
   const domesticParsed = parseRawCurrencyValue(bo.domesticCollection);
   const intlParsed = parseRawCurrencyValue(bo.internationalCollection);
 
-  const ratio = finalBudgetUsd > 0 ? finalRevenueUsd / finalBudgetUsd : 1.5;
-  const computedVerdict =
-    bo.verdict && bo.verdict !== 'TBA'
-      ? bo.verdict
-      : ratio >= 3.5
+  const hasBudget = finalBudgetUsd > 0;
+  const hasRevenue = finalRevenueUsd > 0;
+  const hasFinancials =
+    hasBudget ||
+    hasRevenue ||
+    indiaNetParsed.value > 0 ||
+    indiaGrossParsed.value > 0 ||
+    openingWeekendParsed.value > 0 ||
+    openingDayParsed.value > 0 ||
+    domesticParsed.value > 0 ||
+    intlParsed.value > 0;
+
+  let computedVerdict = '';
+  if (bo.verdict && bo.verdict !== 'TBA' && !isBackendEstimated && hasFinancials) {
+    computedVerdict = bo.verdict;
+  } else if (hasBudget && hasRevenue) {
+    const ratio = finalRevenueUsd / finalBudgetUsd;
+    computedVerdict =
+      ratio >= 3.5
         ? 'All-Time Blockbuster'
         : ratio >= 2.4
           ? 'Blockbuster'
@@ -187,44 +240,51 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
               ? 'Hit'
               : ratio >= 0.95
                 ? 'Average'
-                : 'Below Average';
+                : 'Flop';
+  }
 
-  const profitUsd = Math.max(0, finalRevenueUsd - finalBudgetUsd);
-  const roiPercent = finalBudgetUsd > 0 ? Math.round(((finalRevenueUsd - finalBudgetUsd) / finalBudgetUsd) * 100) : 45;
+  const profitUsd = hasBudget && hasRevenue && finalRevenueUsd > finalBudgetUsd ? finalRevenueUsd - finalBudgetUsd : 0;
+  const roiPercent =
+    hasBudget && hasRevenue
+      ? Math.round(((finalRevenueUsd - finalBudgetUsd) / finalBudgetUsd) * 100)
+      : null;
 
   return {
-    isEstimated,
+    isEstimated: false,
+    hasBudget,
+    hasRevenue,
+    hasFinancials,
     verdict: computedVerdict,
     roiPercent,
-    budgetText: formatBudgetOrBoxOffice(finalBudgetUsd, { region }),
-    revenueText: formatBudgetOrBoxOffice(finalRevenueUsd, { region }),
-    profitText: formatBudgetOrBoxOffice(profitUsd, { region }),
+    budgetText: hasBudget ? formatBudgetOrBoxOffice(finalBudgetUsd, { region }) : '',
+    revenueText: hasRevenue ? formatBudgetOrBoxOffice(finalRevenueUsd, { region }) : '',
+    profitText: profitUsd > 0 ? formatBudgetOrBoxOffice(profitUsd, { region }) : '',
     indiaNetText:
       indiaNetParsed.value > 0
         ? formatBudgetOrBoxOffice(indiaNetParsed.value, { region, sourceCurrency: indiaNetParsed.currency })
-        : formatBudgetOrBoxOffice(finalRevenueUsd * 0.48, { region }),
+        : '',
     indiaGrossText:
       indiaGrossParsed.value > 0
         ? formatBudgetOrBoxOffice(indiaGrossParsed.value, { region, sourceCurrency: indiaGrossParsed.currency })
-        : formatBudgetOrBoxOffice(finalRevenueUsd * 0.58, { region }),
+        : '',
     openingWeekendText:
       openingWeekendParsed.value > 0
         ? formatBudgetOrBoxOffice(openingWeekendParsed.value, { region, sourceCurrency: openingWeekendParsed.currency })
-        : formatBudgetOrBoxOffice(finalRevenueUsd * 0.24, { region }),
+        : '',
     openingDayText:
       openingDayParsed.value > 0
         ? formatBudgetOrBoxOffice(openingDayParsed.value, { region, sourceCurrency: openingDayParsed.currency })
-        : formatBudgetOrBoxOffice(finalRevenueUsd * 0.09, { region }),
+        : '',
     domesticText:
       domesticParsed.value > 0
         ? formatBudgetOrBoxOffice(domesticParsed.value, { region, sourceCurrency: domesticParsed.currency })
-        : formatBudgetOrBoxOffice(finalRevenueUsd * 0.45, { region }),
+        : '',
     internationalText:
       intlParsed.value > 0
         ? formatBudgetOrBoxOffice(intlParsed.value, { region, sourceCurrency: intlParsed.currency })
-        : formatBudgetOrBoxOffice(finalRevenueUsd * 0.55, { region }),
-    usdBudgetSub: `$${(finalBudgetUsd / 1_000_000).toFixed(1)}M USD`,
-    usdRevenueSub: `$${(finalRevenueUsd / 1_000_000).toFixed(1)}M USD`,
+        : '',
+    usdBudgetSub: hasBudget ? `$${(finalBudgetUsd / 1_000_000).toFixed(1)}M USD` : '',
+    usdRevenueSub: hasRevenue ? `$${(finalRevenueUsd / 1_000_000).toFixed(1)}M USD` : '',
   };
 };
 

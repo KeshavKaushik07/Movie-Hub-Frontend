@@ -28,7 +28,8 @@ export default function PreferenceModal() {
   }, [prefs.region, prefs.industries, prefs.genres, prefs.contentTypes]);
 
   // Automatically prompt first-time visitors once auth session check finishes
-  const shouldShow = prefs.modalOpen || (!initializing && !prefs.onboardingCompleted && !autoShown);
+  // Requirement 2: Only open when user explicitly clicks Taste / Customize Taste
+  const shouldShow = Boolean(prefs.modalOpen);
 
   if (!shouldShow) return null;
 

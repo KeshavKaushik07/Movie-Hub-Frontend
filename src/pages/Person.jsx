@@ -56,15 +56,17 @@ export default function Person() {
 
       {/* Actor / Director Profile Hero Card */}
       <div className="mb-8 flex flex-col items-center gap-6 rounded-3xl border border-white/10 bg-[#0e131f] p-6 sm:flex-row sm:items-start sm:p-8">
-        <div className="h-36 w-36 shrink-0 overflow-hidden rounded-3xl border-2 border-[#f5b942]/50 shadow-2xl sm:h-44 sm:w-44">
-          <SafeImage
-            src={person.profileUrl}
-            alt={person.name}
-            size="w500"
-            variant="avatar"
-            className="h-full w-full object-cover"
-          />
-        </div>
+        {person.profileUrl && (
+          <div className="aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl border-2 border-[#f5b942]/50 bg-zinc-950 shadow-2xl sm:w-48">
+            <SafeImage
+              src={person.profileUrl}
+              alt={person.name}
+              size="h632"
+              variant="poster"
+              className="h-full w-full object-contain object-center"
+            />
+          </div>
+        )}
 
         <div className="flex-1 text-center sm:text-left">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f5b942]/15 px-3 py-1 text-xs font-bold text-[#f5b942]">

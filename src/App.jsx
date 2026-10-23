@@ -14,6 +14,7 @@ import Footer from './components/Footer';
 
 import Home from './pages/Home';
 import Browse from './pages/Browse';
+import OttHub from './pages/OttHub';
 import Details from './pages/Details';
 import Person from './pages/Person';
 import Blogs from './pages/Blogs';
@@ -29,9 +30,12 @@ import Admin from './pages/Admin';
 const userRoutesTree = (
   <>
     <Route path={ROUTES.HOME} element={<Home />} />
+    <Route path={ROUTES.OTT_HUB} element={<OttHub />} />
+    <Route path={ROUTES.OTT_PROVIDER} element={<OttHub />} />
     <Route path={ROUTES.BROWSE_ROOT} element={<Browse />} />
     <Route path={ROUTES.BROWSE} element={<Browse />} />
     <Route path={ROUTES.DETAILS} element={<Details />} />
+    <Route path={ROUTES.DETAILS_LEGACY} element={<Details />} />
     <Route path={ROUTES.PERSON} element={<Person />} />
     <Route path={ROUTES.BLOGS} element={<Blogs />} />
     <Route path={ROUTES.BLOG_DETAIL} element={<BlogDetail />} />

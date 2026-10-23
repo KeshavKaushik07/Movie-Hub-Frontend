@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Flame, Trophy, Star, ChevronLeft, ChevronRight, ArrowRight, Play } from 'lucide-react';
 import SafeImage from './ui/SafeImage';
+import { getTitlePath } from '../utils/formatters';
 
 /**
  * Top10Showcase — A distinctively designed Top 10 Leaderboard component
@@ -105,7 +106,7 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
             return (
               <Link
                 key={`${item.type}-${item.id}`}
-                to={`/details/${type}/${item.id}#overview`}
+                to={getTitlePath(item, type, 'overview')}
                 className="group relative flex w-60 shrink-0 items-end sm:w-64"
               >
                 {/* Giant Outlined Rank Number */}

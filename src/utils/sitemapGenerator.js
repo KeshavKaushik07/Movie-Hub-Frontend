@@ -8,6 +8,7 @@ import {
   NAV_MENU,
 } from '../config/constants';
 import { sitemapApi, tmdb, blogApi, communityApi } from '../services/api';
+import { toSlug } from './formatters';
 
 /**
  * ============================================================================
@@ -201,7 +202,8 @@ export const buildCompleteDynamicSitemap = async (siteUrl = window.location.orig
         const rType = (item.type || item.media_type) === 'tv' ? 'tv' : 'movie';
         const key = `${rType}:${item.id}`;
         if (!titleMap.has(key)) {
-          const basePath = `/details/${rType}/${item.id}`;
+          const slug = item.slug || toSlug(item.title || item.name) || item.id;
+          const basePath = `/detail/${rType}/${slug}`;
           titleMap.set(key, {
             path: basePath,
             label: `${item.title || item.name} (${item.year || '2025'})`,

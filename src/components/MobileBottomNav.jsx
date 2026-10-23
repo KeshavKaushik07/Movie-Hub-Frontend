@@ -1,20 +1,18 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import {
   Home,
   Compass,
+  Tv,
   MessageSquare,
   BookOpen,
   User,
   Shield,
-  LogOut,
 } from 'lucide-react';
 import { ROLES } from '../config/constants';
-import { openLogoutModal } from '../store/authSlice';
 
 export default function MobileBottomNav() {
   const { pathname } = useLocation();
-  const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
   const theme = useSelector((s) => s.theme.mode);
   const isStaff = user && [ROLES.ADMIN, ROLES.SUPERADMIN].includes(user.role);
@@ -23,6 +21,7 @@ export default function MobileBottomNav() {
   const navItems = [
     { to: '/', label: 'Home', icon: Home, active: pathname === '/' },
     { to: '/browse/movie', label: 'Explore', icon: Compass, active: pathname.startsWith('/browse') },
+    { to: '/ott', label: 'OTT', icon: Tv, active: pathname.startsWith('/ott') },
     { to: '/community', label: 'Chat', icon: MessageSquare, active: pathname.startsWith('/community') },
     { to: '/blogs', label: 'Blogs', icon: BookOpen, active: pathname.startsWith('/blogs') },
     ...(isStaff
@@ -52,7 +51,7 @@ export default function MobileBottomNav() {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex min-w-[48px] flex-col items-center gap-0.5 rounded-xl px-2 py-1 text-[10px] font-bold transition active:scale-95 ${
+              className={`flex min-w-[46px] flex-col items-center gap-0.5 rounded-xl px-1.5 py-1 text-[10px] font-bold transition active:scale-95 ${
                 item.active
                   ? 'text-[#d97706] dark:text-[#f5b942]'
                   : item.highlight
@@ -77,20 +76,6 @@ export default function MobileBottomNav() {
             </Link>
           );
         })}
-
-        {/* Quick Logout Button on Mobile Lower Navbar when logged in */}
-        {user && (
-          <button
-            type="button"
-            onClick={() => dispatch(openLogoutModal())}
-            className="flex min-w-[46px] flex-col items-center gap-0.5 rounded-xl px-1.5 py-1 text-[10px] font-bold text-rose-500 active:scale-95"
-          >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/10">
-              <LogOut size={15} />
-            </span>
-            <span className="whitespace-nowrap">Logout</span>
-          </button>
-        )}
       </div>
     </nav>
   );

@@ -16,6 +16,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { communityApi, tmdb } from '../services/api';
+import { getTitlePath } from '../utils/formatters';
 import { getInMemoryAccessToken } from '../services/backendApi';
 import { BACKEND, ROLES, ROUTES } from '../config/constants';
 import SafeImage from '../components/ui/SafeImage';
@@ -508,7 +509,7 @@ export default function Community() {
 
                           {m.sharedTitle?.tmdbId && (
                             <Link
-                              to={`/details/${m.sharedTitle.type || 'movie'}/${m.sharedTitle.tmdbId}#overview`}
+                              to={getTitlePath(m.sharedTitle, m.sharedTitle.type || 'movie', 'overview')}
                               className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#070a10] p-2 hover:border-[#f5b942]"
                             >
                               <SafeImage

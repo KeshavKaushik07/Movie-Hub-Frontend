@@ -16,6 +16,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { blogApi } from '../services/api';
+import { getTitlePath } from '../utils/formatters';
 import { ROLES, ROUTES } from '../config/constants';
 import SafeImage from '../components/ui/SafeImage';
 
@@ -415,7 +416,7 @@ export default function BlogDetail() {
                     )}
                   </div>
                   <Link
-                    to={`/details/${linked.type === 'webseries' ? 'tv' : linked.type || 'movie'}/${linked.tmdbId}#overview`}
+                    to={getTitlePath(linked, linked.type || 'movie', 'overview')}
                     className="mt-3 inline-block rounded-xl bg-[#f5b942] px-3.5 py-2 text-center text-xs font-extrabold text-black hover:brightness-110"
                   >
                     Open Movie Details →
