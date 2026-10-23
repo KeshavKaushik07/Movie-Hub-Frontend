@@ -88,8 +88,8 @@ export default function Navbar() {
           to={ROUTES.HOME}
           className='flex shrink-0 items-center gap-2 whitespace-nowrap font-extrabold tracking-tight'
         >
-          <span className='flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9'>
-            <Film size={17} />
+          <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9'>
+            <img src='/movie-icon.png' alt='' className='object-cover' />
           </span>
           <span
             style={{ fontFamily: 'var(--font-display)' }}
