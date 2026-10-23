@@ -108,9 +108,9 @@ export default function Navbar() {
         {/* Brand Logo (Never wraps) */}
         <Link
           to={ROUTES.HOME}
-          className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight'
+          className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight sm:mr-8'
         >
-          <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9'>
+          <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9'>
             <img src='/movie-icon.png' alt='' className='object-cover' />
           </span>
           <span
