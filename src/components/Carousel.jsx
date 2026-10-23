@@ -14,6 +14,9 @@ import {
 import SafeImage from './ui/SafeImage';
 import { getMovieFinancials, getTitlePath } from '../utils/formatters';
 
+const AUTO_SLIDE_MS = 6500;
+const MANUAL_HOLD_MS = 40000; // Stay for 40s when user clicks arrow/dot or swipes
+
 export default function Carousel({
   items = [],
   heroSource = 'trending_fallback',
@@ -27,6 +30,8 @@ export default function Carousel({
     )
     .slice(0, 8);
   const [i, setI] = useState(0);
+  const [isManualHold, setIsManualHold] = useState(false);
+  const [manualTick, setManualTick] = useState(0);
   const { region } = useSelector((s) => s.preferences);
   const theme = useSelector((s) => s.theme.mode);
   const isLight = theme === 'light';
@@ -34,13 +39,27 @@ export default function Carousel({
 
   useEffect(() => {
     setI(0);
+    setIsManualHold(false);
   }, [slides.length]);
+
+  const handleManualSlideChange = (nextIndex) => {
+    if (!slides.length) return;
+    const normalized =
+      ((nextIndex % slides.length) + slides.length) % slides.length;
+    setI(normalized);
+    setIsManualHold(true);
+    setManualTick((t) => t + 1);
+  };
 
   useEffect(() => {
     if (slides.length <= 1) return;
-    const t = setInterval(() => setI((p) => (p + 1) % slides.length), 6500);
-    return () => clearInterval(t);
-  }, [slides.length]);
+    const delay = isManualHold ? MANUAL_HOLD_MS : AUTO_SLIDE_MS;
+    const t = setTimeout(() => {
+      setIsManualHold(false);
+      setI((p) => (p + 1) % slides.length);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [i, slides.length, isManualHold, manualTick]);
 
   if (!slides.length) return null;
   const cur = slides[i] || slides[0];
@@ -70,8 +89,8 @@ export default function Carousel({
       (e.changedTouches?.[0]?.clientX ?? touchStartX.current) -
       touchStartX.current;
     if (Math.abs(delta) > 45 && slides.length > 1) {
-      if (delta < 0) setI((i + 1) % slides.length);
-      else setI((i - 1 + slides.length) % slides.length);
+      if (delta < 0) handleManualSlideChange(i + 1);
+      else handleManualSlideChange(i - 1);
     }
     touchStartX.current = null;
   };
@@ -223,7 +242,7 @@ export default function Carousel({
               <button
                 key={s.id || idx}
                 type='button'
-                onClick={() => setI(idx)}
+                onClick={() => handleManualSlideChange(idx)}
                 aria-label={`Slide ${idx + 1}`}
                 className={`h-1.5 rounded-full transition-all ${
                   idx === i
@@ -238,7 +257,7 @@ export default function Carousel({
             <div className='flex items-center gap-2'>
               <button
                 type='button'
-                onClick={() => setI((i - 1 + slides.length) % slides.length)}
+                onClick={() => handleManualSlideChange(i - 1)}
                 aria-label='Previous slide'
                 className='keep-white flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/20 sm:h-9 sm:w-9'
               >
@@ -246,7 +265,7 @@ export default function Carousel({
               </button>
               <button
                 type='button'
-                onClick={() => setI((i + 1) % slides.length)}
+                onClick={() => handleManualSlideChange(i + 1)}
                 aria-label='Next slide'
                 className='keep-white flex h-8 w-8 items-center justify-center rounded-full border border-white/25 bg-black/55 text-white backdrop-blur-md transition hover:bg-white/20 sm:h-9 sm:w-9'
               >

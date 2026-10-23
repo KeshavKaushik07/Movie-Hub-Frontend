@@ -415,7 +415,7 @@ export default function Details() {
             menu is never clipped behind the lower sticky tab bar!
           - Background image wrapper has `overflow-hidden`.
           - Foreground content has `relative z-40` (above the sticky tab bar's `z-30`). */}
-      <div className='hero-keep-white relative min-h-[48vh] w-full bg-[#070a10]'>
+      <div className='hero-keep-white relative z-40 min-h-[48vh] w-full bg-[#070a10]'>
         <div className='pointer-events-none absolute inset-0 overflow-hidden'>
           <SafeImage
             src={
@@ -438,7 +438,7 @@ export default function Details() {
           />
         </div>
 
-        <div className='relative z-30 mx-auto flex max-w-6xl flex-col gap-5 px-4 pt-5 pb-8 sm:gap-7 sm:px-6 md:flex-row md:items-end'>
+        <div className='relative z-40 mx-auto flex max-w-6xl flex-col gap-5 px-4 pt-5 pb-8 sm:gap-7 sm:px-6 md:flex-row md:items-end'>
           <div className='relative shrink-0 self-center md:self-end'>
             <SafeImage
               src={data.posterUrl || data.poster_path}
@@ -613,7 +613,7 @@ export default function Details() {
           - Requirement 5: Hides `media` tab if `!hasMediaTab`
           - Requirement 8: Merges Critic and Review tab into single `Reviews & Critics` (`#reviews`) tab */}
       <div
-        className={`sticky top-[53px] z-30 border-b backdrop-blur-xl sm:top-[61px] ${
+        className={`sticky top-[53px] z-20 border-b backdrop-blur-xl sm:top-[61px] ${
           isLight
             ? 'border-slate-200 bg-white/95 text-slate-900'
             : 'border-white/10 bg-[#070a10]/95 text-white'
@@ -673,7 +673,7 @@ export default function Details() {
       </div>
 
       {/* Tab Content Area */}
-      <div className='mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8'>
+      <div className='relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8'>
         {activeTab === 'overview' && (
           <div className='space-y-8'>
             <div className='grid gap-6 md:grid-cols-3'>
