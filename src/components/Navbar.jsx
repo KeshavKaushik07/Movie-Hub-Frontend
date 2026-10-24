@@ -110,7 +110,7 @@ export default function Navbar() {
           to={ROUTES.HOME}
           className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight sm:mr-8 sm:shrink-0'
         >
-          <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500  shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9 rounded-xl overflow-hidden'>
+          <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-amber-500  shadow-md shadow-brand/20 sm:h-9 sm:w-9 rounded-xl overflow-hidden'>
             <img src='/movie-icon.png' alt='' className='object-cover' />
           </span>
           <span
@@ -151,21 +151,21 @@ export default function Navbar() {
                   }}
                   className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
                     openMenu === m.label || isMenuActive
-                      ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                      ? 'bg-brand/15 text-brand'
                       : isLight
                         ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
                         : 'text-zinc-300 hover:bg-white/5 hover:text-white'
                   }`}
                 >
                   {isOttMenu && (
-                    <Tv size={13} className='shrink-0 text-[#f5b942]' />
+                    <Tv size={13} className='shrink-0 text-brand' />
                   )}
                   <span>{m.label}</span>
                   <ChevronDown
                     size={13}
                     className={`shrink-0 transition-transform duration-200 ${
-                      openMenu === m.label ? 'rotate-180 text-[#f5b942]' : ''
-                    } ${isMenuActive && openMenu !== m.label ? 'text-[#f5b942]' : ''}`}
+                      openMenu === m.label ? 'rotate-180 text-brand' : ''
+                    } ${isMenuActive && openMenu !== m.label ? 'text-brand' : ''}`}
                   />
                 </button>
 
@@ -187,7 +187,7 @@ export default function Navbar() {
                           <Link
                             to='/ott'
                             onClick={() => setOpenMenu(null)}
-                            className='flex items-center justify-between rounded-xl bg-[#f5b942] px-3 py-2 text-xs font-extrabold text-black shadow-sm transition hover:brightness-105'
+                            className='flex items-center justify-between rounded-xl bg-brand px-3 py-2 text-xs font-extrabold text-black shadow-sm transition hover:brightness-105'
                           >
                             <span className='flex items-center gap-1.5'>
                               <Sparkles size={13} /> All OTT
@@ -212,10 +212,10 @@ export default function Navbar() {
                                 }
                                 className={`flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition ${
                                   activeProvider === ott.key
-                                    ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                                    ? 'bg-brand/15 text-brand'
                                     : isLight
                                       ? 'text-slate-800 hover:bg-amber-50 hover:text-amber-700'
-                                      : 'text-zinc-200 hover:bg-[#f5b942]/15 hover:text-[#f5b942]'
+                                      : 'text-zinc-200 hover:bg-brand/15 hover:text-brand'
                                 }`}
                               >
                                 <span
@@ -241,10 +241,10 @@ export default function Navbar() {
                             }
                             className={`block whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition ${
                               activeItemTo === it.to
-                                ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                                ? 'bg-brand/15 text-brand'
                                 : isLight
                                   ? 'text-slate-800 hover:bg-amber-50 hover:text-amber-700'
-                                  : 'text-zinc-200 hover:bg-[#f5b942]/15 hover:text-[#f5b942]'
+                                  : 'text-zinc-200 hover:bg-brand/15 hover:text-brand'
                             }`}
                           >
                             {it.label}
@@ -262,13 +262,13 @@ export default function Navbar() {
             to='/blogs'
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
               loc.pathname.startsWith('/blogs')
-                ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                ? 'bg-brand/15 text-brand'
                 : isLight
                   ? 'text-slate-700 hover:bg-slate-100'
                   : 'text-zinc-300 hover:bg-white/5 hover:text-white'
             }`}
           >
-            <BookOpen size={14} className='shrink-0 text-[#f5b942]' />
+            <BookOpen size={14} className='shrink-0 text-brand' />
             <span>Blogs</span>
           </Link>
 
@@ -276,7 +276,7 @@ export default function Navbar() {
             to='/community'
             className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-xs font-bold transition ${
               loc.pathname.startsWith('/community')
-                ? 'bg-[#f5b942]/15 text-[#f5b942]'
+                ? 'bg-brand/15 text-brand'
                 : isLight
                   ? 'text-slate-700 hover:bg-slate-100'
                   : 'text-zinc-300 hover:bg-white/5 hover:text-white'
@@ -300,7 +300,7 @@ export default function Navbar() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder='Search movies, actors...'
-            className={`h-9 w-full rounded-full border pr-4 pl-9 text-xs transition-colors focus:border-[#f5b942] focus:outline-none ${
+            className={`h-9 w-full rounded-full border pr-4 pl-9 text-xs transition-colors focus:border-brand focus:outline-none ${
               isLight
                 ? 'border-slate-200 bg-slate-100 text-slate-900 placeholder-slate-400 focus:bg-white'
                 : 'border-white/10 bg-white/5 text-white placeholder-zinc-500 focus:bg-[#0e131f]'
@@ -333,8 +333,8 @@ export default function Navbar() {
             title='Switch Region & Currency (India ₹ INR / Global $ USD)'
             className={`flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-[11px] font-extrabold transition ${
               isLight
-                ? 'border-slate-200 bg-slate-100 text-slate-800 hover:border-[#f5b942]'
-                : 'border-white/10 bg-white/5 text-zinc-200 hover:border-[#f5b942]/50'
+                ? 'border-slate-200 bg-slate-100 text-slate-800 hover:border-brand'
+                : 'border-white/10 bg-white/5 text-zinc-200 hover:border-brand/50'
             }`}
           >
             <span>{region === 'IN' ? '🇮🇳' : '🌍'}</span>
@@ -348,7 +348,7 @@ export default function Navbar() {
             type='button'
             onClick={() => dispatch(openPreferenceModal())}
             title='Customize Taste & Region'
-            className='flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#f5b942]/40 bg-[#f5b942]/15 px-2.5 text-[11px] font-extrabold text-[#f5b942] hover:bg-[#f5b942]/25'
+            className='flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-brand/40 bg-brand/15 px-2.5 text-[11px] font-extrabold text-brand hover:bg-brand/25'
           >
             <SlidersHorizontal size={13} />
             <span className='hidden md:inline'>Taste</span>
@@ -362,7 +362,7 @@ export default function Navbar() {
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition ${
               isLight
                 ? 'border-slate-200 bg-amber-50 text-amber-600 hover:bg-amber-100'
-                : 'border-white/10 bg-white/5 text-[#f5b942] hover:bg-white/10'
+                : 'border-white/10 bg-white/5 text-brand hover:bg-white/10'
             }`}
           >
             {isLight ? <Moon size={15} /> : <Sun size={15} />}
@@ -372,7 +372,7 @@ export default function Navbar() {
           {isStaff && (
             <Link
               to='/admin'
-              className='hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-[#f5b942] to-amber-500 px-3 py-1.5 text-xs font-extrabold text-black shadow-sm hover:brightness-110 xl:flex'
+              className='hidden shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-brand to-amber-500 px-3 py-1.5 text-xs font-extrabold text-black shadow-sm hover:brightness-110 xl:flex'
             >
               <Shield size={13} />
               <span>
@@ -427,7 +427,7 @@ export default function Navbar() {
                     >
                       {user.email}
                     </p>
-                    <span className='mt-1 inline-block rounded-full bg-[#f5b942]/20 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-[#f5b942] uppercase'>
+                    <span className='mt-1 inline-block rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-brand uppercase'>
                       {user.role}
                     </span>
                   </div>
@@ -435,7 +435,7 @@ export default function Navbar() {
                   {isStaff && (
                     <Link
                       to='/admin'
-                      className='flex items-center gap-2.5 rounded-xl bg-[#f5b942]/15 px-3 py-2 text-xs font-extrabold text-[#f5b942] hover:bg-[#f5b942]/25'
+                      className='flex items-center gap-2.5 rounded-xl bg-brand/15 px-3 py-2 text-xs font-extrabold text-brand hover:bg-brand/25'
                     >
                       <Shield size={14} />
                       Open{' '}
@@ -480,7 +480,7 @@ export default function Navbar() {
                       isLight ? 'hover:bg-slate-100' : 'hover:bg-white/10'
                     }`}
                   >
-                    <Sparkles size={14} className='text-[#f5b942]' /> Taste &
+                    <Sparkles size={14} className='text-brand' /> Taste &
                     Region ({currency})
                   </button>
                   <button
@@ -508,7 +508,7 @@ export default function Navbar() {
               </Link>
               <Link
                 to={ROUTES.SIGNUP}
-                className='whitespace-nowrap rounded-full bg-[#f5b942] px-3 py-1.5 text-xs font-extrabold text-black shadow-xs hover:brightness-110'
+                className='whitespace-nowrap rounded-full bg-brand px-3 py-1.5 text-xs font-extrabold text-black shadow-xs hover:brightness-110'
               >
                 Sign up
               </Link>
@@ -536,7 +536,7 @@ export default function Navbar() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder='Search movies, web series, actors...'
-              className={`w-full rounded-full border py-2 pr-4 pl-9 text-xs focus:border-[#f5b942] focus:outline-none ${
+              className={`w-full rounded-full border py-2 pr-4 pl-9 text-xs focus:border-brand focus:outline-none ${
                 isLight
                   ? 'border-slate-300 bg-white text-slate-900'
                   : 'border-white/15 bg-white/5 text-white'

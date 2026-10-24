@@ -22,11 +22,11 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
 
   return (
     <section className="mx-auto my-8 max-w-7xl px-4 sm:px-6">
-      <div className="relative overflow-hidden rounded-3xl border border-[#f5b942]/20 bg-gradient-to-br from-[#0e131f] via-[#131b2e] to-[#090d16] p-5 shadow-2xl sm:p-7">
+      <div className="relative overflow-hidden rounded-3xl border border-brand/20 bg-gradient-to-br from-[#0e131f] via-[#131b2e] to-[#090d16] p-5 shadow-2xl sm:p-7">
         {/* Header + Today / Week Switcher */}
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-lg shadow-[#f5b942]/25">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-amber-500 text-black shadow-lg shadow-brand/25">
               {tab === 'today' ? <Flame size={22} /> : <Trophy size={22} />}
             </span>
             <div>
@@ -52,7 +52,7 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
                 onClick={() => setTab('today')}
                 className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
                   tab === 'today'
-                    ? 'bg-[#f5b942] text-black shadow'
+                    ? 'bg-brand text-black shadow'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -63,7 +63,7 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
                 onClick={() => setTab('week')}
                 className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
                   tab === 'week'
-                    ? 'bg-[#f5b942] text-black shadow'
+                    ? 'bg-brand text-black shadow'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -73,7 +73,7 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
 
             <Link
               to="/browse/movie?list=trending"
-              className="flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-bold text-[#f5b942] hover:bg-white/10"
+              className="flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-bold text-brand hover:bg-white/10"
             >
               See All <ArrowRight size={13} />
             </Link>
@@ -121,7 +121,7 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
                 </span>
 
                 {/* Card Body */}
-                <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f19] shadow-xl transition duration-300 group-hover:-translate-y-1.5 group-hover:border-[#f5b942]/50">
+                <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f19] shadow-xl transition duration-300 group-hover:-translate-y-1.5 group-hover:border-brand/50">
                   <div className="relative aspect-[2/3] w-full overflow-hidden">
                     <SafeImage
                       src={item.posterUrl || item.poster_path}
@@ -132,11 +132,11 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
-                    <div className="keep-white absolute top-2.5 right-2.5 flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[11px] font-bold text-[#f5b942] backdrop-blur-md">
+                    <div className="keep-white absolute top-2.5 right-2.5 flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[11px] font-bold text-brand backdrop-blur-md">
                       <Star size={11} fill="currentColor" /> {rating}
                     </div>
 
-                    <span className="keep-white absolute top-2.5 left-2.5 rounded-md bg-[#f5b942] px-2 py-0.5 text-[10px] font-extrabold text-black uppercase">
+                    <span className="keep-white absolute top-2.5 left-2.5 rounded-md bg-brand px-2 py-0.5 text-[10px] font-extrabold text-black uppercase">
                       #{rank}
                     </span>
 
@@ -144,7 +144,7 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
                       <p className="truncate text-sm font-bold text-white">{item.title || item.name}</p>
                       <div className="mt-1 flex items-center justify-between text-[11px] text-zinc-300">
                         <span>{item.year || (item.release_date || '').slice(0, 4) || '2025'}</span>
-                        <span className="flex items-center gap-1 font-semibold text-[#f5b942]">
+                        <span className="flex items-center gap-1 font-semibold text-brand">
                           <Play size={11} fill="currentColor" /> Watch
                         </span>
                       </div>

@@ -50,7 +50,7 @@ export default function ApiKeysSection({
             {(keys || []).length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-xs text-zinc-400">
-                  <KeyRound size={18} className="mx-auto mb-1 text-[#f5b942]" />
+                  <KeyRound size={18} className="mx-auto mb-1 text-brand" />
                   No TMDB API keys registered.
                 </td>
               </tr>

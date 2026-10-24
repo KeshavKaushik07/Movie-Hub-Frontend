@@ -44,7 +44,7 @@ export function RenderRichBlogContent({ content = '' }) {
             <h2
               key={idx}
               style={{ fontFamily: 'var(--font-display)' }}
-              className="pt-4 text-xl font-extrabold text-[#f5b942] sm:text-2xl"
+              className="pt-4 text-xl font-extrabold text-brand sm:text-2xl"
             >
               {trimmed.slice(3)}
             </h2>
@@ -65,7 +65,7 @@ export function RenderRichBlogContent({ content = '' }) {
           return (
             <blockquote
               key={idx}
-              className="rounded-2xl border-l-4 border-[#f5b942] bg-[#f5b942]/10 p-4 italic text-zinc-200"
+              className="rounded-2xl border-l-4 border-brand bg-brand/10 p-4 italic text-zinc-200"
             >
               {trimmed.slice(2)}
             </blockquote>
@@ -168,7 +168,7 @@ export default function BlogDetail() {
   if (loading) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
@@ -210,14 +210,14 @@ export default function BlogDetail() {
             {isStaff && (
               <Link
                 to={`/admin/blogs?editId=${blog.id}`}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#f5b942] px-4 py-1.5 text-xs font-extrabold text-black"
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-1.5 text-xs font-extrabold text-black"
               >
                 <Edit3 size={13} /> Edit Article in Studio
               </Link>
             )}
           </div>
 
-          <span className="inline-block rounded-full bg-[#f5b942] px-3 py-1 text-[10px] font-extrabold text-black uppercase">
+          <span className="inline-block rounded-full bg-brand px-3 py-1 text-[10px] font-extrabold text-black uppercase">
             {blog.category}
           </span>
           <h1
@@ -284,8 +284,8 @@ export default function BlogDetail() {
               onClick={handleToggleLike}
               className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-extrabold transition ${
                 blog.liked
-                  ? 'bg-[#f5b942] text-black'
-                  : 'border border-white/15 bg-white/5 text-white hover:border-[#f5b942]'
+                  ? 'bg-brand text-black'
+                  : 'border border-white/15 bg-white/5 text-white hover:border-brand'
               }`}
             >
               <ThumbsUp size={15} /> {blog.liked ? 'Liked Article' : 'Like Article'} ({blog.likeCount || 0})
@@ -306,13 +306,13 @@ export default function BlogDetail() {
                   placeholder="Share your thoughts on this article..."
                   className="flex-1 bg-transparent px-3 py-1.5 text-xs text-white focus:outline-none"
                 />
-                <button className="flex items-center gap-1.5 rounded-full bg-[#f5b942] px-5 py-2 text-xs font-extrabold text-black">
+                <button className="flex items-center gap-1.5 rounded-full bg-brand px-5 py-2 text-xs font-extrabold text-black">
                   <Send size={13} /> Comment
                 </button>
               </form>
             ) : (
               <p className="rounded-2xl border border-white/10 bg-[#0e131f] p-4 text-xs text-zinc-400">
-                Please <Link to={ROUTES.LOGIN} className="font-bold text-[#f5b942] underline">log in</Link> to like or comment on this article.
+                Please <Link to={ROUTES.LOGIN} className="font-bold text-brand underline">log in</Link> to like or comment on this article.
               </p>
             )}
 
@@ -341,7 +341,7 @@ export default function BlogDetail() {
                       <button
                         type="button"
                         onClick={() => user && blogApi.toggleCommentLike(c.id).then(() => blogApi.listComments(blog.id).then(setComments))}
-                        className={`flex items-center gap-1 ${c.liked ? 'text-[#f5b942]' : 'hover:text-white'}`}
+                        className={`flex items-center gap-1 ${c.liked ? 'text-brand' : 'hover:text-white'}`}
                       >
                         <ThumbsUp size={12} /> {c.likesCount || 0}
                       </button>
@@ -364,7 +364,7 @@ export default function BlogDetail() {
                           placeholder="Write a reply..."
                           className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white"
                         />
-                        <button className="rounded-xl bg-[#f5b942] px-3.5 py-1.5 text-xs font-bold text-black">
+                        <button className="rounded-xl bg-brand px-3.5 py-1.5 text-xs font-bold text-black">
                           Reply
                         </button>
                       </form>
@@ -390,8 +390,8 @@ export default function BlogDetail() {
         {/* Right Sidebar: Linked Movie Spotlight Card & Related Blogs */}
         <aside className="space-y-6 lg:col-span-4">
           {linked?.tmdbId && (
-            <div className="overflow-hidden rounded-3xl border border-[#f5b942]/30 bg-[#0e131f] p-5 shadow-xl">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-[#f5b942] uppercase">
+            <div className="overflow-hidden rounded-3xl border border-brand/30 bg-[#0e131f] p-5 shadow-xl">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-brand uppercase">
                 <Film size={13} /> Movie Featured in This Article
               </span>
               <div className="mt-3 flex gap-4">
@@ -407,7 +407,7 @@ export default function BlogDetail() {
                     <h3 className="text-base font-extrabold text-white">{linked.title}</h3>
                     <p className="text-xs text-zinc-400">{linked.year}</p>
                     {linked.rating > 0 && (
-                      <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#f5b942]/15 px-2.5 py-0.5 text-xs font-bold text-[#f5b942]">
+                      <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-0.5 text-xs font-bold text-brand">
                         <Star size={11} fill="currentColor" /> {Number(linked.rating).toFixed(1)}
                       </span>
                     )}
@@ -417,7 +417,7 @@ export default function BlogDetail() {
                   </div>
                   <Link
                     to={getTitlePath(linked, linked.type || 'movie', 'overview')}
-                    className="mt-3 inline-block rounded-xl bg-[#f5b942] px-3.5 py-2 text-center text-xs font-extrabold text-black hover:brightness-110"
+                    className="mt-3 inline-block rounded-xl bg-brand px-3.5 py-2 text-center text-xs font-extrabold text-black hover:brightness-110"
                   >
                     Open Movie Details →
                   </Link>
@@ -444,7 +444,7 @@ export default function BlogDetail() {
                       className="h-16 w-24 shrink-0 rounded-xl object-cover"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-xs font-bold text-white group-hover:text-[#f5b942]">
+                      <p className="line-clamp-2 text-xs font-bold text-white group-hover:text-brand">
                         {r.title}
                       </p>
                       <span className="text-[10px] text-zinc-400">{r.readTimeMinutes} min read</span>

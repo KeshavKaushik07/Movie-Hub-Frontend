@@ -207,7 +207,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                 onClick={() => setTab(t.id)}
                 className={`cursor-pointer flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-bold transition ${
                   tab === t.id
-                    ? 'border-[#f5b942] text-[#f5b942]'
+                    ? 'border-brand text-brand'
                     : 'border-transparent text-zinc-400 hover:text-white'
                 }`}
               >
@@ -234,7 +234,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                     required
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white focus:border-[#f5b942] focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white focus:border-brand focus:outline-none"
                   />
                 </div>
                 <CustomSelect
@@ -292,7 +292,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                   rows={3}
                   value={form.overview}
                   onChange={(e) => setForm({ ...form, overview: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white focus:border-brand focus:outline-none"
                 />
               </div>
 
@@ -325,7 +325,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                       onClick={() => toggleArrayItem('regions', ind.key)}
                       className={`cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-medium ${
                         form.regions.includes(ind.key)
-                          ? 'border-[#f5b942] bg-[#f5b942]/20 text-[#f5b942]'
+                          ? 'border-brand bg-brand/20 text-brand'
                           : 'border-white/10 bg-white/5 text-zinc-400'
                       }`}
                     >
@@ -427,7 +427,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                 <button
                   type="button"
                   onClick={addSong}
-                  className="cursor-pointer flex items-center gap-1.5 rounded-xl bg-[#f5b942] px-3.5 py-2 text-xs font-bold text-black"
+                  className="cursor-pointer flex items-center gap-1.5 rounded-xl bg-brand px-3.5 py-2 text-xs font-bold text-black"
                 >
                   <Plus size={14} /> Add Song
                 </button>

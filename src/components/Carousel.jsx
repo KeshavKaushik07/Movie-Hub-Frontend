@@ -145,7 +145,7 @@ export default function Carousel({
         <div className='max-w-md sm:max-w-lg lg:max-w-xl space-y-1.5 sm:space-y-3'>
           {/* Metadata Row */}
           <div className='flex flex-wrap items-center gap-1.5 text-[10px] sm:gap-2 sm:text-xs'>
-            <span className='inline-flex items-center gap-1 rounded-full bg-[#f5b942] px-2.5 py-0.5 font-extrabold text-black uppercase shadow-xs sm:px-3 sm:py-1'>
+            <span className='inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 font-extrabold text-black uppercase shadow-xs sm:px-3 sm:py-1'>
               <Sparkles size={10} />
               {cur.badgeText ||
                 (heroSource === 'superadmin_featured'
@@ -160,7 +160,7 @@ export default function Carousel({
             </span>
 
             {hasRating && (
-              <span className='keep-white flex items-center gap-1 rounded-full border border-white/15 bg-black/75 px-2.5 py-0.5 font-bold text-[#f5b942] backdrop-blur-md sm:px-3 sm:py-1'>
+              <span className='keep-white flex items-center gap-1 rounded-full border border-white/15 bg-black/75 px-2.5 py-0.5 font-bold text-brand backdrop-blur-md sm:px-3 sm:py-1'>
                 <Star size={10} fill='currentColor' /> {ratingNum.toFixed(1)}
               </span>
             )}
@@ -199,7 +199,7 @@ export default function Carousel({
 
           {/* Tagline */}
           {cur.tagline && (
-            <p className='hidden line-clamp-1 text-xs font-semibold text-[#f5b942] italic sm:block sm:text-sm'>
+            <p className='hidden line-clamp-1 text-xs font-semibold text-brand italic sm:block sm:text-sm'>
               “{cur.tagline}”
             </p>
           )}
@@ -216,7 +216,7 @@ export default function Carousel({
             <div className='flex items-center gap-2.5 sm:gap-3.5'>
               <Link
                 to={getTitlePath(cur, type, 'media')}
-                className='inline-flex items-center gap-1.5 rounded-full bg-[#f5b942] px-3.5 py-1.5 text-[11px] font-extrabold text-black shadow-md shadow-[#f5b942]/25 transition hover:brightness-110 active:scale-95 sm:px-5 sm:py-2.5 sm:text-xs'
+                className='inline-flex items-center gap-1.5 rounded-full bg-brand px-3.5 py-1.5 text-[11px] font-extrabold text-black shadow-md shadow-brand/25 transition hover:brightness-110 active:scale-95 sm:px-5 sm:py-2.5 sm:text-xs'
               >
                 <Play size={13} fill='currentColor' />
                 <span className='sm:hidden'>Trailer</span>
@@ -246,7 +246,7 @@ export default function Carousel({
                 aria-label={`Slide ${idx + 1}`}
                 className={`h-1.5 rounded-full transition-all ${
                   idx === i
-                    ? 'w-6 bg-[#f5b942] sm:w-7'
+                    ? 'w-6 bg-brand sm:w-7'
                     : 'w-2 bg-white/35 hover:bg-white/65'
                 }`}
               />

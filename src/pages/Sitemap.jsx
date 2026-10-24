@@ -76,7 +76,7 @@ export default function Sitemap({ xmlMode = false }) {
   if (loading && !data) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" />
         <p className="text-xs font-semibold text-zinc-400">
           Scanning React Router routes & live database URLs for Google Crawler...
         </p>
@@ -99,7 +99,7 @@ export default function Sitemap({ xmlMode = false }) {
       <div className="rounded-3xl border border-white/15 bg-[#0e131f] p-5 shadow-xl sm:p-7">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#f5b942]/15 px-3 py-1 text-[11px] font-extrabold text-[#f5b942] uppercase">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-3 py-1 text-[11px] font-extrabold text-brand uppercase">
               <Globe size={12} /> Auto-Syncing Google Crawler Sitemap
             </div>
             <h1
@@ -109,10 +109,10 @@ export default function Sitemap({ xmlMode = false }) {
               Dynamic Website Sitemap & Route Index
             </h1>
             <p className="max-w-2xl text-xs leading-relaxed text-zinc-400 sm:text-sm">
-              Automatically indexes every static route in <code className="text-[#f5b942]">App.jsx</code> &{' '}
-              <code className="text-[#f5b942]">constants.js</code> plus all live Movies, Web Series, TV Shows (with{' '}
-              <code className="text-[#f5b942]">#overview</code>, <code className="text-[#f5b942]">#media</code>,{' '}
-              <code className="text-[#f5b942]">#box-office</code>, <code className="text-[#f5b942]">#reviews</code>{' '}
+              Automatically indexes every static route in <code className="text-brand">App.jsx</code> &{' '}
+              <code className="text-brand">constants.js</code> plus all live Movies, Web Series, TV Shows (with{' '}
+              <code className="text-brand">#overview</code>, <code className="text-brand">#media</code>,{' '}
+              <code className="text-brand">#box-office</code>, <code className="text-brand">#reviews</code>{' '}
               hash tabs), Editorial Blogs, Celebrities, and Community Lounges.
             </p>
           </div>
@@ -121,16 +121,16 @@ export default function Sitemap({ xmlMode = false }) {
             <button
               type="button"
               onClick={loadSitemap}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-bold text-white hover:border-[#f5b942]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-bold text-white hover:border-brand"
             >
-              <RefreshCw size={13} className={loading ? 'animate-spin text-[#f5b942]' : ''} />
+              <RefreshCw size={13} className={loading ? 'animate-spin text-brand' : ''} />
               <span>Rescan Routes</span>
             </button>
 
             <button
               type="button"
               onClick={handleDownloadXml}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#f5b942] px-4 py-2 text-xs font-extrabold text-black hover:brightness-110"
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-xs font-extrabold text-black hover:brightness-110"
             >
               <Download size={14} />
               <span>Download sitemap.xml</span>
@@ -139,7 +139,7 @@ export default function Sitemap({ xmlMode = false }) {
             <button
               type="button"
               onClick={handleDownloadRobots}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-bold text-zinc-200 hover:border-[#f5b942]"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-bold text-zinc-200 hover:border-brand"
             >
               <Download size={13} />
               <span>robots.txt</span>
@@ -160,7 +160,7 @@ export default function Sitemap({ xmlMode = false }) {
         {/* Live Metrics Bar */}
         <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            { label: 'Total Indexed URLs', value: data.totalUrls.toLocaleString(), color: 'text-[#f5b942]' },
+            { label: 'Total Indexed URLs', value: data.totalUrls.toLocaleString(), color: 'text-brand' },
             { label: 'App & Filter Routes', value: sections.staticRoutes.length + sections.listRoutes.length, color: 'text-sky-400' },
             { label: 'Genre, Industry & OTT', value: sections.genreRoutes.length + sections.industryRoutes.length + sections.ottRoutes.length, color: 'text-purple-400' },
             { label: 'Movies & Series (+Tabs)', value: sections.titles.length * 6, color: 'text-emerald-400' },
@@ -182,7 +182,7 @@ export default function Sitemap({ xmlMode = false }) {
               onClick={() => setViewTab('directory')}
               className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-extrabold transition ${
                 viewTab === 'directory'
-                  ? 'bg-[#f5b942] text-black'
+                  ? 'bg-brand text-black'
                   : 'bg-white/5 text-zinc-400 hover:text-white'
               }`}
             >
@@ -194,7 +194,7 @@ export default function Sitemap({ xmlMode = false }) {
               onClick={() => setViewTab('xml')}
               className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-extrabold transition ${
                 viewTab === 'xml'
-                  ? 'bg-[#f5b942] text-black'
+                  ? 'bg-brand text-black'
                   : 'bg-white/5 text-zinc-400 hover:text-white'
               }`}
             >
@@ -208,7 +208,7 @@ export default function Sitemap({ xmlMode = false }) {
               value={filterQ}
               onChange={(e) => setFilterQ(e.target.value)}
               placeholder="Filter any URL or movie title in sitemap..."
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white focus:border-[#f5b942] focus:outline-none sm:max-w-xs"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white focus:border-brand focus:outline-none sm:max-w-xs"
             />
           )}
         </div>
@@ -229,7 +229,7 @@ export default function Sitemap({ xmlMode = false }) {
             <button
               type="button"
               onClick={handleCopyXml}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-white hover:border-[#f5b942]"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-white hover:border-brand"
             >
               {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
               <span>{copied ? 'Copied XML!' : 'Copy XML'}</span>
@@ -245,7 +245,7 @@ export default function Sitemap({ xmlMode = false }) {
           {/* 1. Auto-Discovered Core & Router Routes */}
           <section className="rounded-3xl border border-white/15 bg-[#0e131f] p-5">
             <h2 className="mb-3 flex items-center gap-2 text-base font-extrabold text-white">
-              <Sparkles size={16} className="text-[#f5b942]" />
+              <Sparkles size={16} className="text-brand" />
               1. Auto-Discovered Core & React Router Pages ({sections.staticRoutes.filter(matchQ).length})
             </h2>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -253,10 +253,10 @@ export default function Sitemap({ xmlMode = false }) {
                 <Link
                   key={r.path}
                   to={r.path}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#070a10]/60 px-3.5 py-2.5 text-xs transition hover:border-[#f5b942]"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#070a10]/60 px-3.5 py-2.5 text-xs transition hover:border-brand"
                 >
                   <span className="truncate font-bold text-white">{r.label}</span>
-                  <code className="shrink-0 text-[10px] text-[#f5b942]">{r.path}</code>
+                  <code className="shrink-0 text-[10px] text-brand">{r.path}</code>
                 </Link>
               ))}
             </div>
@@ -289,7 +289,7 @@ export default function Sitemap({ xmlMode = false }) {
                   <Link
                     key={r.path}
                     to={r.path}
-                    className="flex flex-col justify-between rounded-xl border border-white/10 bg-[#070a10]/60 p-3 text-xs transition hover:border-[#f5b942]"
+                    className="flex flex-col justify-between rounded-xl border border-white/10 bg-[#070a10]/60 p-3 text-xs transition hover:border-brand"
                   >
                     <span className="truncate font-bold text-white">{r.label}</span>
                     <code className="mt-1 truncate text-[10px] text-zinc-400">{r.path}</code>
@@ -311,16 +311,16 @@ export default function Sitemap({ xmlMode = false }) {
                 .map((t) => (
                   <div
                     key={t.path}
-                    className="rounded-2xl border border-white/10 bg-[#070a10]/60 p-3.5 transition hover:border-[#f5b942]/50"
+                    className="rounded-2xl border border-white/10 bg-[#070a10]/60 p-3.5 transition hover:border-brand/50"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <Link
                         to={t.path}
-                        className="truncate text-xs font-extrabold text-white hover:text-[#f5b942]"
+                        className="truncate text-xs font-extrabold text-white hover:text-brand"
                       >
                         {t.label}
                       </Link>
-                      <span className="shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-[#f5b942] uppercase">
+                      <span className="shrink-0 rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-brand uppercase">
                         {t.type}
                       </span>
                     </div>
@@ -331,7 +331,7 @@ export default function Sitemap({ xmlMode = false }) {
                           <Link
                             key={tabUrl}
                             to={tabUrl}
-                            className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-zinc-300 hover:border-[#f5b942] hover:text-[#f5b942]"
+                            className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-semibold text-zinc-300 hover:border-brand hover:text-brand"
                           >
                             #{hashName}
                           </Link>
@@ -355,7 +355,7 @@ export default function Sitemap({ xmlMode = false }) {
                   <Link
                     key={b.path}
                     to={b.path}
-                    className="block rounded-xl border border-white/10 bg-[#070a10]/60 p-2.5 text-xs hover:border-[#f5b942]"
+                    className="block rounded-xl border border-white/10 bg-[#070a10]/60 p-2.5 text-xs hover:border-brand"
                   >
                     <p className="truncate font-bold text-white">{b.label}</p>
                     <code className="text-[10px] text-zinc-400">{b.path}</code>
@@ -374,7 +374,7 @@ export default function Sitemap({ xmlMode = false }) {
                   <Link
                     key={c.path}
                     to={c.path}
-                    className="rounded-full border border-white/10 bg-[#070a10]/60 px-3 py-1 text-xs font-semibold text-zinc-200 hover:border-[#f5b942] hover:text-[#f5b942]"
+                    className="rounded-full border border-white/10 bg-[#070a10]/60 px-3 py-1 text-xs font-semibold text-zinc-200 hover:border-brand hover:text-brand"
                   >
                     {c.label}
                   </Link>
@@ -392,7 +392,7 @@ export default function Sitemap({ xmlMode = false }) {
                   <Link
                     key={rm.path}
                     to={rm.path}
-                    className="block rounded-xl border border-white/10 bg-[#070a10]/60 p-2.5 text-xs hover:border-[#f5b942]"
+                    className="block rounded-xl border border-white/10 bg-[#070a10]/60 p-2.5 text-xs hover:border-brand"
                   >
                     <p className="truncate font-bold text-white">{rm.label}</p>
                     <code className="text-[10px] text-zinc-400">{rm.path}</code>

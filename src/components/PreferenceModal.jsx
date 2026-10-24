@@ -96,7 +96,7 @@ export default function PreferenceModal() {
         </button>
 
         <div className="mb-6 flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f5b942]/15 text-[#f5b942]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/15 text-brand">
             <Sparkles size={22} />
           </span>
           <div>
@@ -125,20 +125,20 @@ export default function PreferenceModal() {
               }}
               className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${
                 region === 'IN'
-                  ? 'border-[#f5b942] bg-[#f5b942]/10'
+                  ? 'border-brand bg-brand/10'
                   : 'border-white/10 bg-white/5 hover:border-white/20'
               }`}
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f5b942]/20 text-lg">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/20 text-lg">
                 🇮🇳
               </span>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-white">India (₹ Rupees)</span>
-                  {region === 'IN' && <Check size={16} className="text-[#f5b942]" />}
+                  {region === 'IN' && <Check size={16} className="text-brand" />}
                 </div>
                 <p className="mt-1 text-[11px] text-zinc-400">
-                  Prioritizes Bollywood, Tollywood, South Indian & OTT Web Series + Global Hits. All budgets shown in <strong className="text-[#f5b942]">₹ Crores</strong>.
+                  Prioritizes Bollywood, Tollywood, South Indian & OTT Web Series + Global Hits. All budgets shown in <strong className="text-brand">₹ Crores</strong>.
                 </p>
               </div>
             </button>
@@ -153,7 +153,7 @@ export default function PreferenceModal() {
               }}
               className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${
                 region === 'GLOBAL'
-                  ? 'border-[#f5b942] bg-[#f5b942]/10'
+                  ? 'border-brand bg-brand/10'
                   : 'border-white/10 bg-white/5 hover:border-white/20'
               }`}
             >
@@ -163,7 +163,7 @@ export default function PreferenceModal() {
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-white">International ($ USD)</span>
-                  {region === 'GLOBAL' && <Check size={16} className="text-[#f5b942]" />}
+                  {region === 'GLOBAL' && <Check size={16} className="text-brand" />}
                 </div>
                 <p className="mt-1 text-[11px] text-zinc-400">
                   Prioritizes Hollywood, Global Streaming Originals, K-Drama & Anime. All budgets shown in <strong className="text-sky-400">$ Millions / Billions</strong>.
@@ -188,7 +188,7 @@ export default function PreferenceModal() {
                   onClick={() => toggleItem(industries, setIndustries, ind.key)}
                   className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
                     active
-                      ? 'border-[#f5b942] bg-[#f5b942]/15 text-[#f5b942]'
+                      ? 'border-brand bg-brand/15 text-brand'
                       : 'border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10'
                   }`}
                 >
@@ -216,7 +216,7 @@ export default function PreferenceModal() {
                   onClick={() => toggleItem(genres, setGenres, id)}
                   className={`rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                     active
-                      ? 'border-[#f5b942] bg-[#f5b942] text-black'
+                      ? 'border-brand bg-brand text-black'
                       : 'border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10'
                   }`}
                 >
@@ -246,7 +246,7 @@ export default function PreferenceModal() {
                   onClick={() => toggleItem(contentTypes, setContentTypes, ct.key)}
                   className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition ${
                     active
-                      ? 'border-[#f5b942] bg-[#f5b942]/15 text-[#f5b942]'
+                      ? 'border-brand bg-brand/15 text-brand'
                       : 'border-white/10 bg-white/5 text-zinc-400'
                   }`}
                 >
@@ -268,7 +268,7 @@ export default function PreferenceModal() {
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#f5b942] to-amber-500 px-6 py-2.5 text-xs font-extrabold text-black shadow-lg shadow-[#f5b942]/20 hover:brightness-110"
+            className="flex items-center gap-2 rounded-xl bg-linear-to-r from-brand to-amber-500 px-6 py-2.5 text-xs font-extrabold text-black shadow-lg shadow-brand/20 hover:brightness-110"
           >
             <Sparkles size={15} />
             Save My Taste & Personalize Home

@@ -225,7 +225,7 @@ export default function Browse() {
       {/* Header + Format Tabs */}
       <div className='mb-6 flex flex-wrap items-center justify-between gap-4'>
         <div>
-          <div className='flex items-center gap-2 text-xs font-bold text-[#f5b942] uppercase'>
+          <div className='flex items-center gap-2 text-xs font-bold text-brand uppercase'>
             <Sparkles size={13} /> Discover & Filter
           </div>
           <h1
@@ -253,11 +253,11 @@ export default function Browse() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder='Search title, actor, director...'
-              className='w-52 rounded-full border border-white/10 bg-[#0e131f] py-1.5 pr-16 pl-8 text-xs text-white focus:border-[#f5b942] focus:outline-none sm:w-60'
+              className='w-52 rounded-full border border-white/10 bg-[#0e131f] py-1.5 pr-16 pl-8 text-xs text-white focus:border-brand focus:outline-none sm:w-60'
             />
             <button
               type='submit'
-              className='cursor-pointer absolute right-1 rounded-full bg-[#f5b942] px-3 py-1 text-[11px] font-extrabold text-black hover:brightness-110'
+              className='cursor-pointer absolute right-1 rounded-full bg-brand px-3 py-1 text-[11px] font-extrabold text-black hover:brightness-110'
             >
               Find
             </button>
@@ -279,7 +279,7 @@ export default function Browse() {
                 }}
                 className={`cursor-pointer rounded-full px-4 py-1.5 text-xs font-bold transition ${
                   mediaType === t.key
-                    ? 'bg-[#f5b942] text-black shadow'
+                    ? 'bg-brand text-black shadow'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -292,9 +292,9 @@ export default function Browse() {
 
       {/* Matched Actor / Director Profile Banner when searching for a person */}
       {!loading && q && matchedPerson?.name && (
-        <div className='mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#f5b942]/30 bg-gradient-to-r from-[#0e131f] via-[#131b2e] to-[#0e131f] p-4 shadow-xl sm:p-5'>
+        <div className='mb-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-brand/30 bg-gradient-to-r from-[#0e131f] via-[#131b2e] to-[#0e131f] p-4 shadow-xl sm:p-5'>
           <div className='flex items-center gap-4'>
-            <div className='h-16 w-14 shrink-0 overflow-hidden rounded-2xl border border-[#f5b942]/50 bg-zinc-950 shadow-md'>
+            <div className='h-16 w-14 shrink-0 overflow-hidden rounded-2xl border border-brand/50 bg-zinc-950 shadow-md'>
               <SafeImage
                 src={matchedPerson.profileUrl}
                 alt={matchedPerson.name}
@@ -304,7 +304,7 @@ export default function Browse() {
               />
             </div>
             <div>
-              <span className='inline-flex items-center gap-1 rounded-full bg-[#f5b942]/15 px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider text-[#f5b942] uppercase'>
+              <span className='inline-flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider text-brand uppercase'>
                 <UserCheck size={11} /> Verified{' '}
                 {matchedPerson.knownForDepartment || 'Cast & Crew'} Match
               </span>
@@ -320,7 +320,7 @@ export default function Browse() {
 
           <Link
             to={`/person/${encodeURIComponent(matchedPerson.name)}${matchedPerson.id ? `?id=${matchedPerson.id}` : ''}`}
-            className='inline-flex items-center gap-1.5 rounded-xl bg-[#f5b942] px-4 py-2.5 text-xs font-extrabold text-black shadow-md transition hover:brightness-105'
+            className='inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-xs font-extrabold text-black shadow-md transition hover:brightness-105'
           >
             Full Filmography & Biography <ArrowRight size={14} />
           </Link>
@@ -439,7 +439,7 @@ export default function Browse() {
                 }}
                 className={`cursor-pointer shrink-0 rounded-full border px-3 py-1 text-[11px] font-bold transition ${
                   ott === o.key
-                    ? 'border-[#f5b942] bg-[#f5b942] text-black'
+                    ? 'border-brand bg-brand text-black'
                     : 'border-white/10 bg-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
@@ -515,7 +515,7 @@ export default function Browse() {
       {/* Results Grid or Rich Not Found Information Patch */}
       {loading ? (
         <div className='flex h-60 items-center justify-center'>
-          <div className='h-9 w-9 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent' />
+          <div className='h-9 w-9 animate-spin rounded-full border-2 border-brand border-t-transparent' />
         </div>
       ) : items.length === 0 ? (
         <InfoPatch
@@ -560,7 +560,7 @@ export default function Browse() {
               type='button'
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className='cursor-pointer rounded-full border border-white/15 bg-[#0e131f] px-5 py-2.5 font-bold hover:border-[#f5b942] disabled:opacity-40'
+              className='cursor-pointer rounded-full border border-white/15 bg-[#0e131f] px-5 py-2.5 font-bold hover:border-brand disabled:opacity-40'
             >
               ← Previous
             </button>
@@ -571,7 +571,7 @@ export default function Browse() {
               type='button'
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className='cursor-pointer rounded-full border border-white/15 bg-[#0e131f] px-5 py-2.5 font-bold hover:border-[#f5b942] disabled:opacity-40'
+              className='cursor-pointer rounded-full border border-white/15 bg-[#0e131f] px-5 py-2.5 font-bold hover:border-brand disabled:opacity-40'
             >
               Next →
             </button>

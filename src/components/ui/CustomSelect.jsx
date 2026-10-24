@@ -74,14 +74,14 @@ export default function CustomSelect({
             setSearch('');
           }
         }}
-        className={`flex w-full items-center justify-between gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-xs font-bold shadow-sm transition hover:border-[#f5b942] focus:border-[#f5b942] focus:outline-none disabled:opacity-50 ${
+        className={`flex w-full items-center justify-between gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-xs font-bold shadow-sm transition hover:border-brand focus:border-brand focus:outline-none disabled:opacity-50 ${
           isLight
             ? 'border-slate-300 bg-white text-slate-900 shadow-slate-200/60'
             : 'border-white/15 bg-[#0e131f] text-white'
         } ${buttonClassName}`}
       >
         <span className="flex items-center gap-2 truncate">
-          {Icon && <Icon size={14} className="shrink-0 text-[#f5b942]" />}
+          {Icon && <Icon size={14} className="shrink-0 text-brand" />}
           {selected?.emoji && <span>{selected.emoji}</span>}
           <span className="truncate">{selected ? selected.label : placeholder}</span>
         </span>
@@ -89,7 +89,7 @@ export default function CustomSelect({
           size={14}
           className={`shrink-0 transition-transform duration-200 ${
             isLight ? 'text-slate-500' : 'text-zinc-400'
-          } ${open ? 'rotate-180 text-[#f5b942]' : ''}`}
+          } ${open ? 'rotate-180 text-brand' : ''}`}
         />
       </button>
 
@@ -109,7 +109,7 @@ export default function CustomSelect({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Filter options..."
-                className={`w-full rounded-xl border py-1.5 pr-3 pl-8 text-xs focus:border-[#f5b942] focus:outline-none ${
+                className={`w-full rounded-xl border py-1.5 pr-3 pl-8 text-xs focus:border-brand focus:outline-none ${
                   isLight
                     ? 'border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400'
                     : 'border-white/10 bg-white/5 text-white placeholder-zinc-500'
@@ -133,7 +133,7 @@ export default function CustomSelect({
                     }}
                     className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition ${
                       isActive
-                        ? 'bg-[#f5b942] font-extrabold text-black'
+                        ? 'bg-brand font-extrabold text-black'
                         : isLight
                           ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-950'
                           : 'text-zinc-200 hover:bg-white/10 hover:text-white'

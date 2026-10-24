@@ -42,7 +42,7 @@ export default function Auth({ mode = 'login' }) {
     <div className="flex min-h-[82vh] items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-3xl border border-white/15 bg-[#0e131f] p-7 shadow-2xl sm:p-8">
         <div className="mb-6 flex items-center gap-2.5 text-lg font-extrabold">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5b942] text-black">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-black">
             <Film size={18} />
           </span>
           <span style={{ fontFamily: 'var(--font-display)' }}>{APP_NAME}</span>
@@ -72,7 +72,7 @@ export default function Auth({ mode = 'login' }) {
                 placeholder="Your name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-white focus:border-[#f5b942] focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-white focus:border-brand focus:outline-none"
               />
             </div>
           )}
@@ -84,7 +84,7 @@ export default function Auth({ mode = 'login' }) {
               placeholder="you@example.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-white focus:border-[#f5b942] focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-white focus:border-brand focus:outline-none"
             />
           </div>
           <div>
@@ -96,12 +96,12 @@ export default function Auth({ mode = 'login' }) {
               placeholder="••••••••"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-white focus:border-[#f5b942] focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-white focus:border-brand focus:outline-none"
             />
           </div>
           <button
             disabled={loading}
-            className="w-full rounded-full bg-[#f5b942] py-3 text-xs font-extrabold text-black shadow-lg shadow-[#f5b942]/20 hover:brightness-110 disabled:opacity-50"
+            className="w-full rounded-full bg-brand py-3 text-xs font-extrabold text-black shadow-lg shadow-brand/20 hover:brightness-110 disabled:opacity-50"
           >
             {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
           </button>
@@ -116,7 +116,7 @@ export default function Auth({ mode = 'login' }) {
 
         <p className="mt-5 text-center text-xs text-zinc-400">
           {isLogin ? 'New to Movies Hub? ' : 'Already have an account? '}
-          <Link to={isLogin ? ROUTES.SIGNUP : ROUTES.LOGIN} className="font-bold text-[#f5b942]">
+          <Link to={isLogin ? ROUTES.SIGNUP : ROUTES.LOGIN} className="font-bold text-brand">
             {isLogin ? 'Sign up' : 'Log in'}
           </Link>
         </p>

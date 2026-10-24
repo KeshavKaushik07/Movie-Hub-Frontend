@@ -177,7 +177,7 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
             onClick={() => setSubTab('reviews')}
             className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition ${
               subTab === 'reviews'
-                ? 'bg-[#f5b942] text-black'
+                ? 'bg-brand text-black'
                 : 'bg-white/5 text-zinc-300 hover:bg-white/10'
             }`}
           >
@@ -212,7 +212,7 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
                 onClick={() => setFilterMode(f.id)}
                 className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
                   filterMode === f.id
-                    ? 'border border-[#f5b942]/40 bg-[#f5b942]/15 text-[#f5b942]'
+                    ? 'border border-brand/40 bg-brand/15 text-brand'
                     : 'bg-white/5 text-zinc-400 hover:text-white'
                 }`}
               >
@@ -360,7 +360,7 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
           {/* Audience Reviews */}
           {(filterMode === 'all' || filterMode === 'audience') && (
             <div className="space-y-4">
-              <h3 className="flex items-center gap-2 text-xs font-extrabold tracking-wider text-[#f5b942] uppercase">
+              <h3 className="flex items-center gap-2 text-xs font-extrabold tracking-wider text-brand uppercase">
                 <Star size={14} /> Audience Reviews ({userReviews.length})
               </h3>
               {user ? (
@@ -384,14 +384,14 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
                     value={headline}
                     onChange={(e) => setHeadline(e.target.value)}
                     placeholder="Review headline (optional)..."
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white focus:border-brand focus:outline-none"
                   />
                   <textarea
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Share your honest thoughts on the story, performances, music, and direction..."
                     rows={3}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white focus:border-brand focus:outline-none"
                   />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <label className="flex items-center gap-2 text-xs text-zinc-400">
@@ -399,18 +399,18 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
                         type="checkbox"
                         checked={spoiler}
                         onChange={(e) => setSpoiler(e.target.checked)}
-                        className="accent-[#f5b942]"
+                        className="accent-brand"
                       />
                       Contains spoilers
                     </label>
-                    <button className="rounded-full bg-[#f5b942] px-5 py-2 text-xs font-bold text-black hover:brightness-110">
+                    <button className="rounded-full bg-brand px-5 py-2 text-xs font-bold text-black hover:brightness-110">
                       Publish Review
                     </button>
                   </div>
                 </form>
               ) : (
                 <p className="rounded-2xl border border-white/10 bg-[#0e131f] p-4 text-xs text-zinc-400">
-                  Please <Link to={ROUTES.LOGIN} className="font-bold text-[#f5b942] underline">log in</Link> to rate and review this title.
+                  Please <Link to={ROUTES.LOGIN} className="font-bold text-brand underline">log in</Link> to rate and review this title.
                 </p>
               )}
 
@@ -431,7 +431,7 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
                           <span>• {new Date(r.createdAt).toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="flex items-center gap-1 rounded-full bg-[#f5b942]/15 px-2.5 py-0.5 font-bold text-[#f5b942]">
+                          <span className="flex items-center gap-1 rounded-full bg-brand/15 px-2.5 py-0.5 font-bold text-brand">
                             <Star size={12} fill="currentColor" /> {r.rating}/10
                           </span>
                           {(user?.id === r.user?.id || isStaff) && (

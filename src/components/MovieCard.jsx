@@ -20,9 +20,9 @@ export default function MovieCard({ item, type }) {
   return (
     <Link
       to={getTitlePath(item, mediaType, 'overview')}
-      className="group relative flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] transition duration-300 active:scale-[0.98] hover:-translate-y-1 hover:border-[#f5b942]/50 sm:w-44"
+      className="group relative flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] transition duration-300 active:scale-[0.98] hover:-translate-y-1 hover:border-brand/50 sm:w-44"
     >
-      <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-900">
+      <div className="relative aspect-2/3 w-full overflow-hidden bg-zinc-900">
         <SafeImage
           src={posterSrc}
           alt={title}
@@ -32,7 +32,7 @@ export default function MovieCard({ item, type }) {
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
         {ratingNum > 0 && (
-          <span className="keep-white absolute top-2 right-2 flex items-center gap-0.5 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-extrabold text-[#f5b942] backdrop-blur-md sm:text-[11px]">
+          <span className="keep-white absolute top-2 right-2 flex items-center gap-0.5 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-extrabold text-brand backdrop-blur-md sm:text-[11px]">
             <Star size={10} fill="currentColor" /> {ratingNum.toFixed(1)}
           </span>
         )}
@@ -48,7 +48,7 @@ export default function MovieCard({ item, type }) {
         )}
       </div>
       <div className="flex flex-1 flex-col justify-between p-2.5 sm:p-3">
-        <h3 className="truncate text-xs font-bold text-white group-hover:text-[#f5b942] sm:text-sm">
+        <h3 className="truncate text-xs font-bold text-white group-hover:text-brand sm:text-sm">
           {title}
         </h3>
         <div className="mt-1 flex items-center justify-between gap-1 text-[10px] text-zinc-400 sm:text-[11px]">

@@ -311,9 +311,9 @@ export default function Community() {
                   if (activeRoom?.id) fetchRoomMessages(activeRoom.id, { showSpinner: true });
                 }}
                 title="Sync chats"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 hover:text-[#f5b942]"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-400 hover:text-brand"
               >
-                <RefreshCw size={13} className={syncing ? 'animate-spin text-[#f5b942]' : ''} />
+                <RefreshCw size={13} className={syncing ? 'animate-spin text-brand' : ''} />
               </button>
             </div>
 
@@ -333,7 +333,7 @@ export default function Community() {
                   }}
                   className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[11px] font-bold transition sm:text-xs ${
                     mode === t.key
-                      ? 'bg-[#f5b942] text-black shadow-sm'
+                      ? 'bg-brand text-black shadow-sm'
                       : 'text-zinc-400 hover:bg-white/5 hover:text-white'
                   }`}
                 >
@@ -354,7 +354,7 @@ export default function Community() {
                       value={userSearchQ}
                       onChange={(e) => handleSearchUsers(e.target.value)}
                       placeholder="Find a user to message..."
-                      className="w-full rounded-xl border border-white/10 bg-white/5 py-1.5 pr-3 pl-8 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+                      className="w-full rounded-xl border border-white/10 bg-white/5 py-1.5 pr-3 pl-8 text-xs text-white focus:border-brand focus:outline-none"
                     />
                   </div>
                   {chatUsers.length > 0 && (
@@ -364,9 +364,9 @@ export default function Community() {
                           key={u.id}
                           type="button"
                           onClick={() => handleStartDm(u.id)}
-                          className="flex max-w-full items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-zinc-200 hover:border-[#f5b942]"
+                          className="flex max-w-full items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-zinc-200 hover:border-brand"
                         >
-                          <PlusCircle size={11} className="shrink-0 text-[#f5b942]" />
+                          <PlusCircle size={11} className="shrink-0 text-brand" />
                           <span className="truncate">{u.name}</span>
                         </button>
                       ))}
@@ -375,7 +375,7 @@ export default function Community() {
                 </div>
               ) : (
                 <p className="text-center text-xs text-zinc-400">
-                  <Link to={ROUTES.LOGIN} className="font-bold text-[#f5b942] underline">
+                  <Link to={ROUTES.LOGIN} className="font-bold text-brand underline">
                     Log in
                   </Link>{' '}
                   to message users directly.
@@ -407,7 +407,7 @@ export default function Community() {
                       setMobileChatOpen(true);
                     }}
                     className={`flex w-full max-w-full min-w-0 items-start gap-2.5 overflow-hidden rounded-2xl p-2.5 text-left transition active:scale-[0.99] sm:gap-3 sm:p-3 ${
-                      active ? 'border border-[#f5b942]/40 bg-[#f5b942]/15' : 'hover:bg-white/5'
+                      active ? 'border border-brand/40 bg-brand/15' : 'hover:bg-white/5'
                     }`}
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/5 text-lg">
@@ -415,7 +415,7 @@ export default function Community() {
                     </span>
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <div className="flex min-w-0 items-center justify-between gap-2">
-                        <p className={`truncate text-xs font-extrabold ${active ? 'text-[#f5b942]' : 'text-white'}`}>
+                        <p className={`truncate text-xs font-extrabold ${active ? 'text-brand' : 'text-white'}`}>
                           {r.name}
                         </p>
                         <span className="shrink-0 text-[10px] text-zinc-500">{r.messageCount || 0} msgs</span>
@@ -471,9 +471,9 @@ export default function Community() {
                   <button
                     type="button"
                     onClick={() => fetchRoomMessages(activeRoom.id, { forceScroll: true, showSpinner: true })}
-                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-bold text-zinc-300 hover:border-[#f5b942] hover:text-white"
+                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-bold text-zinc-300 hover:border-brand hover:text-white"
                   >
-                    <RefreshCw size={11} className={syncing ? 'animate-spin text-[#f5b942]' : ''} />
+                    <RefreshCw size={11} className={syncing ? 'animate-spin text-brand' : ''} />
                     <span className="hidden sm:inline">Sync</span>
                   </button>
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400">
@@ -498,19 +498,19 @@ export default function Community() {
                         <div
                           className={`max-w-[86%] break-words rounded-2xl border p-3 sm:max-w-lg ${
                             isMine
-                              ? 'border-[#f5b942]/30 bg-[#f5b942]/10'
+                              ? 'border-brand/30 bg-brand/10'
                               : 'border-white/10 bg-white/[0.04]'
                           }`}
                         >
                           <div className="mb-1 flex items-center justify-between gap-4 text-[11px]">
-                            <span className="font-bold text-[#f5b942]">{m.sender?.name || 'Member'}</span>
+                            <span className="font-bold text-brand">{m.sender?.name || 'Member'}</span>
                             <span className="text-zinc-500">
                               {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
 
                           {m.replyTo?.textSnippet && (
-                            <div className="mb-2 rounded-lg border-l-2 border-[#f5b942] bg-black/30 px-2.5 py-1 text-[11px] text-zinc-400">
+                            <div className="mb-2 rounded-lg border-l-2 border-brand bg-black/30 px-2.5 py-1 text-[11px] text-zinc-400">
                               <b>@{m.replyTo.senderName}:</b> {m.replyTo.textSnippet}
                             </div>
                           )}
@@ -522,7 +522,7 @@ export default function Community() {
                           {m.sharedTitle?.tmdbId && (
                             <Link
                               to={getTitlePath(m.sharedTitle, m.sharedTitle.type || 'movie', 'overview')}
-                              className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#070a10] p-2 hover:border-[#f5b942]"
+                              className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#070a10] p-2 hover:border-brand"
                             >
                               <SafeImage
                                 src={m.sharedTitle.posterUrl}
@@ -533,7 +533,7 @@ export default function Community() {
                               />
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-xs font-bold text-white">{m.sharedTitle.title}</p>
-                                <p className="text-[10px] text-[#f5b942]">
+                                <p className="text-[10px] text-brand">
                                   {m.sharedTitle.year} • ★ {Number(m.sharedTitle.rating || 0).toFixed(1)}
                                 </p>
                               </div>
@@ -584,7 +584,7 @@ export default function Community() {
                       placeholder="Search movie to attach..."
                       className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white"
                     />
-                    <button className="shrink-0 rounded-xl bg-[#f5b942] px-3 py-1.5 text-xs font-bold text-black">
+                    <button className="shrink-0 rounded-xl bg-brand px-3 py-1.5 text-xs font-bold text-black">
                       Find
                     </button>
                     <button type="button" onClick={() => setMoviePickerOpen(false)} className="p-1.5 text-zinc-400">
@@ -601,7 +601,7 @@ export default function Community() {
                             setAttachedMovie(mv);
                             setMoviePickerOpen(false);
                           }}
-                          className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-white hover:border-[#f5b942]"
+                          className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold text-white hover:border-brand"
                         >
                           🎬 {mv.title || mv.name} ({mv.year})
                         </button>
@@ -623,7 +623,7 @@ export default function Community() {
                       </span>
                     )}
                     {attachedMovie && (
-                      <span className="flex items-center gap-1.5 rounded-full bg-[#f5b942]/20 px-3 py-1 text-[#f5b942]">
+                      <span className="flex items-center gap-1.5 rounded-full bg-brand/20 px-3 py-1 text-brand">
                         🎬 <b>{attachedMovie.title || attachedMovie.name}</b>
                         <button type="button" onClick={() => setAttachedMovie(null)}>
                           <X size={12} />
@@ -638,7 +638,7 @@ export default function Community() {
                     <button
                       type="button"
                       onClick={() => setMoviePickerOpen((v) => !v)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[#f5b942]"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-brand"
                     >
                       <Film size={16} />
                     </button>
@@ -646,11 +646,11 @@ export default function Community() {
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       placeholder={`Message ${activeRoom.name}...`}
-                      className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+                      className="min-w-0 flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white focus:border-brand focus:outline-none"
                     />
                     <button
                       disabled={sending}
-                      className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#f5b942] px-4 py-2 text-xs font-extrabold text-black disabled:opacity-50"
+                      className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-xs font-extrabold text-black disabled:opacity-50"
                     >
                       <Send size={14} />
                     </button>
@@ -658,7 +658,7 @@ export default function Community() {
                 ) : (
                   <div className="flex items-center justify-center gap-2 py-1 text-xs text-zinc-400">
                     <Lock size={14} /> Please{' '}
-                    <Link to={ROUTES.LOGIN} className="font-bold text-[#f5b942] underline">
+                    <Link to={ROUTES.LOGIN} className="font-bold text-brand underline">
                       log in
                     </Link>{' '}
                     to chat.

@@ -27,7 +27,7 @@ export default function ProtectedRoute({ children, roles }) {
   if (initializing) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }

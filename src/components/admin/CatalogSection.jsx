@@ -42,13 +42,13 @@ export default function CatalogSection({
           }}
           className="flex flex-1 flex-wrap items-center gap-2.5"
         >
-          <div className="relative min-w-[200px] flex-1">
+          <div className="relative min-w-50 flex-1">
             <Search size={14} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400" />
             <input
               value={titleQuery}
               onChange={(e) => setTitleQuery(e.target.value)}
               placeholder="Search title name or TMDB ID..."
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-3.5 pl-9 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-3.5 pl-9 text-xs text-white focus:border-brand focus:outline-none"
             />
           </div>
           <div className="w-40">
@@ -111,7 +111,7 @@ export default function CatalogSection({
                 return (
                   <tr key={`${t.type}-${t.id}`}>
                     {/* 1. Movie Poster + Name (Just like Featured section) */}
-                    <td className="min-w-[210px]">
+                    <td className="min-w-52.5">
                       <div className="flex items-center gap-2.5">
                         <SafeImage
                           src={t.posterUrl || t.backdropUrl}
@@ -148,7 +148,7 @@ export default function CatalogSection({
                     {/* 4. Budget / Box Office (₹ / $) */}
                     <td className="whitespace-nowrap">
                       <div className="leading-tight">
-                        <span className="font-bold text-[#f5b942]">{fin.budgetText}</span>
+                        <span className="font-bold text-brand">{fin.budgetText}</span>
                         <span className="mx-1 text-zinc-500">/</span>
                         <span className="font-extrabold text-emerald-400">{fin.revenueText}</span>
                         {fin.verdict && fin.verdict !== 'TBA' && (
@@ -160,7 +160,7 @@ export default function CatalogSection({
                     </td>
 
                     {/* 5. On Which OTT It Is Present */}
-                    <td className="min-w-[140px]">
+                    <td className="min-w-35">
                       {ottList.length === 0 ? (
                         <span className="text-[11px] text-zinc-500">Theatrical / TBA</span>
                       ) : (

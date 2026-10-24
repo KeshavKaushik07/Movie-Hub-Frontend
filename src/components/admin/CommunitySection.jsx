@@ -50,7 +50,7 @@ export default function CommunitySection({
               Launch a new public discussion room for movies, box office trade, anime, or regional cinema.
             </p>
           </div>
-          <span className="rounded-lg bg-[#f5b942]/15 px-2.5 py-1 text-xs font-extrabold text-[#f5b942]">
+          <span className="rounded-lg bg-brand/15 px-2.5 py-1 text-xs font-extrabold text-brand">
             {commRooms.length} Active Rooms
           </span>
         </div>
@@ -69,13 +69,13 @@ export default function CommunitySection({
             placeholder="Lounge Name (e.g. Tollywood & Pan-India Club) *"
             value={newRoomForm.name}
             onChange={(e) => setNewRoomForm({ ...newRoomForm, name: e.target.value })}
-            className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white focus:border-[#f5b942] focus:outline-none sm:col-span-4"
+            className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white focus:border-brand focus:outline-none sm:col-span-4"
           />
           <input
             placeholder="Short room description..."
             value={newRoomForm.description}
             onChange={(e) => setNewRoomForm({ ...newRoomForm, description: e.target.value })}
-            className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white focus:border-[#f5b942] focus:outline-none sm:col-span-5"
+            className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white focus:border-brand focus:outline-none sm:col-span-5"
           />
           <button type="submit" className="admin-btn admin-btn-primary sm:col-span-2">
             <Plus size={14} /> Create Room
@@ -116,7 +116,7 @@ export default function CommunitySection({
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Filter by room name or creator..."
-            className="w-full rounded-xl border border-white/10 bg-[#0e131f] py-2 pr-3 pl-8 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+            className="w-full rounded-xl border border-white/10 bg-[#0e131f] py-2 pr-3 pl-8 text-xs text-white focus:border-brand focus:outline-none"
           />
         </div>
       </div>
@@ -138,7 +138,7 @@ export default function CommunitySection({
             {filteredRooms.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-10 text-center text-xs text-zinc-400">
-                  <MessageSquare size={20} className="mx-auto mb-2 text-[#f5b942]" />
+                  <MessageSquare size={20} className="mx-auto mb-2 text-brand" />
                   No community chat rooms match your current filter.
                 </td>
               </tr>
@@ -149,7 +149,7 @@ export default function CommunitySection({
                 return (
                   <tr key={r.id}>
                     {/* 1. Room Name */}
-                    <td className="min-w-[210px]">
+                    <td className="min-w-52.5">
                       <div className="flex items-center gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-base">
                           {r.icon || '💬'}
@@ -157,7 +157,7 @@ export default function CommunitySection({
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <p className="truncate font-extrabold text-white">{r.name}</p>
-                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-[#f5b942] uppercase">
+                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-brand uppercase">
                               {r.roomType === 'movie' ? 'Movie Chat' : r.topic || 'Lounge'}
                             </span>
                           </div>
@@ -188,7 +188,7 @@ export default function CommunitySection({
                     {/* 4. Posts Count */}
                     <td className="whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-extrabold text-white">
-                        <MessageSquare size={12} className="text-[#f5b942]" />
+                        <MessageSquare size={12} className="text-brand" />
                         {Number(r.messageCount || 0).toLocaleString('en-IN')} posts
                       </span>
                     </td>

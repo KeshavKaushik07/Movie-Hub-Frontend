@@ -158,7 +158,7 @@ export default function UsersSection({
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
               placeholder="Search name or email..."
-              className="w-full rounded-xl border border-white/10 bg-[#0e131f] py-2 pr-3 pl-8 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-[#0e131f] py-2 pr-3 pl-8 text-xs text-white focus:border-brand focus:outline-none"
             />
           </div>
           <button type="submit" className="admin-btn admin-btn-secondary">
@@ -212,7 +212,7 @@ export default function UsersSection({
                     </td>
 
                     {/* 2. User Icon + Name on top, Email underneath */}
-                    <td className="min-w-[210px]">
+                    <td className="min-w-52.5">
                       <div className="flex items-start gap-2.5">
                         <span
                           style={{ backgroundColor: u.avatarColor || '#f5b942' }}
@@ -247,7 +247,7 @@ export default function UsersSection({
                     {/* 4. Location */}
                     <td className="whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-zinc-200">
-                        <MapPin size={11} className="text-[#f5b942]" />
+                        <MapPin size={11} className="text-brand" />
                         {isIndia ? '🇮🇳' : '🌍'} {locLabel}
                       </span>
                     </td>
@@ -269,7 +269,7 @@ export default function UsersSection({
                         <span
                           className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-extrabold uppercase ${
                             u.role === ROLES.SUPERADMIN
-                              ? 'bg-[#f5b942] text-black'
+                              ? 'bg-brand text-black'
                               : u.role === ROLES.ADMIN
                                 ? 'bg-sky-500/20 text-sky-300'
                                 : 'bg-white/10 text-zinc-300'

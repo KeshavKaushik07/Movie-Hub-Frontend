@@ -21,17 +21,17 @@ export default function FeaturedSection({
 }) {
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-[#f5b942]/30 bg-[#0e131f] p-5 shadow-lg">
+      <div className="rounded-2xl border border-brand/30 bg-[#0e131f] p-5 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-base font-extrabold text-white">
               Home Page Featured Hero Carousel
             </h3>
             <p className="mt-0.5 text-xs text-zinc-400">
-              When active slides exist below, <b className="text-[#f5b942]">only these selected titles</b> appear on the Home Hero Carousel.
+              When active slides exist below, <b className="text-brand">only these selected titles</b> appear on the Home Hero Carousel.
             </p>
           </div>
-          <span className="rounded-xl bg-[#f5b942]/15 px-3 py-1 text-xs font-extrabold text-[#f5b942]">
+          <span className="rounded-xl bg-brand/15 px-3 py-1 text-xs font-extrabold text-brand">
             {featuredItems.length} Active / Total Slides
           </span>
         </div>
@@ -44,7 +44,7 @@ export default function FeaturedSection({
               value={featSearchQ}
               onChange={(e) => setFeatSearchQ(e.target.value)}
               placeholder="Search any movie or web series by title to add to Featured Carousel..."
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-4 pl-9 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-4 pl-9 text-xs text-white focus:border-brand focus:outline-none"
             />
           </div>
           <button type="submit" className="admin-btn admin-btn-primary px-4">
@@ -79,7 +79,7 @@ export default function FeaturedSection({
                   setFeatSearchResults([]);
                   setFeatSearchAttempted(false);
                 }}
-                className="flex shrink-0 items-center gap-2.5 rounded-xl border border-white/15 bg-white/5 p-2 text-left text-xs transition hover:border-[#f5b942]"
+                className="flex shrink-0 items-center gap-2.5 rounded-xl border border-white/15 bg-white/5 p-2 text-left text-xs transition hover:border-brand"
               >
                 <SafeImage src={m.posterUrl} alt={m.title} className="h-12 w-8 rounded object-cover" />
                 <div>
@@ -142,7 +142,7 @@ export default function FeaturedSection({
             {featuredItems.length === 0 ? (
               <tr>
                 <td colSpan={8} className="py-10 text-center text-xs text-zinc-400">
-                  <Sparkles size={20} className="mx-auto mb-2 text-[#f5b942]" />
+                  <Sparkles size={20} className="mx-auto mb-2 text-brand" />
                   No custom Featured slides set — Home page is showing Trending Movies & Series automatically.
                 </td>
               </tr>
@@ -150,7 +150,7 @@ export default function FeaturedSection({
               featuredItems.map((item, idx) => (
                 <tr key={item.featuredId || item.id}>
                   <td className="whitespace-nowrap">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#f5b942] text-[11px] font-black text-black">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand text-[11px] font-black text-black">
                       {idx + 1}
                     </span>
                   </td>
@@ -173,7 +173,7 @@ export default function FeaturedSection({
                   </td>
                   <td className="whitespace-nowrap text-zinc-300">{item.year || '—'}</td>
                   <td>
-                    <span className="rounded-md bg-[#f5b942]/15 px-2 py-0.5 text-[10px] font-bold text-[#f5b942]">
+                    <span className="rounded-md bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
                       {item.badgeText || 'Featured'}
                     </span>
                   </td>

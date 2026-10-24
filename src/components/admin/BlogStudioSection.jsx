@@ -79,8 +79,8 @@ export default function BlogStudioSection({
         </div>
 
         {/* Step 1: Select a Movie to Auto-Fetch Images */}
-        <div className="mb-5 rounded-2xl border border-[#f5b942]/25 bg-[#070a10]/70 p-3.5 sm:p-4">
-          <label className="mb-2.5 block text-xs font-bold text-[#f5b942] uppercase">
+        <div className="mb-5 rounded-2xl border border-brand/25 bg-[#070a10]/70 p-3.5 sm:p-4">
+          <label className="mb-2.5 block text-xs font-bold text-brand uppercase">
             Step 1 — Select Movie / Web Series to Auto-Fetch Backdrop & Gallery Images
           </label>
           <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
@@ -155,12 +155,12 @@ export default function BlogStudioSection({
                       mv.id,
                     );
                   }}
-                  className="flex shrink-0 items-center gap-2 rounded-xl border border-white/15 bg-[#0e131f] p-2 text-left text-xs hover:border-[#f5b942]"
+                  className="flex shrink-0 items-center gap-2 rounded-xl border border-white/15 bg-[#0e131f] p-2 text-left text-xs hover:border-brand"
                 >
                   <SafeImage src={mv.posterUrl} alt={mv.title} className="h-11 w-8 rounded object-cover" />
                   <div>
                     <p className="font-bold text-white">{mv.title || mv.name}</p>
-                    <p className="text-[10px] text-[#f5b942]">Click to auto-fetch images</p>
+                    <p className="text-[10px] text-brand">Click to auto-fetch images</p>
                   </div>
                 </button>
               ))}
@@ -184,7 +184,7 @@ export default function BlogStudioSection({
                       <button
                         type="button"
                         onClick={() => setBlogForm({ ...blogForm, coverImage: imgUrl })}
-                        className="rounded bg-[#f5b942] px-1.5 py-0.5 text-[9px] font-bold text-black"
+                        className="rounded bg-brand px-1.5 py-0.5 text-[9px] font-bold text-black"
                       >
                         Cover
                       </button>
@@ -298,13 +298,13 @@ export default function BlogStudioSection({
                 value={blogForm.content}
                 onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
                 placeholder="Write your full article here... Use ## for headings, > for quotes, - for lists."
-                className="w-full rounded-b-2xl border border-white/10 bg-white/[0.03] p-4 font-mono text-xs leading-relaxed text-white focus:border-[#f5b942] focus:outline-none"
+                className="w-full rounded-b-2xl border border-white/10 bg-white/3 p-4 font-mono text-xs leading-relaxed text-white focus:border-brand focus:outline-none"
               />
             )}
 
             {editorMode !== 'write' && (
-              <div className="studio-scroll max-h-[340px] overflow-y-auto rounded-2xl border border-white/10 bg-[#070a10] p-5">
-                <span className="mb-2 inline-block text-[10px] font-bold tracking-wider text-[#f5b942] uppercase">
+              <div className="studio-scroll max-h-85 overflow-y-auto rounded-2xl border border-white/10 bg-[#070a10] p-5">
+                <span className="mb-2 inline-block text-[10px] font-bold tracking-wider text-brand uppercase">
                   Live Article Preview
                 </span>
                 {blogForm.coverImage && (
@@ -342,7 +342,7 @@ export default function BlogStudioSection({
                   type="checkbox"
                   checked={blogForm.isFeatured}
                   onChange={(e) => setBlogForm({ ...blogForm, isFeatured: e.target.checked })}
-                  className="accent-[#f5b942]"
+                  className="accent-brand"
                 />
                 Featured Blog
               </label>
@@ -351,7 +351,7 @@ export default function BlogStudioSection({
                   type="checkbox"
                   checked={blogForm.isPinned}
                   onChange={(e) => setBlogForm({ ...blogForm, isPinned: e.target.checked })}
-                  className="accent-[#f5b942]"
+                  className="accent-brand"
                 />
                 Pin to Top
               </label>
@@ -409,7 +409,7 @@ export default function BlogStudioSection({
                       </div>
                     </td>
                     <td>
-                      <span className="rounded bg-[#f5b942]/15 px-2 py-0.5 text-[10px] font-bold text-[#f5b942]">
+                      <span className="rounded bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
                         {b.category}
                       </span>
                     </td>

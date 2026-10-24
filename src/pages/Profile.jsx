@@ -113,7 +113,7 @@ export default function Profile({ defaultTab = 'overview' }) {
               <h1 style={{ fontFamily: 'var(--font-display)' }} className="text-xl font-extrabold">
                 {user.name}
               </h1>
-              <span className="rounded-full bg-[#f5b942]/15 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-[#f5b942] uppercase">
+              <span className="rounded-full bg-brand/15 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-brand uppercase">
                 {user.role}
               </span>
             </div>
@@ -126,7 +126,7 @@ export default function Profile({ defaultTab = 'overview' }) {
           {[ROLES.ADMIN, ROLES.SUPERADMIN].includes(user.role) && (
             <Link
               to="/admin"
-              className="flex items-center gap-1.5 rounded-xl bg-[#f5b942] px-4 py-2 text-xs font-extrabold text-black"
+              className="flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2 text-xs font-extrabold text-black"
             >
               <Shield size={14} /> Open {user.role === ROLES.SUPERADMIN ? 'SuperAdmin' : 'Admin'} Studio
             </Link>
@@ -134,7 +134,7 @@ export default function Profile({ defaultTab = 'overview' }) {
           <button
             type="button"
             onClick={() => dispatch(openPreferenceModal())}
-            className="flex items-center gap-1.5 rounded-xl border border-[#f5b942]/30 bg-[#f5b942]/10 px-4 py-2 text-xs font-bold text-[#f5b942]"
+            className="flex items-center gap-1.5 rounded-xl border border-brand/30 bg-brand/10 px-4 py-2 text-xs font-bold text-brand"
           >
             <Sparkles size={14} /> Taste & Currency ({prefs.currency})
           </button>
@@ -164,7 +164,7 @@ export default function Profile({ defaultTab = 'overview' }) {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold transition ${
                 tab === t.id
-                  ? 'bg-[#f5b942] text-black'
+                  ? 'bg-brand text-black'
                   : 'bg-white/5 text-zinc-300 hover:bg-white/10'
               }`}
             >
@@ -183,7 +183,7 @@ export default function Profile({ defaultTab = 'overview' }) {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white focus:border-[#f5b942] focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white focus:border-brand focus:outline-none"
               />
             </div>
             <div>
@@ -192,7 +192,7 @@ export default function Profile({ defaultTab = 'overview' }) {
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="Tell the community what kind of cinema you love..."
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white focus:border-[#f5b942] focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-sm text-white focus:border-brand focus:outline-none"
               />
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function Profile({ defaultTab = 'overview' }) {
                   onClick={() => toggleGenre(g)}
                   className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                     favoriteGenres.includes(g)
-                      ? 'bg-[#f5b942] text-black'
+                      ? 'bg-brand text-black'
                       : 'border border-white/10 bg-white/5 text-zinc-400 hover:text-white'
                   }`}
                 >
@@ -218,7 +218,7 @@ export default function Profile({ defaultTab = 'overview' }) {
           </div>
 
           <div className="flex items-center gap-3 pt-2">
-            <button className="rounded-full bg-[#f5b942] px-6 py-2.5 text-xs font-extrabold text-black hover:brightness-110">
+            <button className="rounded-full bg-brand px-6 py-2.5 text-xs font-extrabold text-black hover:brightness-110">
               Save Profile Changes
             </button>
             {saved && <span className="text-xs font-semibold text-emerald-400">Saved!</span>}
@@ -236,7 +236,7 @@ export default function Profile({ defaultTab = 'overview' }) {
                 onClick={() => setWatchFilter(st)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-bold capitalize transition ${
                   watchFilter === st
-                    ? 'bg-[#f5b942] text-black'
+                    ? 'bg-brand text-black'
                     : 'border border-white/10 bg-[#0e131f] text-zinc-300'
                 }`}
               >
@@ -270,7 +270,7 @@ export default function Profile({ defaultTab = 'overview' }) {
                     <div className="p-2.5">
                       <p className="truncate text-xs font-bold text-white">{t.title || `#${w.tmdbId}`}</p>
                       <div className="mt-1 flex items-center justify-between text-[10px] text-zinc-400">
-                        <span className="rounded bg-white/10 px-1.5 py-0.5 capitalize text-[#f5b942]">
+                        <span className="rounded bg-white/10 px-1.5 py-0.5 capitalize text-brand">
                           {w.status}
                         </span>
                         <button
@@ -309,13 +309,13 @@ export default function Profile({ defaultTab = 'overview' }) {
                 <div>
                   <Link
                     to={getTitlePath({ ...(r.title || {}), id: r.tmdbId, type: r.type }, r.type, 'reviews')}
-                    className="text-sm font-bold text-[#f5b942] hover:underline"
+                    className="text-sm font-bold text-brand hover:underline"
                   >
                     {r.title?.title || `${r.type.toUpperCase()} #${r.tmdbId}`}
                   </Link>
                   <p className="mt-1 text-zinc-300">{r.text}</p>
                 </div>
-                <span className="flex items-center gap-1 rounded-full bg-[#f5b942]/15 px-3 py-1 font-bold text-[#f5b942]">
+                <span className="flex items-center gap-1 rounded-full bg-brand/15 px-3 py-1 font-bold text-brand">
                   <Star size={12} fill="currentColor" /> {r.rating}/10
                 </span>
               </div>
@@ -346,7 +346,7 @@ export default function Profile({ defaultTab = 'overview' }) {
               onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })}
               className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white"
             />
-            <button className="rounded-full bg-[#f5b942] px-5 py-2 text-xs font-extrabold text-black">
+            <button className="rounded-full bg-brand px-5 py-2 text-xs font-extrabold text-black">
               Update Password
             </button>
             {pwMsg && <p className="text-xs text-amber-300">{pwMsg}</p>}
@@ -360,7 +360,7 @@ export default function Profile({ defaultTab = 'overview' }) {
                 <h3 className="text-sm font-extrabold text-rose-400">Danger Zone — Delete Account</h3>
                 {user.role === ROLES.SUPERADMIN ? (
                   <p className="mt-1 text-xs text-zinc-400">
-                    Your account has the <b className="text-[#f5b942]">SuperAdmin</b> role. Primary SuperAdmin accounts are protected and cannot be deleted.
+                    Your account has the <b className="text-brand">SuperAdmin</b> role. Primary SuperAdmin accounts are protected and cannot be deleted.
                   </p>
                 ) : (
                   <>

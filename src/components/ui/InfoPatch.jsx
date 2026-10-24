@@ -38,20 +38,20 @@ const PATCH_STYLES = {
     badge: 'NOTICE',
     dark: 'border-amber-500/45 bg-amber-950/90 text-amber-100 shadow-amber-950/50',
     light: 'border-amber-300 bg-amber-50/95 text-amber-950 shadow-amber-500/10',
-    iconColor: 'text-[#f5b942]',
+    iconColor: 'text-brand',
     lightIconColor: 'text-amber-600',
-    pillDark: 'bg-[#f5b942]/20 text-[#f5b942]',
+    pillDark: 'bg-brand/20 text-brand',
     pillLight: 'bg-amber-500 text-black',
   },
   'not-found': {
     icon: SearchX,
     badge: 'NOT FOUND',
-    dark: 'border-[#f5b942]/40 bg-[#0e131f]/95 text-zinc-100 shadow-black/60',
+    dark: 'border-brand/40 bg-[#0e131f]/95 text-zinc-100 shadow-black/60',
     light: 'border-amber-300 bg-amber-50/90 text-slate-900 shadow-slate-300/50',
-    iconColor: 'text-[#f5b942]',
+    iconColor: 'text-brand',
     lightIconColor: 'text-amber-600',
-    pillDark: 'bg-[#f5b942]/20 text-[#f5b942]',
-    pillLight: 'bg-[#f5b942] text-black',
+    pillDark: 'bg-brand/20 text-brand',
+    pillLight: 'bg-brand text-black',
   },
   info: {
     icon: Info,
@@ -128,7 +128,7 @@ export function InfoPatch({
               onClick={act.onClick}
               className={`cursor-pointer rounded-xl px-3 py-1.5 text-xs font-extrabold transition ${
                 act.primary
-                  ? 'bg-[#f5b942] text-black hover:brightness-110'
+                  ? 'bg-brand text-black hover:brightness-110'
                   : isLight
                     ? 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
                     : 'border border-white/15 bg-white/10 text-white hover:bg-white/20'
@@ -217,7 +217,7 @@ export function InfoPatch({
               onClick={act.onClick}
               className={`cursor-pointer inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-xs font-extrabold transition ${
                 act.primary
-                  ? 'bg-[#f5b942] text-black shadow-md shadow-[#f5b942]/20 hover:brightness-110'
+                  ? 'bg-brand text-black shadow-md shadow-brand/20 hover:brightness-110'
                   : isLight
                     ? 'border border-slate-300 bg-white text-slate-800 hover:bg-slate-100'
                     : 'border border-white/15 bg-white/10 text-white hover:bg-white/20'
@@ -265,7 +265,7 @@ export function GlobalStatusPatch() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed right-4 bottom-20 z-[120] flex w-full max-w-sm flex-col gap-2.5 sm:top-20 sm:bottom-auto"
+      className="pointer-events-none fixed right-4 bottom-20 z-120 flex w-full max-w-sm flex-col gap-2.5 sm:top-20 sm:bottom-auto"
     >
       {patches.map((p) => {
         const cfg = PATCH_STYLES[p.type] || PATCH_STYLES.info;
@@ -343,7 +343,7 @@ export class AppErrorBoundary extends React.Component {
       return (
         <div className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-4 text-center">
           <div className="rounded-3xl border border-rose-500/40 bg-[#0e131f] p-8 text-white shadow-2xl">
-            <ShieldAlert size={36} className="mx-auto text-[#f5b942]" />
+            <ShieldAlert size={36} className="mx-auto text-brand" />
             <span className="mt-3 inline-block rounded-full bg-rose-500/20 px-3 py-0.5 text-[10px] font-extrabold tracking-widest text-rose-300 uppercase">
               RECOVERY PATCH
             </span>
@@ -359,7 +359,7 @@ export class AppErrorBoundary extends React.Component {
                 this.setState({ hasError: false, errorMessage: '' });
                 window.location.href = '/';
               }}
-              className="cursor-pointer mt-5 inline-flex items-center gap-2 rounded-full bg-[#f5b942] px-5 py-2.5 text-xs font-extrabold text-black hover:brightness-110"
+              className="cursor-pointer mt-5 inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-xs font-extrabold text-black hover:brightness-110"
             >
               <RotateCcw size={14} /> Reload Movies Hub Safely
             </button>

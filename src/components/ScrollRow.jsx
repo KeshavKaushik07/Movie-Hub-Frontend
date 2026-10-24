@@ -24,7 +24,7 @@ export default function ScrollRow({ title, subtitle, seeAllTo, action, children 
           {seeAllTo && (
             <Link
               to={seeAllTo}
-              className="flex items-center gap-1 rounded-full border border-[#f5b942]/30 bg-[#f5b942]/10 px-3 py-1.5 text-xs font-bold text-[#f5b942] transition hover:bg-[#f5b942] hover:text-black"
+              className="flex items-center gap-1 rounded-full border border-brand/30 bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand transition hover:bg-brand hover:text-black"
             >
               <span>See All</span>
               <ArrowRight size={13} />

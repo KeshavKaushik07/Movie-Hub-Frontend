@@ -109,7 +109,7 @@ export default function AdminTopbar({
           title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           className="admin-btn admin-btn-secondary admin-btn-icon"
         >
-          {theme === 'dark' ? <Sun size={15} className="text-[#f5b942]" /> : <Moon size={15} />}
+          {theme === 'dark' ? <Sun size={15} className="text-brand" /> : <Moon size={15} />}
         </button>
 
         <div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 md:flex">
@@ -121,7 +121,7 @@ export default function AdminTopbar({
           </span>
           <div className="leading-tight">
             <p className="text-[11px] font-extrabold text-white">{user?.name}</p>
-            <p className="text-[9px] font-bold tracking-wider text-[#f5b942] uppercase">
+            <p className="text-[9px] font-bold tracking-wider text-brand uppercase">
               {user?.role}
             </p>
           </div>

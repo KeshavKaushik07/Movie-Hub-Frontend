@@ -68,7 +68,7 @@ export default function Home() {
   if (loading && !feed) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
@@ -125,7 +125,7 @@ export default function Home() {
       <section className="mx-auto mt-5 max-w-7xl px-4 sm:px-6">
         <div className="flex flex-col justify-between gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 sm:flex-row sm:items-center sm:p-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f5b942]/15 text-[#f5b942]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand">
               <Sparkles size={18} />
             </span>
             <div>
@@ -153,7 +153,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => dispatch(openPreferenceModal())}
-              className="flex items-center gap-1.5 rounded-xl bg-[#f5b942] px-3.5 py-2 text-xs font-extrabold text-black hover:brightness-110"
+              className="flex items-center gap-1.5 rounded-xl bg-brand px-3.5 py-2 text-xs font-extrabold text-black hover:brightness-110"
             >
               <SlidersHorizontal size={13} /> Customize Taste
             </button>
@@ -176,7 +176,7 @@ export default function Home() {
       <section className="mx-auto my-7 max-w-7xl px-4 sm:px-6">
         <div className="mb-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#f5b942]/15 text-[#f5b942]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand/15 text-brand">
               <Compass size={16} />
             </span>
             <div>
@@ -194,7 +194,7 @@ export default function Home() {
 
           <Link
             to="/browse/movie"
-            className="flex items-center gap-1 rounded-full border border-[#f5b942]/30 bg-[#f5b942]/10 px-3 py-1.5 text-xs font-bold text-[#f5b942]"
+            className="flex items-center gap-1 rounded-full border border-brand/30 bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand"
           >
             <span>All Genres</span>
             <ArrowRight size={13} />
@@ -207,7 +207,7 @@ export default function Home() {
             <Link
               key={g.id}
               to={`/browse/movie?genre=${g.id}`}
-              className={`flex items-center gap-2 rounded-2xl border bg-gradient-to-br ${g.tone} px-3 py-2.5 transition active:scale-95 hover:-translate-y-0.5 hover:border-[#f5b942]`}
+              className={`flex items-center gap-2 rounded-2xl border bg-gradient-to-br ${g.tone} px-3 py-2.5 transition active:scale-95 hover:-translate-y-0.5 hover:border-brand`}
             >
               <span className="text-base sm:text-lg">{g.emoji}</span>
               <span className="truncate text-xs font-extrabold text-white">{g.name}</span>
@@ -238,7 +238,7 @@ export default function Home() {
               <Link
                 key={celeb.name}
                 to={`/person/${encodeURIComponent(celeb.name)}${celeb.id ? `?id=${celeb.id}` : ''}`}
-                className="group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-[#f5b942]/50 sm:w-44"
+                className="group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand/50 sm:w-44"
               >
                 <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-950">
                   <SafeImage
@@ -250,10 +250,10 @@ export default function Home() {
                   />
                 </div>
                 <div className="p-3">
-                  <h3 className="w-full truncate text-xs font-bold text-white group-hover:text-[#f5b942] sm:text-sm">
+                  <h3 className="w-full truncate text-xs font-bold text-white group-hover:text-brand sm:text-sm">
                     {celeb.name}
                   </h3>
-                  <span className="mt-1 inline-block rounded-full bg-[#f5b942]/15 px-2 py-0.5 text-[10px] font-bold text-[#f5b942]">
+                  <span className="mt-1 inline-block rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
                     {celeb.industry || celeb.department || 'Actor'}
                   </span>
                   <p className="mt-1 line-clamp-2 text-[10px] text-zinc-400">
@@ -272,7 +272,7 @@ export default function Home() {
             <h3 className="text-xs font-extrabold tracking-wider text-zinc-400 uppercase">
               Stream by OTT Platform
             </h3>
-            <Link to="/ott" className="text-xs font-extrabold text-[#f5b942] hover:underline">
+            <Link to="/ott" className="text-xs font-extrabold text-brand hover:underline">
               ✨ Open Master OTT Page →
             </Link>
           </div>
@@ -298,7 +298,7 @@ export default function Home() {
               <Link
                 key={ind.key}
                 to={`/browse/movie?industry=${ind.key}`}
-                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#0e131f] px-3 py-2 text-xs font-bold text-zinc-300 transition active:scale-95 hover:border-[#f5b942] hover:text-[#f5b942]"
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#0e131f] px-3 py-2 text-xs font-bold text-zinc-300 transition active:scale-95 hover:border-brand hover:text-brand"
               >
                 <span>{ind.emoji}</span>
                 <span>{ind.label}</span>
@@ -323,7 +323,7 @@ export default function Home() {
       <section className="mx-auto mt-10 max-w-7xl px-4 sm:px-6">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f5b942]/15 text-[#f5b942]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand/15 text-brand">
               <BookOpen size={20} />
             </span>
             <div>
@@ -341,7 +341,7 @@ export default function Home() {
 
           <Link
             to="/blogs"
-            className="flex items-center gap-1.5 rounded-full border border-[#f5b942]/30 bg-[#f5b942]/10 px-4 py-2 text-xs font-bold text-[#f5b942] transition hover:bg-[#f5b942] hover:text-black"
+            className="flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-xs font-bold text-brand transition hover:bg-brand hover:text-black"
           >
             <span>See All Blogs</span>
             <ArrowRight size={14} />
@@ -361,7 +361,7 @@ export default function Home() {
               <Link
                 key={b.id}
                 to={`/blogs/${b.slug}`}
-                className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0e131f] transition duration-300 hover:-translate-y-1 hover:border-[#f5b942]/50"
+                className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0e131f] transition duration-300 hover:-translate-y-1 hover:border-brand/50"
               >
                 <div className="relative aspect-video w-full overflow-hidden bg-zinc-900">
                   <SafeImage
@@ -371,18 +371,18 @@ export default function Home() {
                     variant="backdrop"
                     className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                   />
-                  <span className="keep-white absolute top-3 left-3 rounded-full bg-black/75 px-3 py-1 text-[10px] font-bold text-[#f5b942] uppercase backdrop-blur-md">
+                  <span className="keep-white absolute top-3 left-3 rounded-full bg-black/75 px-3 py-1 text-[10px] font-bold text-brand uppercase backdrop-blur-md">
                     {b.category}
                   </span>
                   {b.linkedTitle?.title && (
-                    <span className="keep-white absolute bottom-3 left-3 rounded-lg bg-[#f5b942] px-2.5 py-0.5 text-[10px] font-extrabold text-black">
+                    <span className="keep-white absolute bottom-3 left-3 rounded-lg bg-brand px-2.5 py-0.5 text-[10px] font-extrabold text-black">
                       🎬 {b.linkedTitle.title}
                     </span>
                   )}
                 </div>
                 <div className="flex flex-1 flex-col justify-between p-5">
                   <div>
-                    <h3 className="line-clamp-2 text-base font-extrabold text-white group-hover:text-[#f5b942]">
+                    <h3 className="line-clamp-2 text-base font-extrabold text-white group-hover:text-brand">
                       {b.title}
                     </h3>
                     <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">

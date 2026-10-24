@@ -55,7 +55,7 @@ export default function Blogs() {
       {/* Header */}
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3.5">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f5b942]/15 text-[#f5b942]">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/15 text-brand">
             <BookOpen size={24} />
           </span>
           <div>
@@ -71,7 +71,7 @@ export default function Blogs() {
         {isStaff && (
           <Link
             to="/admin/blogs"
-            className="inline-flex items-center gap-2 rounded-full bg-[#f5b942] px-5 py-2.5 text-xs font-extrabold text-black shadow-lg shadow-[#f5b942]/20 hover:brightness-110"
+            className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-xs font-extrabold text-black shadow-lg shadow-brand/20 hover:brightness-110"
           >
             <PenTool size={14} /> Open Blog Studio Editor
           </Link>
@@ -88,7 +88,7 @@ export default function Blogs() {
               onClick={() => setCategory(cat)}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
                 category === cat
-                  ? 'bg-[#f5b942] text-black'
+                  ? 'bg-brand text-black'
                   : 'bg-white/5 text-zinc-300 hover:bg-white/10'
               }`}
             >
@@ -110,7 +110,7 @@ export default function Blogs() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search articles or movies..."
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-3 pl-8 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-3 pl-8 text-xs text-white focus:border-brand focus:outline-none"
             />
           </form>
 
@@ -129,7 +129,7 @@ export default function Blogs() {
 
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-brand border-t-transparent" />
         </div>
       ) : blogs.length === 0 ? (
         <InfoPatch
@@ -162,7 +162,7 @@ export default function Blogs() {
           {featuredBlog && (
             <Link
               to={`/blogs/${featuredBlog.slug}`}
-              className="group grid overflow-hidden rounded-3xl border border-white/15 bg-[#0e131f] shadow-2xl transition hover:border-[#f5b942]/50 lg:grid-cols-12"
+              className="group grid overflow-hidden rounded-3xl border border-white/15 bg-[#0e131f] shadow-2xl transition hover:border-brand/50 lg:grid-cols-12"
             >
               <div className="relative aspect-video overflow-hidden lg:col-span-7 lg:aspect-auto">
                 <SafeImage
@@ -172,20 +172,20 @@ export default function Blogs() {
                   variant="backdrop"
                   className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                 />
-                <span className="keep-white absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-[#f5b942] px-3 py-1 text-[11px] font-extrabold text-black uppercase">
+                <span className="keep-white absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-brand px-3 py-1 text-[11px] font-extrabold text-black uppercase">
                   <Sparkles size={12} /> {featuredBlog.category}
                 </span>
               </div>
               <div className="flex flex-col justify-between p-6 sm:p-8 lg:col-span-5">
                 <div className="space-y-3">
                   {featuredBlog.linkedTitle?.title && (
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1 text-xs font-bold text-[#f5b942]">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1 text-xs font-bold text-brand">
                       <Film size={13} /> Featured Movie: {featuredBlog.linkedTitle.title} ({featuredBlog.linkedTitle.year || '—'})
                     </span>
                   )}
                   <h2
                     style={{ fontFamily: 'var(--font-display)' }}
-                    className="text-xl font-extrabold text-white group-hover:text-[#f5b942] sm:text-3xl"
+                    className="text-xl font-extrabold text-white group-hover:text-brand sm:text-3xl"
                   >
                     {featuredBlog.title}
                   </h2>
@@ -221,7 +221,7 @@ export default function Blogs() {
                 <Link
                   key={b.id}
                   to={`/blogs/${b.slug}`}
-                  className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0e131f] transition duration-300 hover:-translate-y-1 hover:border-[#f5b942]/50"
+                  className="group flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0e131f] transition duration-300 hover:-translate-y-1 hover:border-brand/50"
                 >
                   <div className="relative aspect-video w-full overflow-hidden">
                     <SafeImage
@@ -231,18 +231,18 @@ export default function Blogs() {
                       variant="backdrop"
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                     />
-                    <span className="keep-white absolute top-3 left-3 rounded-full bg-black/75 px-3 py-1 text-[10px] font-bold text-[#f5b942] uppercase backdrop-blur-md">
+                    <span className="keep-white absolute top-3 left-3 rounded-full bg-black/75 px-3 py-1 text-[10px] font-bold text-brand uppercase backdrop-blur-md">
                       {b.category}
                     </span>
                     {b.linkedTitle?.title && (
-                      <span className="keep-white absolute bottom-3 left-3 rounded-lg bg-[#f5b942] px-2.5 py-0.5 text-[10px] font-extrabold text-black">
+                      <span className="keep-white absolute bottom-3 left-3 rounded-lg bg-brand px-2.5 py-0.5 text-[10px] font-extrabold text-black">
                         🎬 {b.linkedTitle.title}
                       </span>
                     )}
                   </div>
                   <div className="flex flex-1 flex-col justify-between p-5">
                     <div>
-                      <h3 className="line-clamp-2 text-base font-extrabold text-white group-hover:text-[#f5b942]">
+                      <h3 className="line-clamp-2 text-base font-extrabold text-white group-hover:text-brand">
                         {b.title}
                       </h3>
                       <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-zinc-400">

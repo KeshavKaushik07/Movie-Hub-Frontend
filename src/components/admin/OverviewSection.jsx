@@ -29,7 +29,7 @@ export default function OverviewSection({ stats, isSuper }) {
       sub: `${c.enrichedTitles || 0} full details cached`,
       icon: Database,
       to: isSuper ? '/admin/catalog' : '/browse/movie',
-      accent: 'text-[#f5b942] bg-[#f5b942]/15',
+      accent: 'text-brand bg-brand/15',
     },
     {
       label: 'Movies',
@@ -99,7 +99,7 @@ export default function OverviewSection({ stats, isSuper }) {
             <Link
               key={k.label}
               to={k.to}
-              className="group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0e131f] p-4 shadow-lg transition hover:-translate-y-0.5 hover:border-[#f5b942]/50"
+              className="group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0e131f] p-4 shadow-lg transition hover:-translate-y-0.5 hover:border-brand/50"
             >
               <div className="flex items-center justify-between">
                 <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${k.accent}`}>
@@ -107,7 +107,7 @@ export default function OverviewSection({ stats, isSuper }) {
                 </span>
                 <ArrowUpRight
                   size={15}
-                  className="text-zinc-500 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#f5b942]"
+                  className="text-zinc-500 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand"
                 />
               </div>
               <div className="mt-3">
@@ -126,7 +126,7 @@ export default function OverviewSection({ stats, isSuper }) {
       <div className="rounded-2xl border border-white/10 bg-[#0e131f] p-5 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f5b942]/15 text-[#f5b942]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/15 text-brand">
               <Cpu size={19} />
             </span>
             <div>
@@ -148,7 +148,7 @@ export default function OverviewSection({ stats, isSuper }) {
         <div className="mt-3.5 h-2.5 w-full overflow-hidden rounded-full bg-white/10">
           <div
             style={{ width: `${Math.max(2, pct)}%` }}
-            className="h-full rounded-full bg-gradient-to-r from-[#f5b942] to-emerald-400 transition-all duration-500"
+            className="h-full rounded-full bg-linear-to-r from-brand to-emerald-400 transition-all duration-500"
           />
         </div>
       </div>
@@ -159,7 +159,7 @@ export default function OverviewSection({ stats, isSuper }) {
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-white">Top Reviewed Movies & Series</h3>
-            <Link to="/admin/reviews" className="text-xs font-bold text-[#f5b942] hover:underline">
+            <Link to="/admin/reviews" className="text-xs font-bold text-brand hover:underline">
               Moderate Reviews →
             </Link>
           </div>
@@ -202,7 +202,7 @@ export default function OverviewSection({ stats, isSuper }) {
                           {t.subType || t.mediaType}
                         </span>
                       </td>
-                      <td className="font-extrabold text-[#f5b942]">
+                      <td className="font-extrabold text-brand">
                         ★ {Number(t.siteRating || 0).toFixed(1)}
                       </td>
                       <td className="text-zinc-300">{t.siteReviewCount || 0}</td>
@@ -218,7 +218,7 @@ export default function OverviewSection({ stats, isSuper }) {
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-white">Recently Joined Accounts</h3>
-            <Link to="/admin/users" className="text-xs font-bold text-[#f5b942] hover:underline">
+            <Link to="/admin/users" className="text-xs font-bold text-brand hover:underline">
               All Users & Staff →
             </Link>
           </div>

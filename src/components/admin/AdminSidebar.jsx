@@ -122,7 +122,7 @@ export default function AdminSidebar({
         {/* Brand Header */}
         <div className='flex items-center justify-between border-b border-white/10 px-4 py-4'>
           <div className='flex items-center gap-3'>
-            <span className='flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-black shadow-lg shadow-[#f5b942]/25'>
+            <span className='flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-brand to-amber-500 text-black shadow-lg shadow-brand/25'>
               <Shield size={20} />
             </span>
             <div>
@@ -134,7 +134,7 @@ export default function AdminSidebar({
               </h1>
               <span
                 className={`inline-block rounded-md px-2 py-0.5 text-[9px] font-black tracking-wider uppercase ${
-                  isSuper ? 'bg-[#f5b942] text-black' : 'admin-status-emerald'
+                  isSuper ? 'bg-brand text-black' : 'admin-status-emerald'
                 }`}
               >
                 {user?.role} Console
@@ -167,7 +167,7 @@ export default function AdminSidebar({
                       to={item.to}
                       className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition ${
                         active
-                          ? 'bg-gradient-to-r from-[#f5b942] to-amber-400 text-black shadow-md shadow-[#f5b942]/20'
+                          ? 'bg-linear-to-r from-brand to-amber-400 text-black shadow-md shadow-brand/20'
                           : 'text-zinc-300 hover:bg-white/5 hover:text-white'
                       }`}
                     >

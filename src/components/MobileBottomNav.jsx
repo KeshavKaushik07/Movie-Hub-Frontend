@@ -53,7 +53,7 @@ export default function MobileBottomNav() {
               to={item.to}
               className={`flex min-w-[46px] flex-col items-center gap-0.5 rounded-xl px-1.5 py-1 text-[10px] font-bold transition active:scale-95 ${
                 item.active
-                  ? 'text-[#d97706] dark:text-[#f5b942]'
+                  ? 'text-[#d97706] dark:text-brand'
                   : item.highlight
                     ? 'text-amber-500'
                     : isLight
@@ -64,7 +64,7 @@ export default function MobileBottomNav() {
               <span
                 className={`flex h-7 w-7 items-center justify-center rounded-full transition ${
                   item.active
-                    ? 'bg-[#f5b942]/25 text-[#d97706] dark:text-[#f5b942]'
+                    ? 'bg-brand/25 text-[#d97706] dark:text-brand'
                     : item.highlight
                       ? 'bg-amber-500/15 text-amber-500'
                       : ''

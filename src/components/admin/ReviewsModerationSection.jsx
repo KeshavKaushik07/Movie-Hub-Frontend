@@ -121,7 +121,7 @@ export default function ReviewsModerationSection({
               value={searchQ}
               onChange={(e) => setSearchQ(e.target.value)}
               placeholder="Search movie, critic, or text..."
-              className="w-full rounded-xl border border-white/10 bg-[#0e131f] py-2 pr-3 pl-8 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+              className="w-full rounded-xl border border-white/10 bg-[#0e131f] py-2 pr-3 pl-8 text-xs text-white focus:border-brand focus:outline-none"
             />
           </div>
 
@@ -139,9 +139,9 @@ export default function ReviewsModerationSection({
       {showAddCritic && (
         <form
           onSubmit={submitNewCritic}
-          className="space-y-3 rounded-2xl border border-[#f5b942]/35 bg-[#0e131f] p-5 shadow-xl"
+          className="space-y-3 rounded-2xl border border-brand/35 bg-[#0e131f] p-5 shadow-xl"
         >
-          <h4 className="text-sm font-extrabold text-[#f5b942]">
+          <h4 className="text-sm font-extrabold text-brand">
             Publish Official Verified Critic Review
           </h4>
           <div className="grid gap-3 sm:grid-cols-5">
@@ -238,7 +238,7 @@ export default function ReviewsModerationSection({
                 {filteredReviews.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-10 text-center text-xs text-zinc-400">
-                      <Award size={20} className="mx-auto mb-2 text-[#f5b942]" />
+                      <Award size={20} className="mx-auto mb-2 text-brand" />
                       No reviews or critic posts match this filter.
                     </td>
                   </tr>
@@ -255,7 +255,7 @@ export default function ReviewsModerationSection({
                         title="Click to inspect and edit this review"
                       >
                         {/* 1. Movie Poster + Name */}
-                        <td className="min-w-[190px]">
+                        <td className="min-w-47.5">
                           <div className="flex items-center gap-2.5">
                             <SafeImage
                               src={r.moviePoster}
@@ -283,7 +283,7 @@ export default function ReviewsModerationSection({
                               <span
                                 className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase ${
                                   isCritic
-                                    ? 'bg-[#f5b942] text-black'
+                                    ? 'bg-brand text-black'
                                     : 'bg-sky-500/20 text-sky-300'
                                 }`}
                               >
@@ -297,9 +297,9 @@ export default function ReviewsModerationSection({
                         </td>
 
                         {/* 3. Rating + Headline/Text Preview */}
-                        <td className="min-w-[220px] max-w-md">
+                        <td className="min-w-55 max-w-md">
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[#f5b942]/15 px-2 py-0.5 text-xs font-black text-[#f5b942]">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-brand/15 px-2 py-0.5 text-xs font-black text-brand">
                               ★ {Number(r.rating || 0).toFixed(1)}/10
                             </span>
                             {r.headline && (
@@ -385,7 +385,7 @@ export default function ReviewsModerationSection({
               {filteredComments.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-10 text-center text-xs text-zinc-400">
-                    <MessageSquare size={20} className="mx-auto mb-2 text-[#f5b942]" />
+                    <MessageSquare size={20} className="mx-auto mb-2 text-brand" />
                     No comments found.
                   </td>
                 </tr>

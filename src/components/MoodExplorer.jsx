@@ -109,7 +109,7 @@ export default function MoodExplorer() {
       <div className="rounded-3xl border border-white/10 bg-[#0e131f] p-4 shadow-xl sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f5b942]/15 text-[#f5b942]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/15 text-brand">
               <Sparkles size={18} />
             </span>
             <div>
@@ -127,7 +127,7 @@ export default function MoodExplorer() {
 
           <Link
             to={seeAllHref}
-            className="flex items-center gap-1 rounded-full bg-[#f5b942]/15 px-3.5 py-1.5 text-xs font-extrabold text-[#f5b942] hover:bg-[#f5b942] hover:text-black"
+            className="flex items-center gap-1 rounded-full bg-brand/15 px-3.5 py-1.5 text-xs font-extrabold text-brand hover:bg-brand hover:text-black"
           >
             <span>See All {selected.title}</span>
             <ArrowRight size={13} />
@@ -145,13 +145,13 @@ export default function MoodExplorer() {
                 onClick={() => setSelected(m)}
                 className={`flex items-center gap-2.5 rounded-2xl border p-3 text-left transition active:scale-[0.98] ${
                   active
-                    ? 'border-[#f5b942] bg-[#f5b942]/15 shadow-md shadow-[#f5b942]/10'
-                    : 'border-white/10 bg-white/[0.03] hover:bg-white/10'
+                    ? 'border-brand bg-brand/15 shadow-md shadow-brand/10'
+                    : 'border-white/10 bg-white/3 hover:bg-white/10'
                 }`}
               >
                 <span className="text-xl sm:text-2xl">{m.emoji}</span>
                 <div className="min-w-0 flex-1">
-                  <p className={`truncate text-xs font-extrabold ${active ? 'text-[#f5b942]' : 'text-white'}`}>
+                  <p className={`truncate text-xs font-extrabold ${active ? 'text-brand' : 'text-white'}`}>
                     {m.title}
                   </p>
                   <p className="truncate text-[10px] text-zinc-400">{m.sub}</p>
@@ -165,7 +165,7 @@ export default function MoodExplorer() {
         <div className="mt-5">
           {loading ? (
             <div className="flex h-40 items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
             </div>
           ) : items.length > 0 ? (
             <div className="no-scrollbar flex gap-3.5 overflow-x-auto pb-2">

@@ -188,7 +188,7 @@ export default function OttHub() {
               className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-extrabold tracking-wider uppercase ${
                 isLight
                   ? 'border border-amber-300/80 bg-amber-100/90 text-amber-900'
-                  : 'bg-[#f5b942]/15 text-[#f5b942]'
+                  : 'bg-brand/15 text-brand'
               }`}
             >
               <Tv size={13} /> Master OTT Streaming Hub
@@ -227,7 +227,7 @@ export default function OttHub() {
                 }}
                 className={`rounded-full px-4 py-2 text-xs font-extrabold transition ${
                   mediaFilter === tab.id
-                    ? 'bg-[#f5b942] text-black shadow-lg shadow-[#f5b942]/25'
+                    ? 'bg-brand text-black shadow-lg shadow-brand/25'
                     : isLight
                       ? 'border border-slate-200 bg-white/90 text-slate-700 shadow-2xs hover:border-slate-300 hover:bg-slate-100 hover:text-slate-950'
                       : 'border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white'
@@ -256,14 +256,14 @@ export default function OttHub() {
               className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.98] ${
                 selectedOtt === 'all'
                   ? isLight
-                    ? 'border-[#f5b942] bg-amber-50/90 shadow-md shadow-[#f5b942]/15'
-                    : 'border-[#f5b942] bg-[#f5b942]/15 shadow-lg shadow-[#f5b942]/10'
+                    ? 'border-brand bg-amber-50/90 shadow-md shadow-brand/15'
+                    : 'border-brand bg-brand/15 shadow-lg shadow-brand/10'
                   : isLight
-                    ? 'border-slate-200/90 bg-white/95 shadow-2xs hover:border-[#f5b942]/60 hover:bg-slate-50'
+                    ? 'border-slate-200/90 bg-white/95 shadow-2xs hover:border-brand/60 hover:bg-slate-50'
                     : 'border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/10'
               }`}
             >
-              <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500 text-xs font-black text-black shadow'>
+              <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-amber-500 text-xs font-black text-black shadow'>
                 ALL
               </span>
               <div className='min-w-0 flex-1'>
@@ -272,7 +272,7 @@ export default function OttHub() {
                     selectedOtt === 'all'
                       ? isLight
                         ? 'text-amber-700'
-                        : 'text-[#f5b942]'
+                        : 'text-brand'
                       : isLight
                         ? 'text-slate-900'
                         : 'text-white'
@@ -298,10 +298,10 @@ export default function OttHub() {
                   className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.98] ${
                     isActive
                       ? isLight
-                        ? 'border-[#f5b942] bg-amber-50/90 shadow-md shadow-[#f5b942]/15'
-                        : 'border-[#f5b942] bg-[#f5b942]/15 shadow-lg shadow-[#f5b942]/10'
+                        ? 'border-brand bg-amber-50/90 shadow-md shadow-brand/15'
+                        : 'border-brand bg-brand/15 shadow-lg shadow-brand/10'
                       : isLight
-                        ? 'border-slate-200/90 bg-white/95 shadow-2xs hover:border-[#f5b942]/60 hover:bg-slate-50'
+                        ? 'border-slate-200/90 bg-white/95 shadow-2xs hover:border-brand/60 hover:bg-slate-50'
                         : 'border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/10'
                   }`}
                 >
@@ -317,7 +317,7 @@ export default function OttHub() {
                         isActive
                           ? isLight
                             ? 'text-amber-700'
-                            : 'text-[#f5b942]'
+                            : 'text-brand'
                           : isLight
                             ? 'text-slate-900'
                             : 'text-white'
@@ -359,7 +359,7 @@ export default function OttHub() {
               }}
               className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
                 !selectedGenre
-                  ? 'bg-[#f5b942] text-black shadow-xs'
+                  ? 'bg-brand text-black shadow-xs'
                   : isLight
                     ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
                     : 'border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10'
@@ -379,7 +379,7 @@ export default function OttHub() {
                   }}
                   className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
                     String(selectedGenre) === String(gId)
-                      ? 'bg-[#f5b942] text-black shadow-xs'
+                      ? 'bg-brand text-black shadow-xs'
                       : isLight
                         ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
                         : 'border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10'
@@ -409,7 +409,7 @@ export default function OttHub() {
                   className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-bold transition ${
                     isSortActive
                       ? isLight
-                        ? 'bg-[#f5b942] text-black shadow-xs'
+                        ? 'bg-brand text-black shadow-xs'
                         : 'bg-white text-black'
                       : isLight
                         ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
@@ -444,7 +444,7 @@ export default function OttHub() {
 
         {loading ? (
           <div className='flex h-64 items-center justify-center'>
-            <div className='h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent' />
+            <div className='h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent' />
           </div>
         ) : items.length === 0 ? (
           <InfoPatch

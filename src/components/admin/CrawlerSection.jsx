@@ -14,7 +14,7 @@ export default function CrawlerSection({
     <div className="space-y-6 rounded-2xl border border-white/10 bg-[#0e131f] p-6 shadow-xl">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f5b942]/15 text-[#f5b942]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/15 text-brand">
             <Cpu size={22} />
           </span>
           <div>
@@ -22,7 +22,7 @@ export default function CrawlerSection({
               Quota-Balanced & Year-Interleaved 1-Lakh Crawler
             </h3>
             <p className="text-xs text-zinc-400">
-              Status: <b className="text-[#f5b942]">{crawler.running ? 'RUNNING' : 'IDLE'}</b> • Stored:{' '}
+              Status: <b className="text-brand">{crawler.running ? 'RUNNING' : 'IDLE'}</b> • Stored:{' '}
               <b className="text-white">{(crawler.titlesStored || 0).toLocaleString('en-IN')}</b> /{' '}
               {(crawler.targetCap || 100000).toLocaleString('en-IN')}
             </p>

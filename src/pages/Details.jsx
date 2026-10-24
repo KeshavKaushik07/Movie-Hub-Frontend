@@ -311,7 +311,7 @@ export default function Details() {
   if (loading) {
     return (
       <div className='flex h-[70vh] items-center justify-center'>
-        <div className='h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent' />
+        <div className='h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent' />
       </div>
     );
   }
@@ -525,7 +525,7 @@ export default function Details() {
                     <button
                       type='button'
                       onClick={handleAddToFeatured}
-                      className='inline-flex items-center gap-1 rounded-full border border-[#f5b942]/40 bg-[#f5b942]/20 px-3 py-1.5 text-[11px] font-bold text-[#f5b942]'
+                      className='inline-flex items-center gap-1 rounded-full border border-brand/40 bg-brand/20 px-3 py-1.5 text-[11px] font-bold text-brand'
                     >
                       <Sparkles size={12} /> Feature on Home
                     </button>
@@ -541,7 +541,7 @@ export default function Details() {
                   <button
                     type='button'
                     onClick={() => setEditingTitle(true)}
-                    className='inline-flex items-center gap-1 rounded-full bg-[#f5b942] px-3.5 py-1.5 text-[11px] font-extrabold text-black shadow-lg'
+                    className='inline-flex items-center gap-1 rounded-full bg-brand px-3.5 py-1.5 text-[11px] font-extrabold text-black shadow-lg'
                   >
                     <Edit3 size={12} /> Edit Title / ₹
                   </button>
@@ -558,7 +558,7 @@ export default function Details() {
             {/* Disclosed Badges Only (Requirement 1) */}
             <div className='flex flex-wrap items-center justify-center gap-2 text-xs text-zinc-200 md:justify-start'>
               {hasRating && (
-                <span className='flex items-center gap-1 rounded-full bg-[#f5b942] px-2.5 py-0.5 font-extrabold text-black'>
+                <span className='flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 font-extrabold text-black'>
                   <Star size={12} fill='currentColor' /> {ratingNum.toFixed(1)}
                 </span>
               )}
@@ -592,7 +592,7 @@ export default function Details() {
               {title}
             </h1>
             {data.tagline && (
-              <p className='text-xs italic text-[#f5b942] sm:text-sm'>
+              <p className='text-xs italic text-brand sm:text-sm'>
                 “{data.tagline}”
               </p>
             )}
@@ -602,7 +602,7 @@ export default function Details() {
                 <Link
                   key={g.id || g.name}
                   to={`/browse/${resolvedType}?genre=${g.id}`}
-                  className='keep-white rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:border-[#f5b942]'
+                  className='keep-white rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:border-brand'
                 >
                   {g.name || g}
                 </Link>
@@ -614,7 +614,7 @@ export default function Details() {
                 <button
                   type='button'
                   onClick={() => setTabWithHash('media')}
-                  className='inline-flex items-center gap-2 rounded-full bg-[#f5b942] px-5 py-2.5 text-xs font-extrabold text-black shadow-lg hover:brightness-110'
+                  className='inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-xs font-extrabold text-black shadow-lg hover:brightness-110'
                 >
                   <Play size={15} fill='currentColor' /> Trailer & Songs (
                   {totalMediaCount})
@@ -629,9 +629,9 @@ export default function Details() {
                   className='keep-white inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-4 py-2.5 text-xs font-extrabold text-white backdrop-blur-md hover:bg-white/25'
                 >
                   {region === 'IN' ? (
-                    <IndianRupee size={14} className='text-[#f5b942]' />
+                    <IndianRupee size={14} className='text-brand' />
                   ) : (
-                    <DollarSign size={14} className='text-[#f5b942]' />
+                    <DollarSign size={14} className='text-brand' />
                   )}
                   <span>
                     {fin.hasBudget ? `Budget: ${fin.budgetText}` : ''}
@@ -716,7 +716,7 @@ export default function Details() {
                 onClick={() => setTabWithHash(t.id)}
                 className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 py-3 text-xs font-extrabold transition ${
                   activeTab === t.id
-                    ? 'border-[#f5b942] text-[#f5b942]'
+                    ? 'border-brand text-brand'
                     : 'border-transparent text-zinc-400 hover:text-white'
                 }`}
               >
@@ -749,7 +749,7 @@ export default function Details() {
                   <div className='flex flex-wrap items-center justify-between gap-2'>
                     <div>
                       <h3 className='flex items-center gap-2 text-base font-extrabold text-white'>
-                        <Tv size={17} className='text-[#f5b942]' /> Where to
+                        <Tv size={17} className='text-brand' /> Where to
                         Watch {title}
                       </h3>
                       <p className='text-xs text-zinc-400'>
@@ -759,7 +759,7 @@ export default function Details() {
                     </div>
                     <Link
                       to='/ott'
-                      className='inline-flex items-center gap-1 rounded-full bg-[#f5b942]/15 px-3 py-1.5 text-xs font-extrabold text-[#f5b942] hover:bg-[#f5b942] hover:text-black'
+                      className='inline-flex items-center gap-1 rounded-full bg-brand/15 px-3 py-1.5 text-xs font-extrabold text-brand hover:bg-brand hover:text-black'
                     >
                       Master OTT Hub <ExternalLink size={12} />
                     </Link>
@@ -777,7 +777,7 @@ export default function Details() {
                               <Link
                                 key={ott.key}
                                 to={`/ott?provider=${ott.key}`}
-                                className='flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-bold text-white transition hover:border-[#f5b942]'
+                                className='flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-bold text-white transition hover:border-brand'
                               >
                                 <span
                                   style={{ backgroundColor: ott.badge }}
@@ -803,7 +803,7 @@ export default function Details() {
                               <Link
                                 key={p.providerId || p.id || p.name}
                                 to='/ott'
-                                className='flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold hover:border-[#f5b942]'
+                                className='flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold hover:border-brand'
                               >
                                 {(p.logoUrl || p.logoPath) && (
                                   <SafeImage
@@ -885,7 +885,7 @@ export default function Details() {
                       </span>
                       <Link
                         to='/ott'
-                        className='font-bold text-[#f5b942] hover:underline'
+                        className='font-bold text-brand hover:underline'
                       >
                         Browse All OTT Titles →
                       </Link>
@@ -907,7 +907,7 @@ export default function Details() {
                         <Link
                           key={d}
                           to={`/person/${encodeURIComponent(d)}`}
-                          className='rounded-lg bg-[#f5b942]/15 px-2 py-0.5 font-bold text-[#f5b942] hover:underline'
+                          className='rounded-lg bg-brand/15 px-2 py-0.5 font-bold text-brand hover:underline'
                         >
                           {d}
                         </Link>
@@ -966,7 +966,7 @@ export default function Details() {
                     <span className='text-zinc-400'>
                       Budget ({region === 'IN' ? '₹ INR' : '$ USD'}):
                     </span>
-                    <b className='text-sm text-[#f5b942]'>{fin.budgetText}</b>
+                    <b className='text-sm text-brand'>{fin.budgetText}</b>
                   </div>
                 )}
                 {fin.hasRevenue && (
@@ -1037,7 +1037,7 @@ export default function Details() {
                         onClick={() => setCreditsFilter(pill.id)}
                         className={`rounded-full px-3.5 py-1.5 text-xs font-extrabold transition ${
                           creditsFilter === pill.id
-                            ? 'bg-[#f5b942] text-black shadow-sm'
+                            ? 'bg-brand text-black shadow-sm'
                             : 'border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white'
                         }`}
                       >
@@ -1053,7 +1053,7 @@ export default function Details() {
                     <div>
                       <div className='mb-3 flex items-center justify-between gap-2'>
                         <div className='flex items-center gap-2'>
-                          <span className='flex h-7 w-7 items-center justify-center rounded-lg bg-[#f5b942]/15 text-[#f5b942]'>
+                          <span className='flex h-7 w-7 items-center justify-center rounded-lg bg-brand/15 text-brand'>
                             <Users size={15} />
                           </span>
                           <div>
@@ -1071,7 +1071,7 @@ export default function Details() {
                             type='button'
                             onClick={() => scrollCarousel(castCarouselRef, -1)}
                             aria-label='Scroll cast left'
-                            className='flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0e131f] text-zinc-300 transition hover:border-[#f5b942] hover:text-[#f5b942]'
+                            className='flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0e131f] text-zinc-300 transition hover:border-brand hover:text-brand'
                           >
                             <ChevronLeft size={16} />
                           </button>
@@ -1079,7 +1079,7 @@ export default function Details() {
                             type='button'
                             onClick={() => scrollCarousel(castCarouselRef, 1)}
                             aria-label='Scroll cast right'
-                            className='flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0e131f] text-zinc-300 transition hover:border-[#f5b942] hover:text-[#f5b942]'
+                            className='flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0e131f] text-zinc-300 transition hover:border-brand hover:text-brand'
                           >
                             <ChevronRight size={16} />
                           </button>
@@ -1102,7 +1102,7 @@ export default function Details() {
                             <Link
                               key={`cast-${c.id || c.name}-${c.character || ''}`}
                               to={`/person/${encodeURIComponent(c.name)}${c.id ? `?id=${c.id}` : ''}`}
-                              className='group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-[#f5b942] sm:w-44'
+                              className='group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand sm:w-44'
                             >
                               <div className='relative aspect-[2/3] w-full overflow-hidden bg-zinc-950'>
                                 {hasPhoto ? (
@@ -1133,7 +1133,7 @@ export default function Details() {
                               </div>
                               <div className='flex flex-1 flex-col justify-between p-2.5'>
                                 <div>
-                                  <p className='truncate text-xs font-bold text-white group-hover:text-[#f5b942] sm:text-sm'>
+                                  <p className='truncate text-xs font-bold text-white group-hover:text-brand sm:text-sm'>
                                     {c.name}
                                   </p>
                                   {c.character && (
@@ -1178,7 +1178,7 @@ export default function Details() {
                             type='button'
                             onClick={() => scrollCarousel(crewCarouselRef, -1)}
                             aria-label='Scroll crew left'
-                            className='flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0e131f] text-zinc-300 transition hover:border-[#f5b942] hover:text-[#f5b942]'
+                            className='flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0e131f] text-zinc-300 transition hover:border-brand hover:text-brand'
                           >
                             <ChevronLeft size={16} />
                           </button>
@@ -1186,7 +1186,7 @@ export default function Details() {
                             type='button'
                             onClick={() => scrollCarousel(crewCarouselRef, 1)}
                             aria-label='Scroll crew right'
-                            className='flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0e131f] text-zinc-300 transition hover:border-[#f5b942] hover:text-[#f5b942]'
+                            className='flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-[#0e131f] text-zinc-300 transition hover:border-brand hover:text-brand'
                           >
                             <ChevronRight size={16} />
                           </button>
@@ -1209,7 +1209,7 @@ export default function Details() {
                             <Link
                               key={`crew-${member.id || member.name}`}
                               to={`/person/${encodeURIComponent(member.name)}${member.id ? `?id=${member.id}` : ''}`}
-                              className='group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-[#f5b942] sm:w-44'
+                              className='group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand sm:w-44'
                             >
                               <div className='relative aspect-[2/3] w-full overflow-hidden bg-zinc-950'>
                                 {hasPhoto ? (
@@ -1240,10 +1240,10 @@ export default function Details() {
                               </div>
                               <div className='flex flex-1 flex-col justify-between p-2.5'>
                                 <div>
-                                  <p className='truncate text-xs font-bold text-white group-hover:text-[#f5b942] sm:text-sm'>
+                                  <p className='truncate text-xs font-bold text-white group-hover:text-brand sm:text-sm'>
                                     {member.name}
                                   </p>
-                                  <p className='mt-0.5 line-clamp-1 text-[11px] font-semibold text-[#f5b942]'>
+                                  <p className='mt-0.5 line-clamp-1 text-[11px] font-semibold text-brand'>
                                     {roleText}
                                   </p>
                                 </div>
@@ -1279,7 +1279,7 @@ export default function Details() {
 
             {rawSongs.length > 0 && (
               <div>
-                <h3 className='mb-3 flex items-center gap-2 text-base font-extrabold text-[#f5b942]'>
+                <h3 className='mb-3 flex items-center gap-2 text-base font-extrabold text-brand'>
                   <Music size={18} /> Official Songs & Soundtrack (
                   {rawSongs.length})
                 </h3>
@@ -1291,7 +1291,7 @@ export default function Details() {
                       onClick={() => setActiveVideoKey(s.youtubeKey)}
                       className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
                         currentVideoKey === s.youtubeKey
-                          ? 'border-[#f5b942] bg-[#f5b942]/15'
+                          ? 'border-brand bg-brand/15'
                           : 'border-white/10 bg-[#0e131f] hover:border-white/30'
                       }`}
                     >
@@ -1333,7 +1333,7 @@ export default function Details() {
                       onClick={() => setActiveVideoKey(v.key)}
                       className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${
                         currentVideoKey === v.key
-                          ? 'border-[#f5b942] bg-[#f5b942]/15'
+                          ? 'border-brand bg-brand/15'
                           : 'border-white/10 bg-[#0e131f] hover:border-white/30'
                       }`}
                     >
@@ -1364,7 +1364,7 @@ export default function Details() {
         {/* Requirement 1: Box Office Tab only renders when disclosed financials exist */}
         {activeTab === 'box-office' && hasFinancialsTab && (
           <div className='space-y-6'>
-            <div className='flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#f5b942]/30 bg-[#0e131f] p-4 sm:p-5'>
+            <div className='flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/30 bg-[#0e131f] p-4 sm:p-5'>
               <div>
                 <h2 className='text-base font-extrabold sm:text-lg'>
                   Disclosed Budget & Box Office Report (
@@ -1460,7 +1460,7 @@ export default function Details() {
                     key={card.label}
                     className={`rounded-2xl border p-4 sm:p-5 ${
                       card.highlight
-                        ? 'border-[#f5b942]/45 bg-[#f5b942]/10'
+                        ? 'border-brand/45 bg-brand/10'
                         : 'border-white/10 bg-[#0e131f]'
                     }`}
                   >
@@ -1503,7 +1503,7 @@ export default function Details() {
 
             {seasonLoading ? (
               <div className='flex h-40 items-center justify-center'>
-                <div className='h-8 w-8 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent' />
+                <div className='h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent' />
               </div>
             ) : seasonData?.episodes?.length ? (
               <div className='grid gap-3 sm:grid-cols-2'>
@@ -1520,7 +1520,7 @@ export default function Details() {
                       className='h-20 w-32 shrink-0 rounded-xl object-cover'
                     />
                     <div className='min-w-0 flex-1'>
-                      <span className='text-xs font-bold text-[#f5b942]'>
+                      <span className='text-xs font-bold text-brand'>
                         E{ep.episodeNumber || ep.episode_number} • {ep.name}
                       </span>
                       <p className='mt-1 line-clamp-2 text-xs text-zinc-400'>
@@ -1559,7 +1559,7 @@ export default function Details() {
               </div>
               <Link
                 to='/community'
-                className='rounded-full bg-[#f5b942]/15 px-3.5 py-1.5 text-xs font-bold text-[#f5b942]'
+                className='rounded-full bg-brand/15 px-3.5 py-1.5 text-xs font-bold text-brand'
               >
                 Open Community Hub →
               </Link>
@@ -1578,7 +1578,7 @@ export default function Details() {
                     className='rounded-2xl bg-white/[0.04] p-3 text-xs'
                   >
                     <div className='flex items-center justify-between text-zinc-400'>
-                      <b className='text-[#f5b942]'>
+                      <b className='text-brand'>
                         {m.sender?.name || 'Fan'}
                       </b>
                       <span className='text-[10px]'>
@@ -1597,9 +1597,9 @@ export default function Details() {
                   value={chatText}
                   onChange={(e) => setChatText(e.target.value)}
                   placeholder={`Message fans of ${title}...`}
-                  className='flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white focus:border-[#f5b942] focus:outline-none'
+                  className='flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white focus:border-brand focus:outline-none'
                 />
-                <button className='flex items-center gap-1.5 rounded-full bg-[#f5b942] px-5 py-2 text-xs font-extrabold text-black'>
+                <button className='flex items-center gap-1.5 rounded-full bg-brand px-5 py-2 text-xs font-extrabold text-black'>
                   <Send size={13} /> Send
                 </button>
               </form>
@@ -1608,7 +1608,7 @@ export default function Details() {
                 Please{' '}
                 <Link
                   to='/login'
-                  className='font-bold text-[#f5b942] underline'
+                  className='font-bold text-brand underline'
                 >
                   log in
                 </Link>{' '}

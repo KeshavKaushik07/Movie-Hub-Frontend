@@ -32,7 +32,7 @@ export default function Person() {
   if (loading) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
@@ -58,7 +58,7 @@ export default function Person() {
       {/* Actor / Director Profile Hero Card */}
       <div className="mb-8 flex flex-col items-center gap-6 rounded-3xl border border-white/10 bg-[#0e131f] p-6 sm:flex-row sm:items-start sm:p-8">
         {person.profileUrl && (
-          <div className="aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl border-2 border-[#f5b942]/50 bg-zinc-950 shadow-2xl sm:w-48">
+          <div className="aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl border-2 border-brand/50 bg-zinc-950 shadow-2xl sm:w-48">
             <SafeImage
               src={person.profileUrl}
               alt={person.name}
@@ -70,7 +70,7 @@ export default function Person() {
         )}
 
         <div className="flex-1 text-center sm:text-left">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f5b942]/15 px-3 py-1 text-xs font-bold text-[#f5b942]">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-3 py-1 text-xs font-bold text-brand">
             <Sparkles size={12} /> {person.knownForDepartment || 'Acting & Cinema'}
           </span>
           <h1
@@ -119,7 +119,7 @@ export default function Person() {
               onClick={() => setFilter(tab.key)}
               className={`rounded-full px-4 py-2 text-xs font-bold transition ${
                 filter === tab.key
-                  ? 'bg-[#f5b942] text-black'
+                  ? 'bg-brand text-black'
                   : 'border border-white/10 bg-[#0e131f] text-zinc-300 hover:bg-white/10'
               }`}
             >
