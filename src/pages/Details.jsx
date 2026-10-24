@@ -239,7 +239,8 @@ export default function Details() {
       notifyPatch({
         type: 'warning',
         title: 'Sign In Required',
-        message: 'Please sign in to save movies and web series to your Watchlist.',
+        message:
+          'Please sign in to save movies and web series to your Watchlist.',
       });
       nav(ROUTES.LOGIN);
       return;
@@ -257,7 +258,13 @@ export default function Details() {
       } else {
         await reviewService.watchlist.save(resolvedType, resolvedId, newStatus);
         setWatchStatus(newStatus);
-        const statusLabels = { planned: 'Plan to Watch', watching: 'Currently Watching', completed: 'Completed', favorite: 'Favorite', dropped: 'Dropped' };
+        const statusLabels = {
+          planned: 'Plan to Watch',
+          watching: 'Currently Watching',
+          completed: 'Completed',
+          favorite: 'Favorite',
+          dropped: 'Dropped',
+        };
         const label = statusLabels[newStatus] || 'Watchlist';
         notifyPatch({
           type: 'success',
@@ -344,13 +351,10 @@ export default function Details() {
   );
   const hasRating = ratingNum > 0;
 
-  // Requirement 6: Cast & Crew lists prepared for horizontal carousels (with full uncropped portraits)
+  // Requirement 6: Cast & Crew lists prepared for horizontal carousels (never strip actors without photos; show clean fallback portrait)
   const cast = (data.cast || data.credits?.cast || [])
-    .filter((c) => {
-      const src = c.profileUrl || c.photoUrl || c.profilePath || c.profile_path;
-      return Boolean(src) && !deadActorIds[c.id || c.name];
-    })
-    .slice(0, 24);
+    .filter((c) => Boolean(c && c.name))
+    .slice(0, 65);
 
   // Build deduplicated Crew list combining data.crew / data.credits.crew + directors/musicDirectors/writers/producers
   const crewMap = new Map();
@@ -430,7 +434,7 @@ export default function Details() {
       };
       return priorityJob(a.jobs) - priorityJob(b.jobs);
     })
-    .slice(0, 24);
+    .slice(0, 50);
 
   const similar = data.similar?.results || data.similar?.items || [];
 
@@ -911,6 +915,38 @@ export default function Details() {
                     </div>
                   </div>
                 )}
+                {data.musicDirectors?.length > 0 && (
+                  <div>
+                    <span className='text-zinc-400'>Music / Composer: </span>
+                    <div className='mt-1 flex flex-wrap gap-1.5'>
+                      {data.musicDirectors.slice(0, 4).map((m) => (
+                        <Link
+                          key={m}
+                          to={`/person/${encodeURIComponent(m)}`}
+                          className='rounded-lg bg-emerald-500/15 px-2 py-0.5 font-bold text-emerald-400 hover:underline'
+                        >
+                          {m}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {data.writers?.length > 0 && (
+                  <div>
+                    <span className='text-zinc-400'>Writers: </span>
+                    <div className='mt-1 flex flex-wrap gap-1.5'>
+                      {data.writers.slice(0, 4).map((w) => (
+                        <Link
+                          key={w}
+                          to={`/person/${encodeURIComponent(w)}`}
+                          className='rounded-lg bg-white/10 px-2 py-0.5 font-semibold text-zinc-200 hover:underline'
+                        >
+                          {w}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {data.status && (
                   <div className='flex items-center justify-between border-t border-white/10 pt-2.5'>
                     <span className='text-zinc-400'>Status:</span>
@@ -1060,29 +1096,40 @@ export default function Details() {
                             c.photoUrl ||
                             c.profilePath ||
                             c.profile_path;
+                          const hasPhoto =
+                            Boolean(photoSrc) && !deadActorIds[c.id || c.name];
                           return (
                             <Link
-                              key={`cast-${c.id}-${c.name}`}
+                              key={`cast-${c.id || c.name}-${c.character || ''}`}
                               to={`/person/${encodeURIComponent(c.name)}${c.id ? `?id=${c.id}` : ''}`}
                               className='group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-[#f5b942] sm:w-44'
                             >
                               <div className='relative aspect-[2/3] w-full overflow-hidden bg-zinc-950'>
-                                <img
-                                  src={
-                                    String(photoSrc).startsWith('http')
-                                      ? photoSrc
-                                      : `https://image.tmdb.org/t/p/h632${photoSrc}`
-                                  }
-                                  alt={c.name}
-                                  loading='lazy'
-                                  onError={() =>
-                                    setDeadActorIds((prev) => ({
-                                      ...prev,
-                                      [c.id || c.name]: true,
-                                    }))
-                                  }
-                                  className='h-full w-full object-contain object-center transition duration-500 group-hover:scale-105'
-                                />
+                                {hasPhoto ? (
+                                  <img
+                                    src={
+                                      String(photoSrc).startsWith('http')
+                                        ? photoSrc
+                                        : `https://image.tmdb.org/t/p/h632${photoSrc}`
+                                    }
+                                    alt={c.name}
+                                    loading='lazy'
+                                    onError={() =>
+                                      setDeadActorIds((prev) => ({
+                                        ...prev,
+                                        [c.id || c.name]: true,
+                                      }))
+                                    }
+                                    className='h-full w-full object-contain object-center transition duration-500 group-hover:scale-105'
+                                  />
+                                ) : (
+                                  <SafeImage
+                                    src={null}
+                                    alt={c.name}
+                                    variant='poster'
+                                    className='h-full w-full object-contain object-center transition duration-500 group-hover:scale-105'
+                                  />
+                                )}
                               </div>
                               <div className='flex flex-1 flex-col justify-between p-2.5'>
                                 <div>
@@ -1587,7 +1634,15 @@ export default function Details() {
           title={data}
           onClose={() => setEditingTitle(false)}
           onSaved={(updated) => {
-            if (updated) setData((prev) => ({ ...prev, ...updated, boxOffice: updated.boxOffice, songs: updated.songs || [], videos: updated.videos || { results: [] }, videoList: updated.videoList || [] }));
+            if (updated)
+              setData((prev) => ({
+                ...prev,
+                ...updated,
+                boxOffice: updated.boxOffice,
+                songs: updated.songs || [],
+                videos: updated.videos || { results: [] },
+                videoList: updated.videoList || [],
+              }));
             else loadDetail();
           }}
         />
