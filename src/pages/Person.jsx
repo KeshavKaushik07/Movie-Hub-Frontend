@@ -4,6 +4,7 @@ import { ArrowLeft, Film, Tv, Sparkles, MapPin, Calendar } from 'lucide-react';
 import { tmdb } from '../services/api';
 import MovieCard from '../components/MovieCard';
 import SafeImage from '../components/ui/SafeImage';
+import InfoPatch from '../components/ui/InfoPatch';
 
 export default function Person() {
   const { name } = useParams();
@@ -129,9 +130,26 @@ export default function Person() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-[#0e131f] p-12 text-center text-sm text-zinc-400">
-          No titles found for {person.name} in this category yet.
-        </div>
+        <InfoPatch
+          type="not-found"
+          title={`No ${filter === 'movie' ? 'Movies' : filter === 'series' ? 'Web Series' : 'Titles'} Found for ${person.name}`}
+          message="Try switching the filter tab to All Titles or browse the main catalog."
+          actions={[
+            ...(filter !== 'all'
+              ? [
+                  {
+                    label: `Show All (${allItems.length})`,
+                    primary: true,
+                    onClick: () => setFilter('all'),
+                  },
+                ]
+              : []),
+            {
+              label: 'Browse Catalog',
+              onClick: () => nav('/browse/movie'),
+            },
+          ]}
+        />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {filtered.map((it) => (

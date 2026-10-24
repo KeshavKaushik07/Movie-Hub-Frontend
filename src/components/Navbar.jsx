@@ -110,7 +110,7 @@ export default function Navbar() {
           to={ROUTES.HOME}
           className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight sm:mr-8 sm:shrink-0'
         >
-          <span className='flex h-8 w-8 sm:w-12 sm:h-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#353330] to-amber-500  shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9 rounded-xl overflow-hidden'>
+          <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f5b942] to-amber-500  shadow-md shadow-[#f5b942]/20 sm:h-9 sm:w-9 rounded-xl overflow-hidden'>
             <img src='/movie-icon.png' alt='' className='object-cover' />
           </span>
           <span
@@ -502,9 +502,15 @@ export default function Navbar() {
             <div className='flex shrink-0 items-center gap-1'>
               <Link
                 to={ROUTES.LOGIN}
-                className='whitespace-nowrap rounded-full bg-[#f5b942] px-3 py-1.5 text-xs font-extrabold text-black shadow-xs hover:brightness-110'
+                className='whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-bold hover:bg-white/10'
               >
                 Log in
+              </Link>
+              <Link
+                to={ROUTES.SIGNUP}
+                className='whitespace-nowrap rounded-full bg-[#f5b942] px-3 py-1.5 text-xs font-extrabold text-black shadow-xs hover:brightness-110'
+              >
+                Sign up
               </Link>
             </div>
           )}

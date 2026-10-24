@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
-import { RotateCcw, Sparkles } from 'lucide-react';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { RotateCcw, Sparkles, Search } from 'lucide-react';
 import { tmdb } from '../services/api';
 import { MOVIE_GENRES, TV_GENRES, OTT_LIST, INDUSTRY_LIST } from '../config/constants';
 import MovieCard from '../components/MovieCard';
 import CustomSelect from '../components/ui/CustomSelect';
+import InfoPatch from '../components/ui/InfoPatch';
+import { notifyPatch } from '../utils/notify';
+import { sanitizeText } from '../utils/security';
 
 const YEARS = Array.from({ length: 75 }, (_, i) => 2026 - i);
 
@@ -29,6 +32,7 @@ const LIST_PRESETS = [
 export default function Browse() {
   const { type = 'movie' } = useParams();
   const [params, setParams] = useSearchParams();
+  const nav = useNavigate();
 
   const [mediaType, setMediaType] = useState(type);
   const [listPreset, setListPreset] = useState(params.get('list') || '');
@@ -44,8 +48,10 @@ export default function Browse() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
 
-  const q = params.get('q') || '';
+  const q = sanitizeText(params.get('q') || '', 120);
+  const [searchInput, setSearchInput] = useState(q);
   const genreMap = mediaType === 'movie' ? MOVIE_GENRES : TV_GENRES;
 
   useEffect(() => {
@@ -57,12 +63,14 @@ export default function Browse() {
     setOtt(params.get('ott') || '');
     setMinRating(params.get('minRating') || '');
     setSort(params.get('sort') || 'popularity');
+    setSearchInput(sanitizeText(params.get('q') || '', 120));
     setPage(1);
   }, [type, params]);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setFetchError('');
 
     const filterParams = {
       page,
@@ -89,9 +97,28 @@ export default function Browse() {
         setTotalPages(Math.min(d?.total_pages || d?.totalPages || 1, 500));
         setTotalResults(d?.total_results || d?.total || list.length);
         setLoading(false);
+
+        if (page === 1 && q) {
+          if (list.length === 0) {
+            notifyPatch({
+              type: 'not-found',
+              title: 'No Matching Titles Found',
+              message: `No movies or web series matched "${q}".`,
+            });
+          } else {
+            notifyPatch({
+              type: 'info',
+              title: 'Search Results Loaded',
+              message: `Found ${d?.total_results || d?.total || list.length} matching titles for "${q}".`,
+              duration: 2600,
+            });
+          }
+        }
       })
-      .catch(() => {
-        if (alive) setLoading(false);
+      .catch((err) => {
+        if (!alive) return;
+        setFetchError(err?.response?.data?.message || 'Unable to load catalog titles right now.');
+        setLoading(false);
       });
 
     return () => {
@@ -107,9 +134,30 @@ export default function Browse() {
     setOtt('');
     setMinRating('');
     setSort('popularity');
+    setSearchInput('');
     setPage(1);
     setParams({});
+    notifyPatch({
+      type: 'info',
+      title: 'Filters Reset',
+      message: 'Showing all catalog titles.',
+      duration: 2400,
+    });
   };
+
+  const handleInlineSearch = (e) => {
+    e.preventDefault();
+    const cleaned = sanitizeText(searchInput.trim(), 120);
+    const next = new URLSearchParams(params);
+    if (cleaned) next.set('q', cleaned);
+    else next.delete('q');
+    setParams(next);
+  };
+
+  const genreName = Object.entries(genreMap).find(([, id]) => String(id) === String(genre))?.[0];
+  const industryLabel = INDUSTRY_LIST.find((i) => i.key === industry)?.label;
+  const ottLabel = OTT_LIST.find((o) => o.key === ott)?.label;
+  const hasActiveFilters = Boolean(q || listPreset || genre || year || industry || ott || minRating);
 
   const titleLabel = q
     ? `Search results for “${q}”`
@@ -118,9 +166,9 @@ export default function Browse() {
       : listPreset === 'trending'
         ? 'Trending This Week'
         : industry
-          ? `${INDUSTRY_LIST.find((i) => i.key === industry)?.label || industry} Catalog`
+          ? `${industryLabel || industry} Catalog`
           : ott
-            ? `Streaming on ${OTT_LIST.find((o) => o.key === ott)?.label || ott}`
+            ? `Streaming on ${ottLabel || ott}`
             : mediaType === 'webseries'
               ? 'Web Series (OTT Originals)'
               : mediaType === 'tv'
@@ -143,34 +191,53 @@ export default function Browse() {
           </p>
         </div>
 
-        <div className="flex rounded-full border border-white/10 bg-[#0e131f] p-1">
-          {[
-            { key: 'movie', label: '🎬 Movies' },
-            { key: 'webseries', label: '🔥 Web Series' },
-            { key: 'tv', label: '📺 TV Shows' },
-          ].map((t) => (
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Quick Inline Search Bar */}
+          <form onSubmit={handleInlineSearch} className="relative flex items-center">
+            <Search size={14} className="pointer-events-none absolute left-3 text-zinc-400" />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search title, actor, director..."
+              className="w-52 rounded-full border border-white/10 bg-[#0e131f] py-1.5 pr-16 pl-8 text-xs text-white focus:border-[#f5b942] focus:outline-none sm:w-60"
+            />
             <button
-              key={t.key}
-              type="button"
-              onClick={() => {
-                setMediaType(t.key);
-                setGenre('');
-                setPage(1);
-              }}
-              className={`rounded-full px-4 py-1.5 text-xs font-bold transition ${
-                mediaType === t.key
-                  ? 'bg-[#f5b942] text-black shadow'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
+              type="submit"
+              className="cursor-pointer absolute right-1 rounded-full bg-[#f5b942] px-3 py-1 text-[11px] font-extrabold text-black hover:brightness-110"
             >
-              {t.label}
+              Find
             </button>
-          ))}
+          </form>
+
+          <div className="flex rounded-full border border-white/10 bg-[#0e131f] p-1">
+            {[
+              { key: 'movie', label: '🎬 Movies' },
+              { key: 'webseries', label: '🔥 Web Series' },
+              { key: 'tv', label: '📺 TV Shows' },
+            ].map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => {
+                  setMediaType(t.key);
+                  setGenre('');
+                  setPage(1);
+                }}
+                className={`cursor-pointer rounded-full px-4 py-1.5 text-xs font-bold transition ${
+                  mediaType === t.key
+                    ? 'bg-[#f5b942] text-black shadow'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Modified Custom Dropdown Filter Bar */}
-      <div className="mb-8 rounded-3xl border border-white/10 bg-[#0e131f] p-4 shadow-xl sm:p-5">
+      {/* Custom Dropdown Filter Bar */}
+      <div className="mb-6 rounded-3xl border border-white/10 bg-[#0e131f] p-4 shadow-xl sm:p-5">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           <CustomSelect
             label="Collection / List"
@@ -269,7 +336,7 @@ export default function Browse() {
                   setOtt(ott === o.key ? '' : o.key);
                   setPage(1);
                 }}
-                className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-bold transition ${
+                className={`cursor-pointer shrink-0 rounded-full border px-3 py-1 text-[11px] font-bold transition ${
                   ott === o.key
                     ? 'border-[#f5b942] bg-[#f5b942] text-black'
                     : 'border-white/10 bg-white/5 text-zinc-400 hover:text-white'
@@ -283,22 +350,95 @@ export default function Browse() {
           <button
             type="button"
             onClick={reset}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10 hover:text-white"
+            className="cursor-pointer flex shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10 hover:text-white"
           >
             <RotateCcw size={13} /> Reset Filters
           </button>
         </div>
       </div>
 
-      {/* Results Grid */}
+      {/* Active Search / Filter Status Information Patch */}
+      {!loading && hasActiveFilters && items.length > 0 && (
+        <InfoPatch
+          compact
+          type="info"
+          title={
+            q
+              ? `Found ${totalResults.toLocaleString()} matching titles for "${q}"`
+              : `Filtered View Active (${totalResults.toLocaleString()} matching titles)`
+          }
+          message={
+            [
+              industryLabel && `Industry: ${industryLabel}`,
+              ottLabel && `OTT: ${ottLabel}`,
+              genreName && `Genre: ${genreName}`,
+              year && `Year: ${year}`,
+              minRating && `Rating: ★ ${minRating}+`,
+            ]
+              .filter(Boolean)
+              .join(' • ') || 'Select any card below to view full details, trailers, cast, and box office.'
+          }
+          actions={[
+            {
+              label: 'Clear All Filters',
+              onClick: reset,
+            },
+          ]}
+          className="mb-6"
+        />
+      )}
+
+      {fetchError && (
+        <InfoPatch
+          type="error"
+          title="Could Not Load Catalog Titles"
+          message={fetchError}
+          actions={[
+            {
+              label: 'Retry Now',
+              primary: true,
+              onClick: () => setPage(1),
+            },
+            {
+              label: 'Reset Filters',
+              onClick: reset,
+            },
+          ]}
+          className="mb-6"
+        />
+      )}
+
+      {/* Results Grid or Rich Not Found Information Patch */}
       {loading ? (
         <div className="flex h-60 items-center justify-center">
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-[#0e131f] p-12 text-center text-sm text-zinc-400">
-          No titles matched your filter criteria. Try resetting one or more filters above.
-        </div>
+        <InfoPatch
+          type="not-found"
+          title={
+            q
+              ? `No Movies or Web Series Found for "${q}"`
+              : 'No Titles Matched Your Selected Filters'
+          }
+          message={
+            q
+              ? `We searched the catalog for "${q}" in ${mediaType === 'webseries' ? 'Web Series' : mediaType === 'tv' ? 'TV Shows' : 'Movies'} and found no matches. Try checking the spelling, switching the format tab above, or resetting active filters.`
+              : 'Try resetting one or more filters (Industry, OTT Platform, Genre, Release Year, or Minimum Rating) to see available releases.'
+          }
+          subtitle="Tip: You can also browse streaming originals across Netflix, Prime Video, JioHotstar, ZEE5, and SonyLIV in the Master OTT Hub."
+          actions={[
+            {
+              label: 'Reset All Filters',
+              primary: true,
+              onClick: reset,
+            },
+            {
+              label: 'Open Master OTT Hub',
+              onClick: () => nav('/ott'),
+            },
+          ]}
+        />
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
@@ -312,7 +452,7 @@ export default function Browse() {
               type="button"
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-full border border-white/15 bg-[#0e131f] px-5 py-2.5 font-bold hover:border-[#f5b942] disabled:opacity-40"
+              className="cursor-pointer rounded-full border border-white/15 bg-[#0e131f] px-5 py-2.5 font-bold hover:border-[#f5b942] disabled:opacity-40"
             >
               ← Previous
             </button>
@@ -323,7 +463,7 @@ export default function Browse() {
               type="button"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-full border border-white/15 bg-[#0e131f] px-5 py-2.5 font-bold hover:border-[#f5b942] disabled:opacity-40"
+              className="cursor-pointer rounded-full border border-white/15 bg-[#0e131f] px-5 py-2.5 font-bold hover:border-[#f5b942] disabled:opacity-40"
             >
               Next →
             </button>

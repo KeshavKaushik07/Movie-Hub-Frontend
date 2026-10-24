@@ -15,6 +15,7 @@ import { blogApi } from '../services/api';
 import { BLOG_CATEGORIES, ROLES } from '../config/constants';
 import SafeImage from '../components/ui/SafeImage';
 import CustomSelect from '../components/ui/CustomSelect';
+import InfoPatch from '../components/ui/InfoPatch';
 
 export default function Blogs() {
   const user = useSelector((s) => s.auth.user);
@@ -131,14 +132,30 @@ export default function Blogs() {
           <div className="h-9 w-9 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent" />
         </div>
       ) : blogs.length === 0 ? (
-        <div className="rounded-3xl border border-white/10 bg-[#0e131f] p-14 text-center">
-          <p className="text-base font-bold text-white">No blog articles found</p>
-          <p className="mt-1 text-xs text-zinc-400">
-            {isStaff
-              ? 'Click "Open Blog Studio Editor" above to select a movie and publish your first blog post!'
-              : 'Check back soon for new movie editorials and box office breakdowns.'}
-          </p>
-        </div>
+        <InfoPatch
+          type="not-found"
+          title={q ? `No Editorial Articles Found for "${q}"` : 'No Blog Articles Match This Category'}
+          message={
+            isStaff
+              ? 'No articles matched your filter. You can reset the search filter or open the Blog Studio Editor to publish a new movie-linked article.'
+              : 'We could not find any editorial articles matching your current search or category filter.'
+          }
+          actions={[
+            ...(q || category !== 'all'
+              ? [
+                  {
+                    label: 'Show All Articles',
+                    primary: true,
+                    onClick: () => {
+                      setQ('');
+                      setCategory('all');
+                      setTimeout(loadBlogs, 0);
+                    },
+                  },
+                ]
+              : []),
+          ]}
+        />
       ) : (
         <div className="space-y-8">
           {/* Featured Top Article Banner */}

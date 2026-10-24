@@ -13,6 +13,8 @@ import {
 import { OTT_LIST, MOVIE_GENRES } from '../config/constants';
 import { tmdb } from '../services/api';
 import MovieCard from '../components/MovieCard';
+import InfoPatch from '../components/ui/InfoPatch';
+import { notifyPatch } from '../utils/notify';
 
 export default function OttHub() {
   const { providerKey } = useParams();
@@ -445,31 +447,28 @@ export default function OttHub() {
             <div className='h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent' />
           </div>
         ) : items.length === 0 ? (
-          <div
-            className={`rounded-3xl border p-12 text-center ${
-              isLight
-                ? 'border-slate-200 bg-white shadow-sm'
-                : 'border-white/10 bg-[#0e131f]'
-            }`}
-          >
-            <Sparkles size={28} className='mx-auto text-[#f5b942]' />
-            <p
-              className={`mt-3 text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}
-            >
-              No titles found for this OTT filter
-            </p>
-            <button
-              type='button'
-              onClick={() => {
-                handleSelectOtt('all');
-                setSelectedGenre('');
-                setMediaFilter('all');
-              }}
-              className='mt-4 rounded-full bg-[#f5b942] px-5 py-2 text-xs font-extrabold text-black'
-            >
-              Show All OTT Titles
-            </button>
-          </div>
+          <InfoPatch
+            type="not-found"
+            title={`No Streaming Titles Found${activeOttMeta ? ` on ${activeOttMeta.label}` : ''}`}
+            message="No movies or web series matched your current OTT platform and genre combination. Try switching to All OTT or clearing the genre filter."
+            actions={[
+              {
+                label: 'Show All OTT Titles',
+                primary: true,
+                onClick: () => {
+                  handleSelectOtt('all');
+                  setSelectedGenre('');
+                  setMediaFilter('all');
+                  notifyPatch({
+                    type: 'info',
+                    title: 'OTT Filter Reset',
+                    message: 'Showing releases across all OTT platforms.',
+                    duration: 2600,
+                  });
+                },
+              },
+            ]}
+          />
         ) : (
           <>
             <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'>

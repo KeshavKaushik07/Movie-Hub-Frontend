@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { createFallbackSvg, resolveImage } from '../../utils/formatters';
+import { isSafeUrl } from '../../utils/security';
 
 /**
- * SafeImage — Never shows a broken image icon.
- * If `src` is null, empty, or fails to load (`onError`), automatically switches
+ * SafeImage — Never shows a broken image icon and blocks unsafe URI schemes.
+ * If `src` is null, empty, unsafe, or fails to load (`onError`), automatically switches
  * to a clean SVG placeholder card (`poster`, `backdrop`, or `avatar`).
  */
 export default function SafeImage({
@@ -20,9 +21,11 @@ export default function SafeImage({
     setFailed(false);
   }, [src]);
 
-  const resolvedSrc = failed || !src
-    ? createFallbackSvg(alt, variant)
-    : resolveImage(src, size, alt, variant);
+  const candidate = failed || !src ? '' : resolveImage(src, size, alt, variant);
+  const resolvedSrc =
+    !candidate || !isSafeUrl(candidate)
+      ? createFallbackSvg(alt, variant)
+      : candidate;
 
   return (
     <img

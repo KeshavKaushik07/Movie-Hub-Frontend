@@ -8,6 +8,7 @@ import { registerRoutesFromReactTree } from './utils/sitemapGenerator';
 import Navbar from './components/Navbar';
 import MobileBottomNav from './components/MobileBottomNav';
 import PreferenceModal from './components/PreferenceModal';
+import { GlobalStatusPatch, AppErrorBoundary } from './components/ui/InfoPatch';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import Footer from './components/Footer';
@@ -91,17 +92,20 @@ export default function App() {
   if (isAdminStudioRoute) {
     return (
       <div className='min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#070a10] text-white'>
+        <GlobalStatusPatch />
         <LogoutConfirmModal />
-        <Routes>
-          <Route
-            path='/admin/*'
-            element={
-              <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERADMIN]}>
-                <Admin />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
+        <AppErrorBoundary>
+          <Routes>
+            <Route
+              path='/admin/*'
+              element={
+                <ProtectedRoute roles={[ROLES.ADMIN, ROLES.SUPERADMIN]}>
+                  <Admin />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AppErrorBoundary>
       </div>
     );
   }
@@ -110,10 +114,13 @@ export default function App() {
     <div className='flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-[#070a10] pb-16 text-white lg:pb-0'>
       <Navbar />
       <PreferenceModal />
+      <GlobalStatusPatch />
       <LogoutConfirmModal />
 
       <main className='min-h-screen flex-1'>
-        <Routes>{userRoutesTree}</Routes>
+        <AppErrorBoundary>
+          <Routes>{userRoutesTree}</Routes>
+        </AppErrorBoundary>
       </main>
 
       <Footer />

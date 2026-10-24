@@ -52,6 +52,8 @@ import { formatBudgetOrBoxOffice, getMovieFinancials } from '../utils/formatters
 import { RenderRichBlogContent } from './BlogDetail';
 import TitleEditorModal from '../components/TitleEditorModal';
 import SafeImage from '../components/ui/SafeImage';
+import InfoPatch from '../components/ui/InfoPatch';
+import { notifyPatch } from '../utils/notify';
 import CustomSelect from '../components/ui/CustomSelect';
 
 export default function Admin() {
@@ -72,9 +74,28 @@ export default function Admin() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState('');
 
-  const notify = (msg) => {
+  const notify = (msg, patchType = 'info') => {
     setToast(msg);
     setTimeout(() => setToast(''), 4000);
+    const lower = String(msg || '').toLowerCase();
+    const inferredType =
+      patchType !== 'info'
+        ? patchType
+        : lower.includes('fail') || lower.includes('could not') || lower.includes('error') || lower.includes('invalid')
+          ? 'error'
+          : lower.includes('not found') || lower.includes('no movie')
+            ? 'not-found'
+            : 'success';
+    notifyPatch({
+      type: inferredType,
+      title:
+        inferredType === 'error'
+          ? 'Studio Action Failed'
+          : inferredType === 'not-found'
+            ? 'No Matches Found'
+            : 'Studio Action Completed',
+      message: msg,
+    });
   };
 
   // ==================== 1. OVERVIEW & STATS STATE ====================
@@ -266,11 +287,19 @@ export default function Admin() {
     }
   };
 
+  const [blogSearchAttempted, setBlogSearchAttempted] = useState(false);
+  const [featSearchAttempted, setFeatSearchAttempted] = useState(false);
+
   const searchMovieForBlog = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!blogMovieSearchQ.trim()) return;
+    setBlogSearchAttempted(true);
     const res = await tmdb.search(blogMovieSearchQ.trim());
-    setBlogMovieHits((res.items || res.results || []).slice(0, 6));
+    const hits = (res.items || res.results || []).slice(0, 6);
+    setBlogMovieHits(hits);
+    if (hits.length === 0) {
+      notify(`No movies or web series found matching "${blogMovieSearchQ.trim()}"`, 'not-found');
+    }
   };
 
   const insertIntoBlogContent = (snippet) => {
@@ -349,10 +378,15 @@ export default function Admin() {
 
   // ==================== FEATURED HERO CAROUSEL HELPERS ====================
   const searchMovieForFeatured = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!featSearchQ.trim()) return;
+    setFeatSearchAttempted(true);
     const res = await tmdb.search(featSearchQ.trim());
-    setFeatSearchResults((res.items || res.results || []).slice(0, 6));
+    const hits = (res.items || res.results || []).slice(0, 6);
+    setFeatSearchResults(hits);
+    if (hits.length === 0) {
+      notify(`No catalog titles found matching "${featSearchQ.trim()}"`, 'not-found');
+    }
   };
 
   const handleAddFeatured = async (e) => {
@@ -639,6 +673,16 @@ export default function Admin() {
                   </button>
                 </form>
 
+                {featSearchAttempted && featSearchResults.length === 0 && (
+                  <InfoPatch
+                    compact
+                    type="not-found"
+                    title={`No Titles Found for "${featSearchQ}"`}
+                    message="Try another movie title or enter the TMDB ID directly below."
+                    onClose={() => setFeatSearchAttempted(false)}
+                    className="mt-3"
+                  />
+                )}
                 {featSearchResults.length > 0 && (
                   <div className="no-scrollbar mt-3 flex gap-2.5 overflow-x-auto pb-2">
                     {featSearchResults.map((m) => (
@@ -874,6 +918,16 @@ export default function Admin() {
                     </div>
                   </div>
 
+                  {blogSearchAttempted && blogMovieHits.length === 0 && (
+                    <InfoPatch
+                      compact
+                      type="not-found"
+                      title={`No Movies Found for "${blogMovieSearchQ}"`}
+                      message="Check the spelling or enter a TMDB ID directly to fetch images."
+                      onClose={() => setBlogSearchAttempted(false)}
+                      className="mt-3"
+                    />
+                  )}
                   {blogMovieHits.length > 0 && (
                     <div className="no-scrollbar mt-3 flex gap-2.5 overflow-x-auto pb-1">
                       {blogMovieHits.map((mv) => (

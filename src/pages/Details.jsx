@@ -35,6 +35,8 @@ import MovieRow from '../components/MovieRow';
 import Reviews from '../components/Reviews';
 import TitleEditorModal from '../components/TitleEditorModal';
 import SafeImage from '../components/ui/SafeImage';
+import InfoPatch from '../components/ui/InfoPatch';
+import { notifyPatch } from '../utils/notify';
 import CustomSelect from '../components/ui/CustomSelect';
 
 const isValidYoutubeKey = (key) =>
@@ -234,16 +236,41 @@ export default function Details() {
 
   const handleWatchlist = async (newStatus) => {
     if (!user) {
+      notifyPatch({
+        type: 'warning',
+        title: 'Sign In Required',
+        message: 'Please sign in to save movies and web series to your Watchlist.',
+      });
       nav(ROUTES.LOGIN);
       return;
     }
     if (!resolvedId) return;
-    if (!newStatus || newStatus === watchStatus) {
-      await reviewService.watchlist.remove(resolvedType, resolvedId);
-      setWatchStatus('');
-    } else {
-      await reviewService.watchlist.save(resolvedType, resolvedId, newStatus);
-      setWatchStatus(newStatus);
+    try {
+      if (!newStatus || newStatus === watchStatus) {
+        await reviewService.watchlist.remove(resolvedType, resolvedId);
+        setWatchStatus('');
+        notifyPatch({
+          type: 'info',
+          title: 'Removed from Watchlist',
+          message: `"${data?.title || data?.name || 'Title'}" was removed from your watchlist.`,
+        });
+      } else {
+        await reviewService.watchlist.save(resolvedType, resolvedId, newStatus);
+        setWatchStatus(newStatus);
+        const statusLabels = { planned: 'Plan to Watch', watching: 'Currently Watching', completed: 'Completed', favorite: 'Favorite', dropped: 'Dropped' };
+        const label = statusLabels[newStatus] || 'Watchlist';
+        notifyPatch({
+          type: 'success',
+          title: 'Watchlist Updated',
+          message: `"${data?.title || data?.name || 'Title'}" saved under "${label}".`,
+        });
+      }
+    } catch {
+      notifyPatch({
+        type: 'error',
+        title: 'Watchlist Update Failed',
+        message: 'Could not update your watchlist right now. Please try again.',
+      });
     }
   };
 
@@ -281,8 +308,32 @@ export default function Details() {
       </div>
     );
   }
-  if (!data)
-    return <p className='p-10 text-center text-zinc-400'>Title not found.</p>;
+  if (!data) {
+    return (
+      <div className='mx-auto max-w-4xl px-4 py-14 sm:px-6'>
+        <InfoPatch
+          type='not-found'
+          title='Movie or Web Series Not Found'
+          message={`We couldn't find details for "${decodeURIComponent(id || '').replace(/-/g, ' ')}". It may have been moved or is not yet indexed in our catalog.`}
+          actions={[
+            {
+              label: 'Browse Popular Movies',
+              primary: true,
+              onClick: () => nav('/browse/movie?category=popular'),
+            },
+            {
+              label: 'Explore Master OTT Hub',
+              onClick: () => nav('/ott'),
+            },
+            {
+              label: 'Back to Home',
+              onClick: () => nav('/'),
+            },
+          ]}
+        />
+      </div>
+    );
+  }
 
   const title = data.title || data.name;
   const year =
