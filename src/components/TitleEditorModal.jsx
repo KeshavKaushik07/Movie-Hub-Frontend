@@ -1,20 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save, RefreshCw, Film, DollarSign, Music } from 'lucide-react';
 import { BOX_OFFICE_VERDICTS, INDUSTRY_LIST, OTT_LIST } from '../config/constants';
 import { reviewService } from '../services/reviewService';
+import { notifyPatch } from '../utils/notify';
 import CustomSelect from './ui/CustomSelect';
 
-export default function TitleEditorModal({ title, onClose, onSaved }) {
-  const isNew = !title?.id && !title?.tmdbId;
+const buildFormFromTitle = (title) => {
   const mediaType = title?.type || title?.mediaType || 'movie';
-  const tmdbId = title?.id || title?.tmdbId;
-
-  const [tab, setTab] = useState('general');
-  const [saving, setSaving] = useState(false);
-  const [syncing, setSyncing] = useState(false);
-  const [error, setError] = useState('');
-
-  const [form, setForm] = useState({
+  return {
     mediaType: title?.subType === 'webseries' ? 'webseries' : mediaType,
     subType: title?.subType || (title?.isWebSeries ? 'webseries' : mediaType),
     isWebSeries: Boolean(title?.isWebSeries || title?.subType === 'webseries'),
@@ -50,7 +43,24 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
     directors: (title?.directors || []).join(', '),
     musicDirectors: (title?.musicDirectors || []).join(', '),
     songs: Array.isArray(title?.songs) ? title.songs : [],
-  });
+  };
+};
+
+export default function TitleEditorModal({ title, onClose, onSaved }) {
+  const isNew = !title?.id && !title?.tmdbId;
+  const mediaType = title?.type || title?.mediaType || 'movie';
+  const tmdbId = title?.id || title?.tmdbId;
+
+  const [tab, setTab] = useState('general');
+  const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState('');
+
+  const [form, setForm] = useState(() => buildFormFromTitle(title));
+
+  useEffect(() => {
+    setForm(buildFormFromTitle(title));
+  }, [title]);
 
   const toggleArrayItem = (field, key) => {
     setForm((prev) => {
@@ -128,7 +138,15 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
     setSyncing(true);
     setError('');
     try {
-      const synced = await reviewService.superadmin.syncTitle(mediaType, tmdbId);
+      const synced = await reviewService.superadmin.syncTitle(mediaType, tmdbId, true);
+      if (synced) {
+        setForm(buildFormFromTitle(synced));
+      }
+      notifyPatch({
+        type: 'success',
+        title: 'Synced with TMDB',
+        message: `"${synced?.title || form.title}" was reset and updated with official TMDB data.`,
+      });
       onSaved?.(synced);
       onClose?.();
     } catch (err) {
@@ -148,7 +166,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
               {isNew ? 'Add New Movie / Web Series to Database' : `Edit Title: ${form.title} (#${tmdbId})`}
             </h2>
             <p className="text-xs text-zinc-400">
-              All manual edits are automatically locked in MongoDB so TMDB syncs never overwrite them.
+              Manual edits are saved in MongoDB. Click &ldquo;Sync TMDB&rdquo; anytime to replace edited fields with official TMDB data.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -157,16 +175,17 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                 type="button"
                 onClick={handleSyncTmdb}
                 disabled={syncing}
-                className="flex items-center gap-1.5 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-400 hover:bg-sky-500/20 disabled:opacity-50"
+                title="Reset manual edits and pull fresh official data from TMDB"
+                className="admin-btn admin-btn-sky disabled:opacity-50"
               >
                 <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
-                Sync TMDB
+                {syncing ? 'Syncing TMDB...' : 'Sync TMDB'}
               </button>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
+              className="admin-btn admin-btn-secondary admin-btn-icon"
             >
               <X size={18} />
             </button>
@@ -186,7 +205,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                 key={t.id}
                 type="button"
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-bold transition ${
+                className={`cursor-pointer flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-bold transition ${
                   tab === t.id
                     ? 'border-[#f5b942] text-[#f5b942]'
                     : 'border-transparent text-zinc-400 hover:text-white'
@@ -304,7 +323,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                       key={ind.key}
                       type="button"
                       onClick={() => toggleArrayItem('regions', ind.key)}
-                      className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                      className={`cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-medium ${
                         form.regions.includes(ind.key)
                           ? 'border-[#f5b942] bg-[#f5b942]/20 text-[#f5b942]'
                           : 'border-white/10 bg-white/5 text-zinc-400'
@@ -324,7 +343,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                       key={o.key}
                       type="button"
                       onClick={() => toggleArrayItem('ottProviders', o.key)}
-                      className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                      className={`cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-medium ${
                         form.ottProviders.includes(o.key)
                           ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300'
                           : 'border-white/10 bg-white/5 text-zinc-400'
@@ -408,7 +427,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                 <button
                   type="button"
                   onClick={addSong}
-                  className="flex items-center gap-1.5 rounded-xl bg-[#f5b942] px-3.5 py-2 text-xs font-bold text-black"
+                  className="cursor-pointer flex items-center gap-1.5 rounded-xl bg-[#f5b942] px-3.5 py-2 text-xs font-bold text-black"
                 >
                   <Plus size={14} /> Add Song
                 </button>
@@ -439,7 +458,7 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
                   <button
                     type="button"
                     onClick={() => removeSong(idx)}
-                    className="flex items-center justify-center rounded-lg bg-rose-500/15 text-xs font-semibold text-rose-400 hover:bg-rose-500/25"
+                    className="cursor-pointer flex items-center justify-center rounded-lg bg-rose-500/15 text-xs font-semibold text-rose-400 hover:bg-rose-500/25"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -452,16 +471,16 @@ export default function TitleEditorModal({ title, onClose, onSaved }) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-zinc-300"
+              className="admin-btn admin-btn-lg admin-btn-secondary"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center gap-2 rounded-xl bg-[#f5b942] px-6 py-2 text-xs font-extrabold text-black hover:brightness-110 disabled:opacity-50"
+              className="admin-btn admin-btn-lg admin-btn-primary disabled:opacity-50"
             >
-              <Save size={14} /> {saving ? 'Saving...' : 'Save Changes'}
+              <Save size={15} /> {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

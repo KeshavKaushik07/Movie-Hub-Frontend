@@ -7,6 +7,29 @@ import {
 } from '../utils/formatters';
 
 const CACHE_PREFIX = 'movieshub_cache_v4:';
+
+// Clear all cached catalog/detail responses in localStorage & sessionStorage after edits/syncs
+export const clearCatalogCache = () => {
+  try {
+    for (const k of Object.keys(localStorage)) {
+      if (k.startsWith(CACHE_PREFIX) || k.startsWith('movieshub_cache')) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    for (const k of Object.keys(sessionStorage)) {
+      if (k.startsWith('mh_api_cache:')) {
+        sessionStorage.removeItem(k);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+};
+
 const MAX_CACHE_ENTRIES = 60;
 
 const writeCache = (key, data) => {

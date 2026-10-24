@@ -1586,7 +1586,10 @@ export default function Details() {
         <TitleEditorModal
           title={data}
           onClose={() => setEditingTitle(false)}
-          onSaved={(updated) => setData((prev) => ({ ...prev, ...updated }))}
+          onSaved={(updated) => {
+            if (updated) setData((prev) => ({ ...prev, ...updated, boxOffice: updated.boxOffice, songs: updated.songs || [], videos: updated.videos || { results: [] }, videoList: updated.videoList || [] }));
+            else loadDetail();
+          }}
         />
       )}
     </div>

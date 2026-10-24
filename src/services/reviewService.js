@@ -1,4 +1,5 @@
 import { backend } from './backendApi';
+import { clearCatalogCache } from './api';
 
 const normType = (t) => (t === 'webseries' ? 'tv' : t);
 
@@ -86,13 +87,28 @@ export const reviewService = {
 
   superadmin: {
     titles: (params = {}) => backend.get('/superadmin/titles', { params }).then((r) => r.data),
-    createTitle: (payload) => backend.post('/superadmin/titles', payload).then((r) => r.data.title),
+    createTitle: (payload) =>
+      backend.post('/superadmin/titles', payload).then((r) => {
+        clearCatalogCache();
+        return r.data.title;
+      }),
     updateTitle: (type, tmdbId, payload) =>
-      backend.patch(`/superadmin/titles/${normType(type)}/${tmdbId}`, payload).then((r) => r.data.title),
-    syncTitle: (type, tmdbId) =>
-      backend.post(`/superadmin/titles/${normType(type)}/${tmdbId}/sync`).then((r) => r.data.title),
+      backend.patch(`/superadmin/titles/${normType(type)}/${tmdbId}`, payload).then((r) => {
+        clearCatalogCache();
+        return r.data.title;
+      }),
+    syncTitle: (type, tmdbId, unlockAll = true) =>
+      backend
+        .post(`/superadmin/titles/${normType(type)}/${tmdbId}/sync`, { unlockAll })
+        .then((r) => {
+          clearCatalogCache();
+          return r.data.title;
+        }),
     deleteTitle: (type, tmdbId) =>
-      backend.delete(`/superadmin/titles/${normType(type)}/${tmdbId}`),
+      backend.delete(`/superadmin/titles/${normType(type)}/${tmdbId}`).then((r) => {
+        clearCatalogCache();
+        return r;
+      }),
     keys: () => backend.get('/superadmin/api-keys').then((r) => r.data),
     addKey: (payload) => backend.post('/superadmin/api-keys', payload).then((r) => r.data.key),
     updateKey: (id, payload) => backend.patch(`/superadmin/api-keys/${id}`, payload).then((r) => r.data.key),
