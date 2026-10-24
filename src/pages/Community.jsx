@@ -45,6 +45,7 @@ export default function Community() {
 
   const [userSearchQ, setUserSearchQ] = useState('');
   const [chatUsers, setChatUsers] = useState([]);
+  const [roomToDelete, setRoomToDelete] = useState(null);
 
   const bottomRef = useRef(null);
   const lastMessageSigRef = useRef('');
@@ -456,6 +457,17 @@ export default function Community() {
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                  {(isStaff || activeRoom.roomType === 'dm') && (
+                    <button
+                      type="button"
+                      onClick={() => setRoomToDelete(activeRoom)}
+                      title="Delete this chat room"
+                      className="flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold text-rose-400 transition hover:bg-rose-500/25"
+                    >
+                      <Trash2 size={11} />
+                      <span className="hidden sm:inline">Delete Room</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => fetchRoomMessages(activeRoom.id, { forceScroll: true, showSpinner: true })}
@@ -657,6 +669,69 @@ export default function Community() {
           ) : null}
         </section>
       </div>
+
+      {/* Delete Community / Chat Room Confirmation Modal */}
+      {roomToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+          <div className="relative w-full max-w-sm rounded-3xl border border-white/15 bg-[#0e131f] p-6 text-white shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setRoomToDelete(null)}
+              className="absolute top-4 right-4 rounded-full p-1.5 text-zinc-400 hover:bg-white/10"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-500">
+              <Trash2 size={22} />
+            </div>
+
+            <h3
+              style={{ fontFamily: 'var(--font-display)' }}
+              className="text-center text-lg font-extrabold"
+            >
+              Delete Chat Room?
+            </h3>
+            <p className="mt-2 text-center text-xs leading-relaxed text-zinc-400">
+              Are you sure you want to permanently delete{' '}
+              <b className="text-white">
+                {roomToDelete.icon} {roomToDelete.name}
+              </b>{' '}
+              and all messages inside it?
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRoomToDelete(null)}
+                className="rounded-2xl border border-white/15 bg-white/5 py-2.5 text-xs font-bold hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const targetId = roomToDelete.id;
+                  try {
+                    await communityApi.deleteRoom(targetId);
+                    setRoomToDelete(null);
+                    setRooms((prev) => prev.filter((r) => r.id !== targetId));
+                    setDms((prev) => prev.filter((d) => d.id !== targetId));
+                    setActiveRoom((prev) => (prev?.id === targetId ? null : prev));
+                    setMobileChatOpen(false);
+                    await loadRooms(false);
+                  } catch {
+                    setRoomToDelete(null);
+                  }
+                }}
+                className="keep-white flex items-center justify-center gap-1.5 rounded-2xl bg-rose-500 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-rose-500/25 hover:bg-rose-600"
+              >
+                <Trash2 size={14} /> Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

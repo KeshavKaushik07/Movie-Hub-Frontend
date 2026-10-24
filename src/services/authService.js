@@ -12,14 +12,22 @@ export const authService = {
   async login(payload) {
     const { data } = await backend.post('/auth/login', payload);
     setInMemoryAccessToken(data.access, data.refresh, data.user);
-    saveSessionSnapshot({ user: data.user, access: data.access, refresh: data.refresh });
+    saveSessionSnapshot({
+      user: data.user,
+      access: data.access,
+      refresh: data.refresh,
+    });
     return data;
   },
 
   async signup(payload) {
     const { data } = await backend.post('/auth/register', payload);
     setInMemoryAccessToken(data.access, data.refresh, data.user);
-    saveSessionSnapshot({ user: data.user, access: data.access, refresh: data.refresh });
+    saveSessionSnapshot({
+      user: data.user,
+      access: data.access,
+      refresh: data.refresh,
+    });
     return data;
   },
 
@@ -62,7 +70,10 @@ export const authService = {
             };
           }
         } catch (meErr) {
-          if (meErr?.response?.status === 401 || meErr?.response?.status === 403) {
+          if (
+            meErr?.response?.status === 401 ||
+            meErr?.response?.status === 403
+          ) {
             clearSessionSnapshot();
             throw meErr;
           }
@@ -132,7 +143,17 @@ export const authService = {
   },
 
   async setActive(id, isActive, reason = '') {
-    const { data } = await backend.patch(`/admin/users/${id}/active`, { isActive, reason });
+    const { data } = await backend.patch(`/admin/users/${id}/active`, {
+      isActive,
+      reason,
+    });
     return data.user;
+  },
+
+  async adminChangePassword(id, newPassword) {
+    const { data } = await backend.patch(`/admin/users/${id}/password`, {
+      newPassword,
+    });
+    return data;
   },
 };

@@ -19,6 +19,7 @@ import {
   Trash2,
   Edit3,
   Eye,
+  EyeOff,
   Check,
   Search,
   Film,
@@ -136,6 +137,14 @@ export default function Admin() {
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
   const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '', role: ROLES.ADMIN });
+  const [roomToDelete, setRoomToDelete] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [passwordModalUser, setPasswordModalUser] = useState(null);
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [confirmUserPassword, setConfirmUserPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   // ==================== 7. SUPERADMIN CATALOG, CRAWLER & API KEYS STATE ====================
   const [dbTitles, setDbTitles] = useState([]);
@@ -775,7 +784,7 @@ export default function Admin() {
              ================================================================= */}
           {activeSection === 'blogs' && (
             <div className="space-y-8">
-              <div className="rounded-3xl border border-white/15 bg-[#0e131f] p-6 shadow-2xl">
+              <div className="overflow-hidden rounded-3xl border border-white/15 bg-[#0e131f] p-4 shadow-2xl sm:p-6">
                 <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
                   <div>
                     <h3 className="text-lg font-extrabold text-white">
@@ -786,13 +795,13 @@ export default function Admin() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {['write', 'split', 'preview'].map((m) => (
                       <button
                         key={m}
                         type="button"
                         onClick={() => setEditorMode(m)}
-                        className={`rounded-xl px-3 py-1.5 text-xs font-bold capitalize ${
+                        className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-bold capitalize ${
                           editorMode === m ? 'bg-[#f5b942] text-black' : 'bg-white/5 text-zinc-300'
                         }`}
                       >
@@ -803,7 +812,7 @@ export default function Admin() {
                       <button
                         type="button"
                         onClick={resetBlogForm}
-                        className="rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-zinc-300"
+                        className="shrink-0 whitespace-nowrap rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-zinc-300"
                       >
                         + New Article
                       </button>
@@ -811,37 +820,39 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* Step 1: Select a Movie to Auto-Fetch Images */}
-                <div className="mb-6 rounded-2xl border border-[#f5b942]/25 bg-[#070a10]/70 p-4">
-                  <label className="mb-2 block text-xs font-bold text-[#f5b942] uppercase">
+                {/* Step 1: Select a Movie to Auto-Fetch Images (Responsive on Mobile & Desktop — Zero Overflow) */}
+                <div className="mb-6 rounded-2xl border border-[#f5b942]/25 bg-[#070a10]/70 p-3.5 sm:p-4">
+                  <label className="mb-2.5 block text-xs font-bold text-[#f5b942] uppercase">
                     Step 1 — Select Movie / Web Series to Auto-Fetch Backdrop & Gallery Images
                   </label>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="flex flex-1 gap-2 min-w-[240px]">
+                  <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center">
+                    {/* Search by Movie Name Row */}
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
                       <input
                         value={blogMovieSearchQ}
                         onChange={(e) => setBlogMovieSearchQ(e.target.value)}
-                        placeholder="Search movie name (e.g. Jawan, Pushpa, Oppenheimer)..."
-                        className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white"
+                        placeholder="Search movie name (e.g. Jawan, Pushpa)..."
+                        className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs text-white"
                       />
                       <button
                         type="button"
                         onClick={searchMovieForBlog}
-                        className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20"
+                        className="shrink-0 whitespace-nowrap rounded-xl bg-white/10 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/20"
                       >
                         Search
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {/* TMDB ID + Type Selector + Fetch Button (Stacks cleanly on mobile, inline on tablet/desktop) */}
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
                       <input
                         type="number"
                         placeholder="Or TMDB ID"
                         value={blogForm.tmdbId}
                         onChange={(e) => setBlogForm({ ...blogForm, tmdbId: e.target.value })}
-                        className="w-28 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
+                        className="min-w-0 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white sm:w-28"
                       />
-                      <div className="w-36">
+                      <div className="min-w-0 w-full sm:w-36">
                         <CustomSelect
                           value={blogForm.mediaType}
                           onChange={(val) => setBlogForm({ ...blogForm, mediaType: val })}
@@ -856,7 +867,7 @@ export default function Admin() {
                         type="button"
                         disabled={fetchingAssets}
                         onClick={() => handleFetchMovieAssetsForBlog(blogForm.mediaType, blogForm.tmdbId)}
-                        className="rounded-xl bg-[#f5b942] px-4 py-2 text-xs font-extrabold text-black"
+                        className="col-span-2 w-full shrink-0 whitespace-nowrap rounded-xl bg-[#f5b942] px-4 py-2.5 text-center text-xs font-extrabold text-black shadow-md shadow-[#f5b942]/20 transition hover:brightness-110 disabled:opacity-50 sm:col-span-1 sm:w-auto"
                       >
                         {fetchingAssets ? 'Fetching...' : 'Fetch Movie Images'}
                       </button>
@@ -1185,28 +1196,37 @@ export default function Admin() {
                 {commRooms.map((r) => (
                   <div
                     key={r.id}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#0e131f] p-4"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-4"
                   >
-                    <div>
-                      <p className="text-sm font-bold text-white">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-white">
                         {r.icon} {r.name}
                       </p>
-                      <p className="text-xs text-zinc-400">
+                      <p className="truncate text-xs text-zinc-400">
                         {r.messageCount || 0} messages • {r.onlineCount || 0} online
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       <button
                         type="button"
                         onClick={() =>
                           communityApi.updateRoom(r.id, { isLocked: !r.isLocked }).then(loadCommunity)
                         }
-                        className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold ${
-                          r.isLocked ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'
+                        className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                          r.isLocked ? 'bg-amber-500/20 text-amber-300' : 'bg-emerald-500/20 text-emerald-300'
                         }`}
                       >
                         {r.isLocked ? <Lock size={12} /> : <Unlock size={12} />}
                         {r.isLocked ? 'Locked' : 'Open'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRoomToDelete(r)}
+                        title="Delete Community Room"
+                        className="flex items-center gap-1 rounded-xl bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/25"
+                      >
+                        <Trash2 size={13} />
+                        <span>Delete</span>
                       </button>
                     </div>
                   </div>
@@ -1332,10 +1352,12 @@ export default function Admin() {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {users.map((u) => {
-                      const canToggle =
+                      const canManageUser =
                         u.id !== user.id &&
                         u.role !== ROLES.SUPERADMIN &&
                         (isSuper || u.role === ROLES.USER);
+                      const canChangePassword =
+                        isSuper || u.role === ROLES.USER || u.id === user.id;
                       return (
                         <tr key={u.id}>
                           <td className="p-4 font-bold text-white">{u.name}</td>
@@ -1370,21 +1392,38 @@ export default function Admin() {
                             </span>
                           </td>
                           <td className="p-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              {canToggle && (
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              {canChangePassword && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPasswordModalUser(u);
+                                    setNewUserPassword('');
+                                    setConfirmUserPassword('');
+                                    setPasswordError('');
+                                    setShowNewPassword(false);
+                                  }}
+                                  className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-[#f5b942]/40 bg-[#f5b942]/15 px-3 py-1.5 text-xs font-bold text-[#f5b942] transition hover:bg-[#f5b942] hover:text-black"
+                                >
+                                  <KeyRound size={12} />
+                                  <span>Change Password</span>
+                                </button>
+                              )}
+                              {canManageUser && (
                                 <button
                                   type="button"
                                   onClick={() => authService.setActive(u.id, u.isActive === false).then(loadUsers)}
-                                  className="rounded-xl border border-white/10 px-3 py-1 text-xs font-bold"
+                                  className="shrink-0 whitespace-nowrap rounded-xl border border-white/10 px-3 py-1.5 text-xs font-bold transition hover:bg-white/10"
                                 >
                                   {u.isActive === false ? 'Activate' : 'Suspend'}
                                 </button>
                               )}
-                              {isSuper && u.role !== ROLES.SUPERADMIN && u.id !== user.id && (
+                              {canManageUser && (
                                 <button
                                   type="button"
-                                  onClick={() => authService.removeUser(u.id).then(loadUsers)}
-                                  className="rounded-xl bg-rose-500/15 p-1.5 text-rose-400"
+                                  onClick={() => setUserToDelete(u)}
+                                  title="Delete User"
+                                  className="flex shrink-0 items-center gap-1 rounded-xl bg-rose-500/15 px-2.5 py-1.5 text-xs font-bold text-rose-400 transition hover:bg-rose-500/25"
                                 >
                                   <Trash2 size={14} />
                                 </button>
@@ -1639,6 +1678,260 @@ export default function Admin() {
           }}
           onSaved={loadCatalog}
         />
+      )}
+
+      {/* 1. CHANGE USER / STAFF PASSWORD MODAL */}
+      {passwordModalUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+          <div
+            className={`relative w-full max-w-sm rounded-3xl border p-6 shadow-2xl ${
+              theme === 'light'
+                ? 'border-slate-200 bg-white text-slate-900'
+                : 'border-white/15 bg-[#0e131f] text-white'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setPasswordModalUser(null)}
+              className="absolute top-4 right-4 rounded-full p-1.5 text-zinc-400 hover:bg-white/10"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f5b942]/15 text-[#f5b942]">
+              <KeyRound size={22} />
+            </div>
+
+            <h3
+              style={{ fontFamily: 'var(--font-display)' }}
+              className="text-center text-lg font-extrabold"
+            >
+              Change User Password
+            </h3>
+            <p className="mt-1.5 text-center text-xs leading-relaxed text-zinc-400">
+              Set a new password for <b className="text-white">{passwordModalUser.name}</b> ({passwordModalUser.email})
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setPasswordError('');
+                if (newUserPassword.trim().length < 6) {
+                  setPasswordError('Password must be at least 6 characters.');
+                  return;
+                }
+                if (newUserPassword.trim() !== confirmUserPassword.trim()) {
+                  setPasswordError('Passwords do not match.');
+                  return;
+                }
+                setPasswordSaving(true);
+                try {
+                  await authService.adminChangePassword(passwordModalUser.id, newUserPassword.trim());
+                  notify(`Password updated for ${passwordModalUser.name}!`);
+                  setPasswordModalUser(null);
+                  setNewUserPassword('');
+                  setConfirmUserPassword('');
+                } catch (err) {
+                  setPasswordError(err.response?.data?.message || 'Failed to update password');
+                } finally {
+                  setPasswordSaving(false);
+                }
+              }}
+              className="mt-5 space-y-3.5"
+            >
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-zinc-400 uppercase">
+                  New Password *
+                </label>
+                <div className="relative">
+                  <input
+                    required
+                    minLength={6}
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    placeholder="Enter new password (min 6 chars)"
+                    className="w-full rounded-xl border border-white/15 bg-white/5 py-2.5 pr-10 pl-3.5 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword((v) => !v)}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-white"
+                  >
+                    {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[11px] font-bold text-zinc-400 uppercase">
+                  Confirm New Password *
+                </label>
+                <input
+                  required
+                  minLength={6}
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={confirmUserPassword}
+                  onChange={(e) => setConfirmUserPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-xs text-white focus:border-[#f5b942] focus:outline-none"
+                />
+              </div>
+
+              {passwordError && (
+                <p className="rounded-xl bg-rose-500/15 px-3 py-2 text-center text-xs font-semibold text-rose-400">
+                  {passwordError}
+                </p>
+              )}
+
+              <div className="mt-5 grid grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPasswordModalUser(null)}
+                  className="rounded-2xl border border-white/15 bg-white/5 py-2.5 text-xs font-bold hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordSaving}
+                  className="flex items-center justify-center gap-1.5 rounded-2xl bg-[#f5b942] py-2.5 text-xs font-extrabold text-black shadow-lg shadow-[#f5b942]/25 hover:brightness-110 disabled:opacity-50"
+                >
+                  <Check size={14} /> {passwordSaving ? 'Saving...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. DELETE USER CONFIRMATION MODAL (Like Logout Confirm Modal) */}
+      {userToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+          <div
+            className={`relative w-full max-w-sm rounded-3xl border p-6 shadow-2xl ${
+              theme === 'light'
+                ? 'border-slate-200 bg-white text-slate-900'
+                : 'border-white/15 bg-[#0e131f] text-white'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setUserToDelete(null)}
+              className="absolute top-4 right-4 rounded-full p-1.5 text-zinc-400 hover:bg-white/10"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-500">
+              <Trash2 size={22} />
+            </div>
+
+            <h3
+              style={{ fontFamily: 'var(--font-display)' }}
+              className="text-center text-lg font-extrabold"
+            >
+              Delete User Account?
+            </h3>
+            <p className="mt-2 text-center text-xs leading-relaxed text-zinc-400">
+              Are you sure you want to permanently delete{' '}
+              <b className="text-white">{userToDelete.name}</b> ({userToDelete.email}) and all their reviews, comments, and watchlist items?
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                className="rounded-2xl border border-white/15 bg-white/5 py-2.5 text-xs font-bold hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await authService.removeUser(userToDelete.id);
+                    notify(`Deleted user ${userToDelete.name}`);
+                    setUserToDelete(null);
+                    loadUsers();
+                  } catch (err) {
+                    notify(err.response?.data?.message || 'Failed to delete user');
+                    setUserToDelete(null);
+                  }
+                }}
+                className="keep-white flex items-center justify-center gap-1.5 rounded-2xl bg-rose-500 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-rose-500/25 hover:bg-rose-600"
+              >
+                <Trash2 size={14} /> Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. DELETE COMMUNITY ROOM CONFIRMATION MODAL (Like Logout Confirm Modal) */}
+      {roomToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+          <div
+            className={`relative w-full max-w-sm rounded-3xl border p-6 shadow-2xl ${
+              theme === 'light'
+                ? 'border-slate-200 bg-white text-slate-900'
+                : 'border-white/15 bg-[#0e131f] text-white'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setRoomToDelete(null)}
+              className="absolute top-4 right-4 rounded-full p-1.5 text-zinc-400 hover:bg-white/10"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-500">
+              <Trash2 size={22} />
+            </div>
+
+            <h3
+              style={{ fontFamily: 'var(--font-display)' }}
+              className="text-center text-lg font-extrabold"
+            >
+              Delete Community Room?
+            </h3>
+            <p className="mt-2 text-center text-xs leading-relaxed text-zinc-400">
+              Are you sure you want to permanently delete{' '}
+              <b className="text-white">
+                {roomToDelete.icon} {roomToDelete.name}
+              </b>{' '}
+              and all {roomToDelete.messageCount || 0} chat messages inside it?
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRoomToDelete(null)}
+                className="rounded-2xl border border-white/15 bg-white/5 py-2.5 text-xs font-bold hover:bg-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await communityApi.deleteRoom(roomToDelete.id);
+                    notify(`Deleted community room "${roomToDelete.name}"`);
+                    setRoomToDelete(null);
+                    loadCommunity();
+                  } catch (err) {
+                    notify(err.response?.data?.message || 'Failed to delete community room');
+                    setRoomToDelete(null);
+                  }
+                }}
+                className="keep-white flex items-center justify-center gap-1.5 rounded-2xl bg-rose-500 py-2.5 text-xs font-extrabold text-white shadow-lg shadow-rose-500/25 hover:bg-rose-600"
+              >
+                <Trash2 size={14} /> Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
