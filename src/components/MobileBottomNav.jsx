@@ -20,7 +20,16 @@ export default function MobileBottomNav() {
 
   const navItems = [
     { to: '/', label: 'Home', icon: Home, active: pathname === '/' },
-    { to: '/browse/movie', label: 'Explore', icon: Compass, active: pathname.startsWith('/browse') },
+    {
+      to: '/browse/movies',
+      label: 'Explore',
+      icon: Compass,
+      active:
+        pathname.startsWith('/browse') ||
+        pathname === '/movies' ||
+        pathname === '/web-series' ||
+        pathname === '/tv-shows',
+    },
     { to: '/ott', label: 'OTT', icon: Tv, active: pathname.startsWith('/ott') },
     { to: '/community', label: 'Chat', icon: MessageSquare, active: pathname.startsWith('/community') },
     { to: '/blogs', label: 'Blogs', icon: BookOpen, active: pathname.startsWith('/blogs') },

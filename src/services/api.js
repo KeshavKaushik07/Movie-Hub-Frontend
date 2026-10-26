@@ -6,7 +6,7 @@ import {
   toSlug,
 } from '../utils/formatters';
 
-const CACHE_PREFIX = 'movieshub_cache_v5:';
+const CACHE_PREFIX = 'movieshub_cache_v6:';
 
 // Automatically purge older cache versions or any broken season:undefined entries on load
 try {
@@ -452,8 +452,10 @@ export const tmdb = {
   },
 
   detail: async (type, slugOrId) => {
-    const cleanType =
-      type === 'webseries' ? 'tv' : type === 'tv' ? 'tv' : 'movie';
+    const rawTypeStr = String(type || '').toLowerCase().trim();
+    const cleanType = ['webseries', 'web-series', 'tv', 'tv-show', 'tv-shows', 'tv-series', 'series'].includes(rawTypeStr)
+      ? 'tv'
+      : 'movie';
     const rawParam = decodeURIComponent(String(slugOrId || '')).trim();
     const isNumeric = /^\d+$/.test(rawParam);
     const mapped = !isNumeric ? resolveSlugMapping(rawParam) : null;
@@ -547,14 +549,35 @@ export const featuredApi = {
   listPublic: () => backend.get('/featured').then((r) => r.data.items || []),
   listAdmin: () =>
     backend.get('/featured/admin').then((r) => r.data.items || []),
-  add: (payload) => backend.post('/featured', payload).then((r) => r.data.item),
+  listAdminFull: () =>
+    backend.get('/featured/admin').then((r) => r.data || { items: [], heroLimit: 10 }),
+  updateConfig: (heroLimit) =>
+    backend.patch('/featured/config', { heroLimit }).then((r) => {
+      clearCatalogCache();
+      return r.data;
+    }),
+  add: (payload) =>
+    backend.post('/featured', payload).then((r) => {
+      clearCatalogCache();
+      return r.data.item;
+    }),
   update: (id, payload) =>
-    backend.patch(`/featured/${id}`, payload).then((r) => r.data.item),
+    backend.patch(`/featured/${id}`, payload).then((r) => {
+      clearCatalogCache();
+      return r.data.item;
+    }),
   reorder: (orderedIds) =>
     backend
       .put('/featured/reorder', { orderedIds })
-      .then((r) => r.data.items || []),
-  remove: (id) => backend.delete(`/featured/${id}`).then((r) => r.data),
+      .then((r) => {
+        clearCatalogCache();
+        return r.data.items || [];
+      }),
+  remove: (id) =>
+    backend.delete(`/featured/${id}`).then((r) => {
+      clearCatalogCache();
+      return r.data;
+    }),
 };
 
 // Blog & Editorial CMS API (Public + Admin/SuperAdmin)

@@ -2,18 +2,21 @@ import { createSlice } from '@reduxjs/toolkit';
 import { detectDefaultRegion } from '../utils/formatters';
 import { login, signup, restoreSession, updateProfile } from './authSlice';
 
-const PREF_STORAGE_KEY = 'movieshub_preferences_v4';
+const PREF_STORAGE_KEY = 'movieshub_preferences_v5';
 
 const getInitialPreferences = () => {
-  const defaultRegion = detectDefaultRegion();
+  // Always detect region and currency automatically from the user's location
+  const detectedRegion = detectDefaultRegion();
+  const detectedCurrency = detectedRegion === 'IN' ? 'INR' : 'USD';
+
   const fallback = {
-    region: defaultRegion,
-    currency: defaultRegion === 'IN' ? 'INR' : 'USD',
+    region: detectedRegion,
+    currency: detectedCurrency,
     industries:
-      defaultRegion === 'IN'
+      detectedRegion === 'IN'
         ? ['bollywood', 'tollywood', 'kollywood', 'mollywood', 'sandalwood', 'hollywood']
         : ['hollywood', 'korean', 'japanese', 'bollywood'],
-    languages: defaultRegion === 'IN' ? ['hi', 'te', 'ta', 'ml', 'kn', 'en'] : ['en', 'ko', 'ja'],
+    languages: detectedRegion === 'IN' ? ['hi', 'te', 'ta', 'ml', 'kn', 'en'] : ['en', 'ko', 'ja'],
     genres: [28, 53, 18, 35, 878],
     contentTypes: ['movie', 'webseries', 'tv'],
     onboardingCompleted: false,
@@ -27,6 +30,9 @@ const getInitialPreferences = () => {
     return {
       ...fallback,
       ...parsed,
+      // Strictly lock region and currency to automatic location detection
+      region: detectedRegion,
+      currency: detectedCurrency,
       modalOpen: false,
     };
   } catch {
@@ -48,16 +54,18 @@ const preferencesSlice = createSlice({
   initialState: getInitialPreferences(),
   reducers: {
     setPreferences: (state, { payload }) => {
-      Object.assign(state, payload, { onboardingCompleted: true });
-      if (payload.region && !payload.currency) {
-        state.currency = payload.region === 'IN' ? 'INR' : 'USD';
-      }
+      const detectedRegion = detectDefaultRegion();
+      Object.assign(state, payload, {
+        region: detectedRegion,
+        currency: detectedRegion === 'IN' ? 'INR' : 'USD',
+        onboardingCompleted: true,
+      });
       saveToLocal(state);
     },
-    setRegionAndCurrency: (state, { payload }) => {
-      const region = payload === 'GLOBAL' ? 'GLOBAL' : 'IN';
-      state.region = region;
-      state.currency = region === 'IN' ? 'INR' : 'USD';
+    setRegionAndCurrency: (state) => {
+      const detectedRegion = detectDefaultRegion();
+      state.region = detectedRegion;
+      state.currency = detectedRegion === 'IN' ? 'INR' : 'USD';
       saveToLocal(state);
     },
     openPreferenceModal: (state) => {
@@ -68,11 +76,11 @@ const preferencesSlice = createSlice({
     },
   },
   extraReducers: (b) => {
-    // Whenever a user logs in, signs up, or restores session from backend, sync their backend preferences!
     const syncFromUser = (state, user) => {
+      const detectedRegion = detectDefaultRegion();
+      state.region = detectedRegion;
+      state.currency = detectedRegion === 'IN' ? 'INR' : 'USD';
       if (user?.preferences && user.preferences.onboardingCompleted) {
-        state.region = user.preferences.region || state.region;
-        state.currency = user.preferences.currency || (state.region === 'IN' ? 'INR' : 'USD');
         if (Array.isArray(user.preferences.industries) && user.preferences.industries.length) {
           state.industries = user.preferences.industries;
         }

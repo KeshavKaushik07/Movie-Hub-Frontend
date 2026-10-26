@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Film, BookOpen, MessageSquare, Compass, Globe, FileCode } from 'lucide-react';
+import { Film, Tv, BookOpen, MessageSquare, Compass, Globe, FileCode } from 'lucide-react';
 import { APP_NAME } from '../config/constants';
 
 export default function Footer() {
@@ -13,13 +13,19 @@ export default function Footer() {
           <div>
             <span className="font-bold">{APP_NAME}</span>
             <p className="text-[11px] text-zinc-500">
-              Indian & Global Cinema Encyclopedia • Box Office in ₹ & $ • Live Community
+              Indian & Global Cinema Encyclopedia • Movies, Web Series & TV Shows • Live Community
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-5">
-          <Link to="/browse/movie" className="flex items-center gap-1 hover:text-brand">
-            <Compass size={13} /> Browse Catalog
+          <Link to="/browse/movies" className="flex items-center gap-1 hover:text-brand">
+            <Compass size={13} /> Movies
+          </Link>
+          <Link to="/browse/web-series" className="flex items-center gap-1 hover:text-brand">
+            <Tv size={13} /> Web Series
+          </Link>
+          <Link to="/browse/tv-shows" className="flex items-center gap-1 hover:text-brand">
+            <Tv size={13} /> TV Shows
           </Link>
           <Link to="/blogs" className="flex items-center gap-1 hover:text-brand">
             <BookOpen size={13} /> Editorial Blogs

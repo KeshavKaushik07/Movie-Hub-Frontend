@@ -19,22 +19,19 @@ const MANUAL_HOLD_MS = 40000; // Stay for 40s when user clicks arrow/dot or swip
 
 export default function Carousel({
   items = [],
-  heroSource = 'trending_fallback',
+  heroSource = 'trending_multi_industry',
 }) {
-  const slides = items
-    .filter(
-      (it) =>
-        it &&
-        (it.title || it.name) &&
-        (it.backdropUrl || it.backdrop_path || it.posterUrl || it.poster_path),
-    )
-    .slice(0, 8);
+  // Respect all slides provided by backend (10 by default, or Admin's configured heroLimit / unlimited Admin slides)
+  const slides = items.filter(
+    (it) =>
+      it &&
+      (it.title || it.name) &&
+      (it.backdropUrl || it.backdrop_path || it.posterUrl || it.poster_path),
+  );
   const [i, setI] = useState(0);
   const [isManualHold, setIsManualHold] = useState(false);
   const [manualTick, setManualTick] = useState(0);
   const { region } = useSelector((s) => s.preferences);
-  const theme = useSelector((s) => s.theme.mode);
-  const isLight = theme === 'light';
   const touchStartX = useRef(null);
 
   useEffect(() => {
@@ -63,10 +60,11 @@ export default function Carousel({
 
   if (!slides.length) return null;
   const cur = slides[i] || slides[0];
-  const type =
-    cur.subType === 'webseries'
-      ? 'webseries'
-      : cur.type || cur.media_type || (cur.first_air_date ? 'tv' : 'movie');
+  const isWebSeries =
+    cur.isWebSeries || cur.subType === 'webseries' || cur.type === 'webseries';
+  const type = isWebSeries
+    ? 'webseries'
+    : cur.type || cur.media_type || (cur.first_air_date ? 'tv' : 'movie');
 
   // Only show disclosed metadata
   const year =
@@ -78,6 +76,12 @@ export default function Carousel({
   const backdrop =
     cur.backdropUrl || cur.backdrop_path || cur.posterUrl || cur.poster_path;
   const fin = getMovieFinancials(cur, region);
+
+  const defaultBadgeLabel = cur.isFeaturedSlide
+    ? 'Featured'
+    : `Trending ${
+        isWebSeries ? 'Web Series' : type === 'tv' ? 'TV Show' : 'Movie'
+      }`;
 
   const onTouchStart = (e) => {
     touchStartX.current = e.touches?.[0]?.clientX ?? null;
@@ -147,16 +151,7 @@ export default function Carousel({
           <div className='flex flex-wrap items-center gap-1.5 text-[10px] sm:gap-2 sm:text-xs'>
             <span className='inline-flex items-center gap-1 rounded-full bg-brand px-2.5 py-0.5 font-extrabold text-black uppercase shadow-xs sm:px-3 sm:py-1'>
               <Sparkles size={10} />
-              {cur.badgeText ||
-                (heroSource === 'superadmin_featured'
-                  ? 'Featured'
-                  : `Trending ${
-                      cur.subType === 'webseries'
-                        ? 'Series'
-                        : type === 'tv'
-                          ? 'TV'
-                          : 'Movie'
-                    }`)}
+              {cur.badgeText || defaultBadgeLabel}
             </span>
 
             {hasRating && (
@@ -229,7 +224,13 @@ export default function Carousel({
               >
                 <Info size={13} />
                 <span className='sm:hidden'>Details</span>
-                <span className='hidden sm:inline'>Movie Details</span>
+                <span className='hidden sm:inline'>
+                  {isWebSeries
+                    ? 'Web Series Details'
+                    : type === 'tv'
+                      ? 'TV Show Details'
+                      : 'Movie Details'}
+                </span>
               </Link>
             </div>
           </div>
@@ -237,10 +238,10 @@ export default function Carousel({
 
         {/* Slide Indicators (Left) & Prev/Next Arrows (Right) */}
         <div className='mt-3 flex w-full items-center justify-between sm:mt-6'>
-          <div className='flex items-center gap-1.5'>
+          <div className='flex flex-wrap items-center gap-1.5'>
             {slides.map((s, idx) => (
               <button
-                key={s.id || idx}
+                key={`${s.id || idx}-${idx}`}
                 type='button'
                 onClick={() => handleManualSlideChange(idx)}
                 aria-label={`Slide ${idx + 1}`}

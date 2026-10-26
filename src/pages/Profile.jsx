@@ -22,7 +22,6 @@ import SafeImage from '../components/ui/SafeImage';
 
 export default function Profile({ defaultTab = 'overview' }) {
   const user = useSelector((s) => s.auth.user);
-  const prefs = useSelector((s) => s.preferences);
   const dispatch = useDispatch();
   const nav = useNavigate();
 
@@ -136,7 +135,7 @@ export default function Profile({ defaultTab = 'overview' }) {
             onClick={() => dispatch(openPreferenceModal())}
             className="flex items-center gap-1.5 rounded-xl border border-brand/30 bg-brand/10 px-4 py-2 text-xs font-bold text-brand"
           >
-            <Sparkles size={14} /> Taste & Currency ({prefs.currency})
+            <Sparkles size={14} /> Customize Taste
           </button>
           <button
             type="button"

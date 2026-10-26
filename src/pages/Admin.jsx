@@ -7,7 +7,6 @@ import { reviewService } from '../services/reviewService';
 import { tmdb, featuredApi, blogApi, communityApi } from '../services/api';
 import { openLogoutModal } from '../store/authSlice';
 import { toggleTheme } from '../store/themeSlice';
-import { setRegionAndCurrency } from '../store/preferencesSlice';
 import { notifyPatch } from '../utils/notify';
 
 import TitleEditorModal from '../components/TitleEditorModal';
@@ -74,6 +73,7 @@ export default function Admin() {
 
   // Featured Hero Carousel
   const [featuredItems, setFeaturedItems] = useState([]);
+  const [heroLimit, setHeroLimit] = useState(10);
   const [featSearchQ, setFeatSearchQ] = useState('');
   const [featSearchResults, setFeatSearchResults] = useState([]);
   const [featSearchAttempted, setFeatSearchAttempted] = useState(false);
@@ -177,9 +177,13 @@ export default function Admin() {
   const loadOverview = () => reviewService.admin.stats().then(setStats).catch(() => {});
   const loadFeatured = () =>
     featuredApi
-      .listAdmin()
-      .then((list) => {
-        setFeaturedItems(Array.isArray(list) ? list : []);
+      .listAdminFull()
+      .then((res) => {
+        const list = Array.isArray(res?.items) ? res.items : Array.isArray(res) ? res : [];
+        setFeaturedItems(list);
+        if (Number.isFinite(Number(res?.heroLimit))) {
+          setHeroLimit(Number(res.heroLimit));
+        }
         setLoadedFlags((p) => ({ ...p, featured: true }));
       })
       .catch(() => {});
@@ -468,6 +472,17 @@ export default function Admin() {
     }
   };
 
+  const handleUpdateHeroLimit = async (nextLimit) => {
+    try {
+      const res = await featuredApi.updateConfig(nextLimit);
+      const savedLimit = Number(res?.heroLimit) || Number(nextLimit) || 10;
+      setHeroLimit(savedLimit);
+      notify(`Home Hero Carousel slide count updated to ${savedLimit}!`);
+    } catch (err) {
+      notify(err.response?.data?.message || 'Failed to update Hero Carousel slide count', 'error');
+    }
+  };
+
   const moveFeaturedItem = async (idx, dir) => {
     const next = [...featuredItems];
     const targetIdx = idx + dir;
@@ -522,7 +537,6 @@ export default function Admin() {
           theme={theme}
           toast={toast}
           onOpenSidebar={() => setSidebarOpen(true)}
-          onToggleRegion={() => dispatch(setRegionAndCurrency(region === 'IN' ? 'GLOBAL' : 'IN'))}
           onToggleTheme={() => dispatch(toggleTheme())}
           onRefreshActiveSection={refreshActiveSection}
         />
@@ -535,6 +549,8 @@ export default function Admin() {
           {activeSection === 'featured' && (
             <FeaturedSection
               featuredItems={featuredItems}
+              heroLimit={heroLimit}
+              onUpdateHeroLimit={handleUpdateHeroLimit}
               featSearchQ={featSearchQ}
               setFeatSearchQ={setFeatSearchQ}
               featSearchResults={featSearchResults}
@@ -795,7 +811,7 @@ export default function Admin() {
         />
       )}
 
-      {/* Requirement 4: Critic & Review Inspection / Edit Modal */}
+      {/* Critic & Review Inspection / Edit Modal */}
       <ReviewDetailEditModal
         review={selectedReviewForModal}
         onClose={() => setSelectedReviewForModal(null)}
@@ -883,5 +899,6 @@ export default function Admin() {
           }
         }}
       />
-    </div> );
+    </div>
+  );
 }

@@ -36,6 +36,14 @@ const userRoutesTree = (
     <Route path={ROUTES.OTT_PROVIDER} element={<OttHub />} />
     <Route path={ROUTES.BROWSE_ROOT} element={<Browse />} />
     <Route path={ROUTES.BROWSE} element={<Browse />} />
+    <Route path={ROUTES.MOVIES_CATALOG} element={<Browse />} />
+    <Route path={ROUTES.WEB_SERIES_CATALOG} element={<Browse />} />
+    <Route path={ROUTES.TV_SHOWS_CATALOG} element={<Browse />} />
+    <Route path={ROUTES.TV_SERIES_CATALOG} element={<Browse />} />
+    <Route path={ROUTES.MOVIE_DETAIL} element={<Details />} />
+    <Route path={ROUTES.WEB_SERIES_DETAIL} element={<Details />} />
+    <Route path={ROUTES.TV_SHOW_DETAIL} element={<Details />} />
+    <Route path={ROUTES.TV_SERIES_DETAIL} element={<Details />} />
     <Route path={ROUTES.DETAILS} element={<Details />} />
     <Route path={ROUTES.DETAILS_LEGACY} element={<Details />} />
     <Route path={ROUTES.ACTOR} element={<Person />} />

@@ -72,7 +72,7 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
             </div>
 
             <Link
-              to="/browse/movie?list=trending"
+              to="/browse/movies?list=trending"
               className="flex items-center gap-1 rounded-full border border-white/15 bg-white/5 px-3.5 py-2 text-xs font-bold text-brand hover:bg-white/10"
             >
               See All <ArrowRight size={13} />
@@ -101,7 +101,10 @@ export default function Top10Showcase({ today = [], week = [], region = 'IN' }) 
         <div ref={scrollRef} className="no-scrollbar flex gap-5 overflow-x-auto pb-2">
           {list.map((item, idx) => {
             const rank = idx + 1;
-            const type = item.subType === 'webseries' ? 'tv' : item.type || 'movie';
+            const type =
+              item.isWebSeries || item.subType === 'webseries'
+                ? 'webseries'
+                : item.type || 'movie';
             const rating = Number(item.siteRating || item.vote_average || item.rating || 0).toFixed(1);
             return (
               <Link

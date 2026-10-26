@@ -3,6 +3,7 @@ import {
   useParams,
   useSearchParams,
   useNavigate,
+  useLocation,
   Link,
 } from 'react-router-dom';
 import {
@@ -18,12 +19,19 @@ import {
   TV_GENRES,
   OTT_LIST,
   INDUSTRY_LIST,
+  toGenreSlug,
+  resolveGenreId,
+  resolveGenreName,
+  getOttSlug,
+  resolveOttKey,
+  toBrowseTypeSlug,
+  fromBrowseTypeSlug,
 } from '../config/constants';
 import MovieCard from '../components/MovieCard';
 import CustomSelect from '../components/ui/CustomSelect';
 import InfoPatch from '../components/ui/InfoPatch';
 import SafeImage from '../components/ui/SafeImage';
-import { getPersonPath } from '../utils/formatters';
+import { getPersonPath, isUpcomingRelease } from '../utils/formatters';
 import { notifyPatch } from '../utils/notify';
 import { sanitizeText } from '../utils/security';
 
@@ -48,16 +56,37 @@ const LIST_PRESETS = [
 ];
 
 export default function Browse() {
-  const { type = 'movie' } = useParams();
-  const [params, setParams] = useSearchParams();
+  const { type: routeTypeParam } = useParams();
+  const location = useLocation();
+  const [params] = useSearchParams();
   const nav = useNavigate();
 
-  const [mediaType, setMediaType] = useState(type);
+  // Support both `/browse/:type` (`/browse/movies`, `/browse/web-series`, `/browse/tv-shows`)
+  // and top-level plural paths (`/movies`, `/web-series`, `/tv-shows`)
+  const rawRouteSegment =
+    routeTypeParam ||
+    location.pathname.replace(/^\/browse\/?/, '').replace(/^\/+/, '') ||
+    'movies';
+  const normalizedMediaType = fromBrowseTypeSlug(rawRouteSegment);
+  const canonicalBrowseSegment = toBrowseTypeSlug(normalizedMediaType);
+
+  const initialGenreRaw = params.get('genre') || '';
+  const initialGenreName = resolveGenreName(initialGenreRaw, normalizedMediaType);
+  const initialGenreSlug = initialGenreName
+    ? toGenreSlug(initialGenreName)
+    : initialGenreRaw
+      ? toGenreSlug(initialGenreRaw)
+      : '';
+
+  const initialOttRaw = params.get('ott') || params.get('provider') || '';
+  const initialOttKey = initialOttRaw ? resolveOttKey(initialOttRaw) : '';
+
+  const [mediaType, setMediaType] = useState(normalizedMediaType);
   const [listPreset, setListPreset] = useState(params.get('list') || '');
-  const [genre, setGenre] = useState(params.get('genre') || '');
+  const [genre, setGenre] = useState(initialGenreSlug);
   const [year, setYear] = useState(params.get('year') || '');
   const [industry, setIndustry] = useState(params.get('industry') || '');
-  const [ott, setOtt] = useState(params.get('ott') || '');
+  const [ott, setOtt] = useState(initialOttKey === 'all' ? '' : initialOttKey);
   const [minRating, setMinRating] = useState(params.get('minRating') || '');
   const [sort, setSort] = useState(params.get('sort') || 'popularity');
   const [page, setPage] = useState(1);
@@ -73,18 +102,90 @@ export default function Browse() {
   const [searchInput, setSearchInput] = useState(q);
   const genreMap = mediaType === 'movie' ? MOVIE_GENRES : TV_GENRES;
 
+  // Helper to build clean, bot-friendly plural URLs with human-readable slugs (`?genre=thriller`, `?ott=prime-video`)
+  const syncCleanBrowseUrl = (overrides = {}, replace = false) => {
+    const nextMediaType = overrides.mediaType ?? mediaType;
+    const nextList = overrides.list !== undefined ? overrides.list : listPreset;
+    const nextGenre = overrides.genre !== undefined ? overrides.genre : genre;
+    const nextYear = overrides.year !== undefined ? overrides.year : year;
+    const nextIndustry =
+      overrides.industry !== undefined ? overrides.industry : industry;
+    const nextOtt = overrides.ott !== undefined ? overrides.ott : ott;
+    const nextMinRating =
+      overrides.minRating !== undefined ? overrides.minRating : minRating;
+    const nextSort = overrides.sort !== undefined ? overrides.sort : sort;
+    const nextQ = overrides.q !== undefined ? overrides.q : q;
+
+    const search = new URLSearchParams();
+    if (nextQ) search.set('q', nextQ);
+    if (nextList) search.set('list', nextList);
+    if (nextGenre) {
+      const gName = resolveGenreName(nextGenre, nextMediaType);
+      search.set('genre', gName ? toGenreSlug(gName) : toGenreSlug(nextGenre));
+    }
+    if (nextIndustry) search.set('industry', nextIndustry);
+    if (nextOtt) search.set('ott', getOttSlug(nextOtt));
+    if (nextYear) search.set('year', nextYear);
+    if (nextMinRating) search.set('minRating', nextMinRating);
+    if (nextSort && nextSort !== 'popularity') search.set('sort', nextSort);
+
+    const targetBasePath = `/browse/${toBrowseTypeSlug(nextMediaType)}`;
+    const qs = search.toString();
+    const targetUrl = `${targetBasePath}${qs ? `?${qs}` : ''}`;
+    const currentUrl = `${location.pathname}${location.search}`;
+    if (targetUrl !== currentUrl) {
+      nav(targetUrl, { replace });
+    }
+  };
+
+  // Sync state when route or search params change, and normalize legacy URLs (e.g. `/browse/movie?genre=53` -> `/browse/movies?genre=thriller`)
   useEffect(() => {
-    setMediaType(type);
+    const nextType = fromBrowseTypeSlug(rawRouteSegment);
+    const rawGenre = params.get('genre') || '';
+    const gName = resolveGenreName(rawGenre, nextType);
+    const cleanGenreSlug = gName
+      ? toGenreSlug(gName)
+      : rawGenre
+        ? toGenreSlug(rawGenre)
+        : '';
+
+    const rawOtt = params.get('ott') || params.get('provider') || '';
+    const resolvedOtt = rawOtt ? resolveOttKey(rawOtt) : '';
+    const cleanOttKey = resolvedOtt === 'all' ? '' : resolvedOtt;
+
+    setMediaType(nextType);
     setListPreset(params.get('list') || '');
-    setGenre(params.get('genre') || '');
+    setGenre(cleanGenreSlug);
     setYear(params.get('year') || '');
     setIndustry(params.get('industry') || '');
-    setOtt(params.get('ott') || '');
+    setOtt(cleanOttKey);
     setMinRating(params.get('minRating') || '');
     setSort(params.get('sort') || 'popularity');
     setSearchInput(sanitizeText(params.get('q') || '', 120));
     setPage(1);
-  }, [type, params]);
+
+    // If URL used singular `/browse/movie` or numeric `?genre=53`, silently replace with canonical `/browse/movies?genre=thriller`
+    const isSingularBrowsePath =
+      location.pathname === '/browse' ||
+      location.pathname === '/browse/movie' ||
+      location.pathname === '/browse/webseries' ||
+      location.pathname === '/browse/tv';
+    const hasNumericGenre = rawGenre && /^\d+$/.test(rawGenre) && cleanGenreSlug;
+    const hasShortOtt =
+      rawOtt && cleanOttKey && rawOtt !== getOttSlug(cleanOttKey);
+
+    if (isSingularBrowsePath || hasNumericGenre || hasShortOtt) {
+      const canonicalSearch = new URLSearchParams(params);
+      canonicalSearch.delete('provider');
+      if (cleanGenreSlug) canonicalSearch.set('genre', cleanGenreSlug);
+      if (cleanOttKey) canonicalSearch.set('ott', getOttSlug(cleanOttKey));
+      const qs = canonicalSearch.toString();
+      const canonicalPath = `/browse/${toBrowseTypeSlug(nextType)}${qs ? `?${qs}` : ''}`;
+      if (`${location.pathname}${location.search}` !== canonicalPath) {
+        nav(canonicalPath, { replace: true });
+      }
+    }
+  }, [rawRouteSegment, params, location.pathname, location.search, nav]);
 
   useEffect(() => {
     let alive = true;
@@ -92,13 +193,19 @@ export default function Browse() {
     setFetchError('');
     if (!q) setMatchedPerson(null);
 
+    // Internally resolve clean genre slug (`thriller`) to TMDB numeric ID (`53`) and OTT slug (`prime-video`) to backend key (`prime`)
+    const resolvedGenreId = genre
+      ? resolveGenreId(genre, mediaType) || genre
+      : undefined;
+    const resolvedOttKey = ott ? resolveOttKey(ott) : undefined;
+
     const filterParams = {
       page,
       sort,
-      genre: genre || undefined,
+      genre: resolvedGenreId,
       year: year || undefined,
       industry: industry || undefined,
-      ott: ott || undefined,
+      ott: resolvedOttKey,
       minRating: minRating || undefined,
       list: listPreset || undefined,
     };
@@ -112,11 +219,21 @@ export default function Browse() {
     req
       .then((d) => {
         if (!alive) return;
-        const list = d?.results || d?.items || [];
+        const rawList = d?.results || d?.items || [];
+        // Strictly ensure only genuinely unreleased titles appear when browsing `list=upcoming`
+        const list =
+          listPreset === 'upcoming'
+            ? rawList.filter((it) => isUpcomingRelease(it))
+            : rawList;
+
         setItems(list);
         setMatchedPerson(q ? d?.matchedPerson || null : null);
         setTotalPages(Math.min(d?.total_pages || d?.totalPages || 1, 500));
-        setTotalResults(d?.total_results || d?.total || list.length);
+        setTotalResults(
+          listPreset === 'upcoming'
+            ? list.length
+            : d?.total_results || d?.total || list.length,
+        );
         setLoading(false);
 
         if (page === 1 && q) {
@@ -124,7 +241,7 @@ export default function Browse() {
             notifyPatch({
               type: 'not-found',
               title: 'No Matching Titles Found',
-              message: `No movies or web series matched "${q}".`,
+              message: `No movies, web series, or TV shows matched "${q}".`,
             });
           } else {
             notifyPatch({
@@ -176,7 +293,7 @@ export default function Browse() {
     setSearchInput('');
     setMatchedPerson(null);
     setPage(1);
-    setParams({});
+    nav(`/browse/${canonicalBrowseSegment}`);
     notifyPatch({
       type: 'info',
       title: 'Filters Reset',
@@ -188,15 +305,11 @@ export default function Browse() {
   const handleInlineSearch = (e) => {
     e.preventDefault();
     const cleaned = sanitizeText(searchInput.trim(), 120);
-    const next = new URLSearchParams(params);
-    if (cleaned) next.set('q', cleaned);
-    else next.delete('q');
-    setParams(next);
+    setPage(1);
+    syncCleanBrowseUrl({ q: cleaned });
   };
 
-  const genreName = Object.entries(genreMap).find(
-    ([, id]) => String(id) === String(genre),
-  )?.[0];
+  const genreName = resolveGenreName(genre, mediaType);
   const industryLabel = INDUSTRY_LIST.find((i) => i.key === industry)?.label;
   const ottLabel = OTT_LIST.find((o) => o.key === ott)?.label;
   const hasActiveFilters = Boolean(
@@ -208,18 +321,38 @@ export default function Browse() {
       ? `Movies & Series featuring ${matchedPerson.name}`
       : `Search results for “${q}”`
     : listPreset === 'upcoming'
-      ? 'Upcoming Movies & Theatrical Calendar'
+      ? 'Upcoming Releases & Theatrical Calendar'
       : listPreset === 'trending'
         ? 'Trending This Week'
-        : industry
-          ? `${industryLabel || industry} Catalog`
-          : ott
-            ? `Streaming on ${ottLabel || ott}`
-            : mediaType === 'webseries'
-              ? 'Web Series (OTT Originals)'
-              : mediaType === 'tv'
-                ? 'TV Shows Catalog'
-                : 'Movies Catalog';
+        : genreName
+          ? `${genreName} ${
+              mediaType === 'webseries'
+                ? 'Web Series'
+                : mediaType === 'tv'
+                  ? 'TV Shows'
+                  : 'Movies'
+            }`
+          : industry
+            ? `${industryLabel || industry} ${
+                mediaType === 'webseries'
+                  ? 'Web Series'
+                  : mediaType === 'tv'
+                    ? 'TV Shows'
+                    : 'Movies'
+              }`
+            : ott
+              ? `${
+                  mediaType === 'webseries'
+                    ? 'Web Series'
+                    : mediaType === 'tv'
+                      ? 'TV Shows'
+                      : 'Movies'
+                } on ${ottLabel || ott}`
+              : mediaType === 'webseries'
+                ? 'Web Series (OTT Originals)'
+                : mediaType === 'tv'
+                  ? 'TV Shows Catalog'
+                  : 'Movies Catalog';
 
   return (
     <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6'>
@@ -264,6 +397,7 @@ export default function Browse() {
             </button>
           </form>
 
+          {/* Clearly Differentiated Plural Browse Tabs: /browse/movies, /browse/web-series, /browse/tv-shows */}
           <div className='flex rounded-full border border-white/10 bg-[#0e131f] p-1'>
             {[
               { key: 'movie', label: '🎬 Movies' },
@@ -277,6 +411,7 @@ export default function Browse() {
                   setMediaType(t.key);
                   setGenre('');
                   setPage(1);
+                  syncCleanBrowseUrl({ mediaType: t.key, genre: '' });
                 }}
                 className={`cursor-pointer rounded-full px-4 py-1.5 text-xs font-bold transition ${
                   mediaType === t.key
@@ -337,6 +472,7 @@ export default function Browse() {
             onChange={(v) => {
               setListPreset(v);
               setPage(1);
+              syncCleanBrowseUrl({ list: v });
             }}
             options={LIST_PRESETS}
           />
@@ -347,6 +483,7 @@ export default function Browse() {
             onChange={(v) => {
               setIndustry(v);
               setPage(1);
+              syncCleanBrowseUrl({ industry: v });
             }}
             options={[
               { value: '', label: 'All Industries' },
@@ -364,6 +501,7 @@ export default function Browse() {
             onChange={(v) => {
               setOtt(v);
               setPage(1);
+              syncCleanBrowseUrl({ ott: v });
             }}
             options={[
               { value: '', label: 'All OTT Platforms' },
@@ -377,11 +515,12 @@ export default function Browse() {
             onChange={(v) => {
               setGenre(v);
               setPage(1);
+              syncCleanBrowseUrl({ genre: v });
             }}
             options={[
               { value: '', label: 'All Genres' },
-              ...Object.entries(genreMap).map(([name, id]) => ({
-                value: String(id),
+              ...Object.keys(genreMap).map((name) => ({
+                value: toGenreSlug(name),
                 label: name,
               })),
             ]}
@@ -393,6 +532,7 @@ export default function Browse() {
             onChange={(v) => {
               setYear(v);
               setPage(1);
+              syncCleanBrowseUrl({ year: v });
             }}
             searchable
             options={[
@@ -407,6 +547,7 @@ export default function Browse() {
             onChange={(v) => {
               setMinRating(v);
               setPage(1);
+              syncCleanBrowseUrl({ minRating: v });
             }}
             options={[
               { value: '', label: 'Any Rating' },
@@ -423,6 +564,7 @@ export default function Browse() {
             onChange={(v) => {
               setSort(v);
               setPage(1);
+              syncCleanBrowseUrl({ sort: v });
             }}
             options={SORTS}
           />
@@ -435,8 +577,10 @@ export default function Browse() {
                 key={o.key}
                 type='button'
                 onClick={() => {
-                  setOtt(ott === o.key ? '' : o.key);
+                  const nextOtt = ott === o.key ? '' : o.key;
+                  setOtt(nextOtt);
                   setPage(1);
+                  syncCleanBrowseUrl({ ott: nextOtt });
                 }}
                 className={`cursor-pointer shrink-0 rounded-full border px-3 py-1 text-[11px] font-bold transition ${
                   ott === o.key
@@ -523,7 +667,7 @@ export default function Browse() {
           type='not-found'
           title={
             q
-              ? `No Movies or Web Series Found for "${q}"`
+              ? `No Titles Found for "${q}"`
               : 'No Titles Matched Your Selected Filters'
           }
           message={

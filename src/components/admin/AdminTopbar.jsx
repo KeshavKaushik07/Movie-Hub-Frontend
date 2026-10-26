@@ -7,7 +7,7 @@ const SECTION_META = {
   },
   featured: {
     title: 'Featured Hero Carousel Manager',
-    subtitle: 'Curate and reorder spotlight movies & web series on the Home Hero banner',
+    subtitle: 'Curate spotlight movies & series and configure the Home Hero slide count',
   },
   blogs: {
     title: 'Editorial Blog Studio & CMS',
@@ -27,7 +27,7 @@ const SECTION_META = {
   },
   catalog: {
     title: 'Media & Box Office Database',
-    subtitle: 'Edit budgets, ₹ Crore collections, OTT streaming badges & promote to Featured Carousel',
+    subtitle: 'Edit budgets, box office collections, OTT streaming badges & promote to Featured Carousel',
   },
   crawler: {
     title: '1-Lakh Crawler Engine',
@@ -42,11 +42,9 @@ const SECTION_META = {
 export default function AdminTopbar({
   activeSection,
   user,
-  region,
   theme,
   toast,
   onOpenSidebar,
-  onToggleRegion,
   onToggleTheme,
   onRefreshActiveSection,
 }) {
@@ -92,15 +90,6 @@ export default function AdminTopbar({
         >
           <RefreshCw size={13} />
           <span className="hidden sm:inline">Refresh</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onToggleRegion}
-          title="Switch display currency between Indian Rupees (₹ Crore) and US Dollars ($)"
-          className="admin-btn admin-btn-secondary"
-        >
-          {region === 'IN' ? '🇮🇳 ₹ INR' : '🌍 $ USD'}
         </button>
 
         <button

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { tmdb } from '../services/api';
+import { resolveGenreId, toBrowseTypeSlug } from '../config/constants';
 import MovieCard from './MovieCard';
 
 const MOODS = [
@@ -11,7 +12,7 @@ const MOODS = [
     title: 'Adrenaline Rush',
     sub: 'Action & Explosive Thrills',
     type: 'movie',
-    params: { genre: '28', sort: 'popularity' },
+    params: { genre: 'action', sort: 'popularity' },
   },
   {
     key: 'mind-bending',
@@ -19,7 +20,7 @@ const MOODS = [
     title: 'Mind-Bending',
     sub: 'Sci-Fi & Mystery Twists',
     type: 'movie',
-    params: { genre: '878', sort: 'rating' },
+    params: { genre: 'sci-fi', sort: 'rating' },
   },
   {
     key: 'feel-good',
@@ -27,7 +28,7 @@ const MOODS = [
     title: 'Feel-Good & Laughs',
     sub: 'Comedy & Lighthearted Fun',
     type: 'movie',
-    params: { genre: '35', sort: 'popularity' },
+    params: { genre: 'comedy', sort: 'popularity' },
   },
   {
     key: 'thriller',
@@ -35,7 +36,7 @@ const MOODS = [
     title: 'Dark & Gritty',
     sub: 'Crime & Edge-of-Seat Suspense',
     type: 'movie',
-    params: { genre: '53', sort: 'popularity' },
+    params: { genre: 'thriller', sort: 'popularity' },
   },
   {
     key: 'romance',
@@ -43,7 +44,7 @@ const MOODS = [
     title: 'Romantic Evening',
     sub: 'Love Stories & Musicals',
     type: 'movie',
-    params: { genre: '10749', sort: 'popularity' },
+    params: { genre: 'romance', sort: 'popularity' },
   },
   {
     key: 'desi-mass',
@@ -67,7 +68,7 @@ const MOODS = [
     title: 'Late-Night Chills',
     sub: 'Horror & Supernatural',
     type: 'movie',
-    params: { genre: '27', sort: 'popularity' },
+    params: { genre: 'horror', sort: 'popularity' },
   },
 ];
 
@@ -83,8 +84,15 @@ export default function MoodExplorer() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    const apiParams = {
+      ...selected.params,
+      genre: selected.params.genre
+        ? resolveGenreId(selected.params.genre, selected.type)
+        : undefined,
+      limit: 12,
+    };
     tmdb
-      .discover(selected.type, { ...selected.params, limit: 12 })
+      .discover(selected.type, apiParams)
       .then((res) => {
         if (alive) {
           setItems((res?.items || res?.results || []).slice(0, 12));
@@ -101,8 +109,8 @@ export default function MoodExplorer() {
 
   const seeAllHref =
     selected.type === 'webseries'
-      ? '/browse/webseries'
-      : `/browse/${selected.type}?${new URLSearchParams(selected.params).toString()}`;
+      ? '/browse/web-series'
+      : `/browse/${toBrowseTypeSlug(selected.type)}?${new URLSearchParams(selected.params).toString()}`;
 
   return (
     <section className="mx-auto my-8 max-w-7xl px-4 sm:px-6">

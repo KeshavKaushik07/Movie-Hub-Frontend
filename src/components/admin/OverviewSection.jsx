@@ -28,7 +28,7 @@ export default function OverviewSection({ stats, isSuper }) {
       value: c.titles || 0,
       sub: `${c.enrichedTitles || 0} full details cached`,
       icon: Database,
-      to: isSuper ? '/admin/catalog' : '/browse/movie',
+      to: isSuper ? '/admin/catalog' : '/browse/movies',
       accent: 'text-brand bg-brand/15',
     },
     {
@@ -36,7 +36,7 @@ export default function OverviewSection({ stats, isSuper }) {
       value: c.movies || 0,
       sub: 'Feature Films',
       icon: Film,
-      to: isSuper ? '/admin/catalog' : '/browse/movie',
+      to: isSuper ? '/admin/catalog' : '/browse/movies',
       accent: 'text-sky-400 bg-sky-500/15',
     },
     {
@@ -44,7 +44,7 @@ export default function OverviewSection({ stats, isSuper }) {
       value: c.webSeries || 0,
       sub: `${c.tvShows || 0} total TV & series`,
       icon: Tv,
-      to: '/ott',
+      to: '/browse/web-series',
       accent: 'text-purple-400 bg-purple-500/15',
     },
     {

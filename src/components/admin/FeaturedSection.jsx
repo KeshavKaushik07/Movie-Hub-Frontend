@@ -1,10 +1,22 @@
-import { ArrowUp, ArrowDown, Trash2, Sparkles, Search, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Sparkles,
+  Search,
+  Plus,
+  SlidersHorizontal,
+  Check,
+} from 'lucide-react';
 import SafeImage from '../ui/SafeImage';
 import CustomSelect from '../ui/CustomSelect';
 import InfoPatch from '../ui/InfoPatch';
 
 export default function FeaturedSection({
   featuredItems,
+  heroLimit = 10,
+  onUpdateHeroLimit,
   featSearchQ,
   setFeatSearchQ,
   featSearchResults,
@@ -19,22 +31,97 @@ export default function FeaturedSection({
   onToggleFeaturedActive,
   onRemoveFeatured,
 }) {
+  const [limitInput, setLimitInput] = useState(heroLimit || 10);
+
+  useEffect(() => {
+    setLimitInput(heroLimit || 10);
+  }, [heroLimit]);
+
+  const activeAdminCount = (featuredItems || []).filter(
+    (item) => item && item.isActive !== false,
+  ).length;
+  const effectiveHeroTotal = Math.max(Number(heroLimit) || 10, activeAdminCount);
+  const trendingBlendCount = Math.max(0, effectiveHeroTotal - activeAdminCount);
+
+  const handleSaveLimit = (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    const parsed = Math.max(1, Math.min(100, Number(limitInput) || 10));
+    setLimitInput(parsed);
+    if (onUpdateHeroLimit) onUpdateHeroLimit(parsed);
+  };
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-brand/30 bg-[#0e131f] p-5 shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-extrabold text-white">
               Home Page Featured Hero Carousel
             </h3>
             <p className="mt-0.5 text-xs text-zinc-400">
-              When active slides exist below, <b className="text-brand">only these selected titles</b> appear on the Home Hero Carousel.
+              Admin slides appear first ({activeAdminCount} active) +{' '}
+              <b className="text-brand">{trendingBlendCount} Multi-Industry Trending</b>{' '}
+              slides = <b className="text-white">{effectiveHeroTotal} Total Slides</b> on Home.
+              You can add unlimited Admin slides (even more than 10).
             </p>
           </div>
-          <span className="rounded-xl bg-brand/15 px-3 py-1 text-xs font-extrabold text-brand">
-            {featuredItems.length} Active / Total Slides
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-xl bg-brand/15 px-3 py-1 text-xs font-extrabold text-brand">
+              {activeAdminCount} Admin + {trendingBlendCount} Trending = {effectiveHeroTotal} Slides
+            </span>
+          </div>
         </div>
+
+        {/* Configurable Home Hero Carousel Count Control */}
+        <form
+          onSubmit={handleSaveLimit}
+          className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3.5"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand">
+              <SlidersHorizontal size={15} />
+            </span>
+            <div>
+              <p className="text-xs font-extrabold text-white">
+                Home Hero Carousel Slide Count (Default: 10)
+              </p>
+              <p className="text-[11px] text-zinc-400">
+                Choose how many slides appear on the Home Carousel. If you add fewer Admin slides, the remaining slots are filled with Trending movies & series from all industries.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {[8, 10, 12, 15, 20].map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => {
+                  setLimitInput(preset);
+                  if (onUpdateHeroLimit) onUpdateHeroLimit(preset);
+                }}
+                className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
+                  Number(limitInput) === preset
+                    ? 'bg-brand text-black'
+                    : 'border border-white/10 bg-white/5 text-zinc-300 hover:text-white'
+                }`}
+              >
+                {preset}
+              </button>
+            ))}
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={limitInput}
+              onChange={(e) => setLimitInput(e.target.value)}
+              className="w-20 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-center text-xs font-bold text-white focus:border-brand focus:outline-none"
+            />
+            <button type="submit" className="admin-btn admin-btn-primary">
+              <Check size={13} /> Save Count
+            </button>
+          </div>
+        </form>
 
         {/* Search Movie to Add */}
         <form onSubmit={searchMovieForFeatured} className="mt-4 flex gap-2">
@@ -43,7 +130,7 @@ export default function FeaturedSection({
             <input
               value={featSearchQ}
               onChange={(e) => setFeatSearchQ(e.target.value)}
-              placeholder="Search any movie or web series by title to add to Featured Carousel..."
+              placeholder="Search any movie, web series, or TV show by title to add to Featured Carousel..."
               className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pr-4 pl-9 text-xs text-white focus:border-brand focus:outline-none"
             />
           </div>
@@ -143,7 +230,7 @@ export default function FeaturedSection({
               <tr>
                 <td colSpan={8} className="py-10 text-center text-xs text-zinc-400">
                   <Sparkles size={20} className="mx-auto mb-2 text-brand" />
-                  No custom Featured slides set — Home page is showing Trending Movies & Series automatically.
+                  No custom Featured slides set — Home page is showing {effectiveHeroTotal} Multi-Industry Trending Movies & Series automatically.
                 </td>
               </tr>
             ) : (

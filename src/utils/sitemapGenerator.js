@@ -6,6 +6,8 @@ import {
   INDUSTRY_LIST,
   OTT_LIST,
   NAV_MENU,
+  toGenreSlug,
+  getOttSlug,
 } from '../config/constants';
 import { sitemapApi, tmdb, blogApi, communityApi } from '../services/api';
 import { toSlug, getPersonPath } from './formatters';
@@ -19,8 +21,13 @@ import { toSlug, getPersonPath } from './formatters';
  * 1. Auto-Scans `ROUTES` (`src/config/constants.js`)
  * 2. Auto-Scans React Router `<Route>` elements in `src/App.jsx` (`registerRoutesFromReactTree`)
  * 3. Auto-Expands All Genre, Industry & OTT Filter Routes (`MOVIE_GENRES`, `TV_GENRES`, `INDUSTRY_LIST`, `OTT_LIST`)
- * 4. Auto-Fetches All Live Backend Entities (Movies, Web Series, TV Shows + all 6 SEO `#hash` tabs,
- *    Blogs `/blogs/:slug`, Celebrities `/person/:name`, and Community Lounges).
+ * 4. Auto-Fetches All Live Backend Entities:
+ *    - Movies: `/movie/:slug` + `#overview`, `#media`, `#box-office`, `#reviews`, `#comments`
+ *    - Web Series: `/web-series/:slug` + `#overview`, `#media`, `#seasons`, `#reviews`, `#comments`
+ *    - TV Shows: `/tv-show/:slug` + `#overview`, `#media`, `#seasons`, `#reviews`, `#comments`
+ *    - Blogs: `/blogs/:slug`
+ *    - Celebrities: `/actor/:slug` and `/actoress/:slug`
+ *    - OTT Platforms: `/ott/:providerSlug`
  */
 
 const discoveredRouterPaths = new Map();
@@ -94,28 +101,34 @@ export const getAutoDiscoveredFrontendRoutes = () => {
 
 export const buildCatalogFilterRoutes = () => {
   const listRoutes = [
-    { path: '/browse/movie', label: 'All Movies Catalog', priority: '0.9', changefreq: 'daily' },
-    { path: '/browse/webseries', label: 'All OTT Web Series Catalog', priority: '0.9', changefreq: 'daily' },
-    { path: '/browse/tv', label: 'All TV Shows Catalog', priority: '0.9', changefreq: 'daily' },
-    { path: '/browse/movie?list=trending', label: 'Trending Movies This Week', priority: '0.9', changefreq: 'daily' },
-    { path: '/browse/movie?list=popular', label: 'Popular Movies', priority: '0.85', changefreq: 'daily' },
-    { path: '/browse/movie?list=top-rated', label: 'All-Time Top Rated Movies', priority: '0.85', changefreq: 'weekly' },
-    { path: '/browse/movie?list=upcoming', label: 'Upcoming Movies Calendar', priority: '0.9', changefreq: 'daily' },
-    { path: '/browse/movie?sort=revenue', label: 'Top Box Office Collection Movies (₹ Crore / $)', priority: '0.85', changefreq: 'daily' },
-    { path: '/browse/tv?list=trending', label: 'Trending TV Series', priority: '0.85', changefreq: 'daily' },
-    { path: '/browse/webseries?list=trending', label: 'Trending Web Series', priority: '0.85', changefreq: 'daily' },
+    { path: '/browse/movies', label: 'All Movies Catalog', priority: '0.9', changefreq: 'daily' },
+    { path: '/browse/web-series', label: 'All OTT Web Series Catalog', priority: '0.9', changefreq: 'daily' },
+    { path: '/browse/tv-shows', label: 'All TV Shows Catalog', priority: '0.9', changefreq: 'daily' },
+    { path: '/browse/movies?list=trending', label: 'Trending Movies This Week', priority: '0.9', changefreq: 'daily' },
+    { path: '/browse/movies?list=popular', label: 'Popular Movies', priority: '0.85', changefreq: 'daily' },
+    { path: '/browse/movies?list=top-rated', label: 'All-Time Top Rated Movies', priority: '0.85', changefreq: 'weekly' },
+    { path: '/browse/movies?list=upcoming', label: 'Upcoming Movies Calendar', priority: '0.9', changefreq: 'daily' },
+    { path: '/browse/movies?sort=revenue', label: 'Top Box Office Collection Movies (₹ Crore / $)', priority: '0.85', changefreq: 'daily' },
+    { path: '/browse/tv-shows?list=trending', label: 'Trending TV Shows', priority: '0.85', changefreq: 'daily' },
+    { path: '/browse/web-series?list=trending', label: 'Trending Web Series', priority: '0.85', changefreq: 'daily' },
   ];
 
   const genreRoutes = [
-    ...Object.entries(MOVIE_GENRES || {}).map(([name, id]) => ({
-      path: `/browse/movie?genre=${id}`,
+    ...Object.keys(MOVIE_GENRES || {}).map((name) => ({
+      path: `/browse/movies?genre=${toGenreSlug(name)}`,
       label: `${name} Movies`,
       priority: '0.8',
       changefreq: 'daily',
     })),
-    ...Object.entries(TV_GENRES || {}).map(([name, id]) => ({
-      path: `/browse/tv?genre=${id}`,
-      label: `${name} TV & Web Series`,
+    ...Object.keys(TV_GENRES || {}).map((name) => ({
+      path: `/browse/web-series?genre=${toGenreSlug(name)}`,
+      label: `${name} Web Series`,
+      priority: '0.8',
+      changefreq: 'daily',
+    })),
+    ...Object.keys(TV_GENRES || {}).map((name) => ({
+      path: `/browse/tv-shows?genre=${toGenreSlug(name)}`,
+      label: `${name} TV Shows`,
       priority: '0.8',
       changefreq: 'daily',
     })),
@@ -123,33 +136,54 @@ export const buildCatalogFilterRoutes = () => {
 
   const industryRoutes = (INDUSTRY_LIST || []).flatMap((ind) => [
     {
-      path: `/browse/movie?industry=${ind.key}`,
+      path: `/browse/movies?industry=${ind.key}`,
       label: `${ind.emoji} ${ind.label} — Movies`,
       priority: '0.85',
       changefreq: 'daily',
     },
     {
-      path: `/browse/webseries?industry=${ind.key}`,
+      path: `/browse/web-series?industry=${ind.key}`,
       label: `${ind.emoji} ${ind.label} — Web Series`,
+      priority: '0.8',
+      changefreq: 'daily',
+    },
+    {
+      path: `/browse/tv-shows?industry=${ind.key}`,
+      label: `${ind.emoji} ${ind.label} — TV Shows`,
       priority: '0.8',
       changefreq: 'daily',
     },
   ]);
 
-  const ottRoutes = (OTT_LIST || []).flatMap((ott) => [
-    {
-      path: `/browse/movie?ott=${ott.key}`,
-      label: `${ott.label} — Streaming Movies`,
-      priority: '0.85',
-      changefreq: 'daily',
-    },
-    {
-      path: `/browse/webseries?ott=${ott.key}`,
-      label: `${ott.label} — Original Web Series`,
-      priority: '0.85',
-      changefreq: 'daily',
-    },
-  ]);
+  const ottRoutes = (OTT_LIST || []).flatMap((ott) => {
+    const slug = ott.slug || getOttSlug(ott.key);
+    return [
+      {
+        path: `/ott/${slug}`,
+        label: `${ott.label} — OTT Hub`,
+        priority: '0.9',
+        changefreq: 'daily',
+      },
+      {
+        path: `/browse/movies?ott=${slug}`,
+        label: `${ott.label} — Streaming Movies`,
+        priority: '0.85',
+        changefreq: 'daily',
+      },
+      {
+        path: `/browse/web-series?ott=${slug}`,
+        label: `${ott.label} — Original Web Series`,
+        priority: '0.85',
+        changefreq: 'daily',
+      },
+      {
+        path: `/browse/tv-shows?ott=${slug}`,
+        label: `${ott.label} — TV Shows`,
+        priority: '0.8',
+        changefreq: 'daily',
+      },
+    ];
+  });
 
   return { listRoutes, genreRoutes, industryRoutes, ottRoutes };
 };
@@ -180,7 +214,22 @@ export const buildCompleteDynamicSitemap = async (siteUrl = window.location.orig
     const backendData = await sitemapApi.getJson(cleanOrigin);
     if (backendData?.sections) {
       dbSections = {
-        titles: backendData.sections.titles || [],
+        titles: (backendData.sections.titles || []).map((t) => {
+          const cleanPath = String(t.path || '').replace(/^\/details?\/(movie|tv|webseries|web-series)\//, (_, mType) => {
+            if (mType === 'webseries' || mType === 'web-series' || t.type === 'webseries') return '/web-series/';
+            if (mType === 'tv' || t.type === 'tv') return '/tv-show/';
+            return '/movie/';
+          });
+          return {
+            ...t,
+            path: cleanPath,
+            hashTabs: Array.isArray(t.hashTabs)
+              ? t.hashTabs.map((hp) =>
+                  String(hp).replace(/^\/details?\/(movie|tv|webseries|web-series)\/[^#]+/, cleanPath),
+                )
+              : [],
+          };
+        }),
         blogs: backendData.sections.blogs || [],
         celebrities: backendData.sections.celebrities || [],
         communityRooms: backendData.sections.communityRooms || [],
@@ -199,15 +248,28 @@ export const buildCompleteDynamicSitemap = async (siteUrl = window.location.orig
     const collectTitles = (arr = []) => {
       for (const item of arr) {
         if (!item?.id) continue;
-        const rType = (item.type || item.media_type) === 'tv' ? 'tv' : 'movie';
+        const isWebSeries = Boolean(
+          item.isWebSeries || item.subType === 'webseries' || item.type === 'webseries',
+        );
+        const rType = isWebSeries
+          ? 'webseries'
+          : (item.type || item.media_type) === 'tv'
+            ? 'tv'
+            : 'movie';
         const key = `${rType}:${item.id}`;
         if (!titleMap.has(key)) {
           const slug = item.slug || toSlug(item.title || item.name) || item.id;
-          const basePath = `/detail/${rType}/${slug}`;
+          const prefix =
+            rType === 'webseries'
+              ? '/web-series'
+              : rType === 'tv'
+                ? '/tv-show'
+                : '/movie';
+          const basePath = `${prefix}/${slug}`;
           titleMap.set(key, {
             path: basePath,
             label: `${item.title || item.name} (${item.year || '2025'})`,
-            type: item.subType || rType,
+            type: rType,
             tmdbId: item.id,
             lastmod: nowIso,
             priority: '0.85',
@@ -215,8 +277,7 @@ export const buildCompleteDynamicSitemap = async (siteUrl = window.location.orig
             hashTabs: [
               `${basePath}#overview`,
               `${basePath}#media`,
-              `${basePath}#box-office`,
-              ...(rType === 'tv' ? [`${basePath}#seasons`] : []),
+              ...(rType === 'movie' ? [`${basePath}#box-office`] : [`${basePath}#seasons`]),
               `${basePath}#reviews`,
               `${basePath}#comments`,
             ],

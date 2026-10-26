@@ -1,17 +1,43 @@
-import { TMDB } from '../config/constants';
+import {
+  TMDB,
+  toGenreSlug,
+  resolveGenreId,
+  resolveGenreName,
+  getOttSlug,
+  resolveOttKey,
+  getOttPath,
+  toBrowseTypeSlug,
+  fromBrowseTypeSlug,
+  getBrowsePath,
+} from '../config/constants';
+
+export {
+  toGenreSlug,
+  resolveGenreId,
+  resolveGenreName,
+  getOttSlug,
+  resolveOttKey,
+  getOttPath,
+  toBrowseTypeSlug,
+  fromBrowseTypeSlug,
+  getBrowsePath,
+};
 
 export const USD_TO_INR_RATE = 83.5;
 
 export const detectDefaultRegion = () => {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-    const lang = navigator.language || '';
+    const langs = [
+      ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+      navigator.language || '',
+    ].join(' ');
     if (
       tz.includes('Kolkata') ||
       tz.includes('Calcutta') ||
       tz.includes('Asia/Colombo') ||
-      /-IN$/i.test(lang) ||
-      /^hi|^te|^ta|^ml|^kn|^mr|^bn|^gu|^pa/i.test(lang)
+      /-IN\b/i.test(langs) ||
+      /\b(hi|te|ta|ml|kn|mr|bn|gu|pa)\b/i.test(langs)
     ) {
       return 'IN';
     }
@@ -21,8 +47,10 @@ export const detectDefaultRegion = () => {
   return 'IN';
 };
 
-const SLUG_CACHE_KEY = 'movieshub_slug_lookup_v8';
+const SLUG_CACHE_KEY = 'movieshub_slug_lookup_v9';
+const PERSON_SLUG_CACHE_KEY = 'movieshub_person_slug_lookup_v2';
 const inMemorySlugMap = new Map();
+const inMemoryPersonSlugMap = new Map();
 
 export const toSlug = (str = '') =>
   String(str || '')
@@ -40,9 +68,19 @@ export const registerSlugMapping = (slugOrItem, maybeItem = null) => {
       : toSlug(item?.slug || item?.title || item?.name || '');
   if (!slug || (!item?.id && !item?.tmdbId)) return;
 
+  const isWeb = Boolean(
+    item.isWebSeries || item.subType === 'webseries' || item.type === 'webseries' || item.type === 'web-series',
+  );
+  const baseType =
+    isWeb || item.type === 'tv' || item.media_type === 'tv' || item.type === 'tv-show' || item.type === 'tv-shows'
+      ? 'tv'
+      : 'movie';
+
   const entry = {
     id: item.id || item.tmdbId,
-    type: item.subType === 'webseries' ? 'tv' : item.type || item.media_type || 'movie',
+    type: baseType,
+    subType: isWeb ? 'webseries' : baseType,
+    isWebSeries: isWeb,
     title: item.title || item.name || '',
   };
   inMemorySlugMap.set(slug, entry);
@@ -65,6 +103,37 @@ export const resolveSlugMapping = (slug) => {
     if (raw) {
       const obj = JSON.parse(raw);
       if (obj?.[clean]) return obj[clean];
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
+
+export const registerPersonSlugMapping = (slug, id, gender = null) => {
+  if (!slug || !id) return;
+  const key = String(slug).toLowerCase().trim();
+  const entry = { id: Number(id), gender };
+  inMemoryPersonSlugMap.set(key, entry);
+  try {
+    const raw = sessionStorage.getItem(PERSON_SLUG_CACHE_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    obj[key] = entry;
+    sessionStorage.setItem(PERSON_SLUG_CACHE_KEY, JSON.stringify(obj));
+  } catch {
+    /* ignore */
+  }
+};
+
+export const resolvePersonSlugMapping = (slug) => {
+  if (!slug) return null;
+  const key = decodeURIComponent(String(slug)).toLowerCase().trim();
+  if (inMemoryPersonSlugMap.has(key)) return inMemoryPersonSlugMap.get(key);
+  try {
+    const raw = sessionStorage.getItem(PERSON_SLUG_CACHE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw);
+      if (obj?.[key]) return obj[key];
     }
   } catch {
     /* ignore */
@@ -194,9 +263,9 @@ export const resolvePersonRoleSegment = (personOrName, genderOverride = null) =>
 };
 
 /**
- * Generates clean Actor / Actoress URLs with hyphens (-) instead of %20 spaces:
- * Male:   /actor/Shiva-Rajkumar?id=1343007
- * Female: /actoress/Deepika-Padukone?id=85883
+ * Generates clean, bot-friendly Actor / Actoress URLs with hyphens (-) and NO query params:
+ * Male:   /actor/Shiva-Rajkumar
+ * Female: /actoress/Deepika-Padukone
  */
 export const getPersonPath = (
   personOrName,
@@ -211,36 +280,86 @@ export const getPersonPath = (
   const slug = formatPersonSlug(cleanName);
   const id = idOverride ?? obj.id ?? obj.tmdbId ?? null;
   const roleSegment = resolvePersonRoleSegment(obj, genderOverride);
-  return `/${roleSegment}/${slug}${id ? `?id=${id}` : ''}`;
+  if (id) {
+    registerPersonSlugMapping(slug, id, genderOverride ?? obj.gender ?? null);
+  }
+  return `/${roleSegment}/${slug}`;
 };
 
 /**
- * Generates clean SEO URLs using ONLY the movie/series name slug (no numeric ID in URL!):
- * e.g. `/detail/movie/mirzapur` or `/detail/movie/pushpa-2-the-rule`
+ * Resolves the singular URL route prefix for a title:
+ * - Movie:      `movie`      -> `/movie/:slug`
+ * - Web Series: `web-series` -> `/web-series/:slug`
+ * - TV Show:    `tv-show`    -> `/tv-show/:slug`
+ */
+export const resolveSingularTitleSegment = (item = {}, typeOverride = null) => {
+  const tOver = String(typeOverride || '').toLowerCase().trim();
+  if (
+    tOver === 'webseries' ||
+    tOver === 'web-series' ||
+    item?.isWebSeries ||
+    item?.subType === 'webseries' ||
+    item?.type === 'webseries' ||
+    item?.type === 'web-series'
+  ) {
+    return 'web-series';
+  }
+  if (
+    tOver === 'tv' ||
+    tOver === 'tv-show' ||
+    tOver === 'tv-shows' ||
+    tOver === 'tv-series' ||
+    item?.type === 'tv' ||
+    item?.media_type === 'tv' ||
+    item?.subType === 'tv' ||
+    Boolean(item?.first_air_date && !item?.release_date)
+  ) {
+    return 'tv-show';
+  }
+  return 'movie';
+};
+
+/**
+ * Generates clean, bot-friendly singular SEO URLs with NO `/detail` prefix:
+ * - Movie:      `/movie/ranabaali#overview`
+ * - Web Series: `/web-series/mirzapur#overview`
+ * - TV Show:    `/tv-show/breaking-bad#overview`
  */
 export const getTitlePath = (item = {}, typeOverride = null, hash = '') => {
   if (!item) return '/';
-  const rawType =
-    typeOverride ||
-    (item.isWebSeries || item.subType === 'webseries'
-      ? 'webseries'
-      : item.type || item.media_type || (item.first_air_date ? 'tv' : 'movie'));
-  const routeType = rawType === 'webseries' ? 'webseries' : rawType === 'tv' ? 'tv' : 'movie';
+  const singularSegment = resolveSingularTitleSegment(item, typeOverride);
   const slug =
     item.slug ||
     toSlug(
       item.title ||
         item.name ||
         item.originalTitle ||
-        `${routeType}-${item.id || item.tmdbId || 'title'}`,
+        `${singularSegment}-${item.id || item.tmdbId || 'title'}`,
     );
 
   if (item.id || item.tmdbId) {
-    registerSlugMapping(slug, { ...item, type: routeType });
+    registerSlugMapping(slug, {
+      ...item,
+      type: singularSegment === 'movie' ? 'movie' : 'tv',
+      subType: singularSegment === 'web-series' ? 'webseries' : singularSegment === 'tv-show' ? 'tv' : 'movie',
+      isWebSeries: singularSegment === 'web-series',
+    });
   }
 
   const hashSuffix = hash ? (hash.startsWith('#') ? hash : `#${hash}`) : '';
-  return `/detail/${routeType}/${slug}${hashSuffix}`;
+  return `/${singularSegment}/${slug}${hashSuffix}`;
+};
+
+/**
+ * Checks whether a movie or series has a release date strictly in the future (unreleased / upcoming).
+ */
+export const isUpcomingRelease = (item = {}) => {
+  if (!item) return false;
+  if (item.isUpcoming === true) return true;
+  const rawDate = item.releaseDate || item.release_date || item.first_air_date;
+  if (!rawDate) return false;
+  const ms = new Date(rawDate).getTime();
+  return Number.isFinite(ms) && ms > Date.now();
 };
 
 /**
@@ -282,7 +401,7 @@ export const estimateItemFinancialsUSD = () => ({ budgetUsd: 0, revenueUsd: 0 })
  */
 export const formatBudgetOrBoxOffice = (rawAmount, options = {}) => {
   const {
-    region = 'IN',
+    region = detectDefaultRegion(),
     sourceCurrency = 'USD',
     fallback = '',
   } = options;
@@ -325,20 +444,22 @@ export const formatBudgetOrBoxOffice = (rawAmount, options = {}) => {
 };
 
 /**
- * Requirement 1: Only returns genuinely disclosed Budget & Box Office numbers.
- * If neither budget nor box office collection is disclosed (`0` or missing),
- * `hasFinancials` is `false` so the Budget & Box Office tab is hidden!
+ * Only returns genuinely disclosed Budget & Box Office numbers.
+ * If a title is an unreleased Upcoming movie (`isUpcomingRelease(item)`),
+ * box office collections and verdicts are suppressed so unreleased titles never show fake verdicts/gross.
  */
-export const getMovieFinancials = (item = {}, region = 'IN') => {
+export const getMovieFinancials = (item = {}, region = detectDefaultRegion()) => {
   const bo = item?.boxOffice || {};
   const isBackendEstimated = Boolean(item?.financialEstimated);
+  const unreleased = isUpcomingRelease(item);
 
   const parsedBudget = isBackendEstimated
     ? { value: 0, currency: 'USD' }
     : parseRawCurrencyValue(item?.budget || bo.budget || bo.budgetFormatted);
-  const parsedRevenue = isBackendEstimated
-    ? { value: 0, currency: 'USD' }
-    : parseRawCurrencyValue(bo.worldwideCollection || item?.revenue || bo.revenue);
+  const parsedRevenue =
+    isBackendEstimated || unreleased
+      ? { value: 0, currency: 'USD' }
+      : parseRawCurrencyValue(bo.worldwideCollection || item?.revenue || bo.revenue);
 
   const finalBudgetUsd =
     parsedBudget.value > 0
@@ -354,15 +475,15 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
         : parsedRevenue.value
       : 0;
 
-  const indiaNetParsed = parseRawCurrencyValue(bo.indiaNetCollection);
-  const indiaGrossParsed = parseRawCurrencyValue(bo.indiaGrossCollection);
-  const openingWeekendParsed = parseRawCurrencyValue(bo.openingWeekend);
-  const openingDayParsed = parseRawCurrencyValue(bo.openingDay);
-  const domesticParsed = parseRawCurrencyValue(bo.domesticCollection);
-  const intlParsed = parseRawCurrencyValue(bo.internationalCollection);
+  const indiaNetParsed = unreleased ? { value: 0, currency: 'INR' } : parseRawCurrencyValue(bo.indiaNetCollection);
+  const indiaGrossParsed = unreleased ? { value: 0, currency: 'INR' } : parseRawCurrencyValue(bo.indiaGrossCollection);
+  const openingWeekendParsed = unreleased ? { value: 0, currency: 'USD' } : parseRawCurrencyValue(bo.openingWeekend);
+  const openingDayParsed = unreleased ? { value: 0, currency: 'USD' } : parseRawCurrencyValue(bo.openingDay);
+  const domesticParsed = unreleased ? { value: 0, currency: 'USD' } : parseRawCurrencyValue(bo.domesticCollection);
+  const intlParsed = unreleased ? { value: 0, currency: 'USD' } : parseRawCurrencyValue(bo.internationalCollection);
 
   const hasBudget = finalBudgetUsd > 0;
-  const hasRevenue = finalRevenueUsd > 0;
+  const hasRevenue = !unreleased && finalRevenueUsd > 0;
   const hasFinancials =
     hasBudget ||
     hasRevenue ||
@@ -374,22 +495,24 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
     intlParsed.value > 0;
 
   let computedVerdict = '';
-  if (bo.verdict && bo.verdict !== 'TBA' && !isBackendEstimated && hasFinancials) {
-    computedVerdict = bo.verdict;
-  } else if (hasBudget && hasRevenue) {
-    const ratio = finalRevenueUsd / finalBudgetUsd;
-    computedVerdict =
-      ratio >= 3.5
-        ? 'All-Time Blockbuster'
-        : ratio >= 2.4
-          ? 'Blockbuster'
-          : ratio >= 1.75
-            ? 'Super Hit'
-            : ratio >= 1.25
-              ? 'Hit'
-              : ratio >= 0.95
-                ? 'Average'
-                : 'Flop';
+  if (!unreleased) {
+    if (bo.verdict && bo.verdict !== 'TBA' && !isBackendEstimated && hasRevenue) {
+      computedVerdict = bo.verdict;
+    } else if (hasBudget && hasRevenue) {
+      const ratio = finalRevenueUsd / finalBudgetUsd;
+      computedVerdict =
+        ratio >= 3.5
+          ? 'All-Time Blockbuster'
+          : ratio >= 2.4
+            ? 'Blockbuster'
+            : ratio >= 1.75
+              ? 'Super Hit'
+              : ratio >= 1.25
+                ? 'Hit'
+                : ratio >= 0.95
+                  ? 'Average'
+                  : 'Flop';
+    }
   }
 
   const profitUsd =
@@ -403,6 +526,7 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
 
   return {
     isEstimated: false,
+    isUpcoming: unreleased,
     hasBudget,
     hasRevenue,
     hasFinancials,

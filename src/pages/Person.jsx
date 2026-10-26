@@ -57,7 +57,7 @@ export default function Person() {
           resolvePersonRoleSegment(resolvedPerson) === 'actoress'
             ? 'Actoress'
             : 'Actor';
-        document.title = `${resolvedPerson.name || decodedName} (${roleLabel}) — Movies & Web Series Filmography | Movies Hub`;
+        document.title = `${resolvedPerson.name || decodedName} (${roleLabel}) — Movies, Web Series & TV Shows Filmography | Movies Hub`;
 
         // Ensure browser URL strictly uses `/actor/Name-With-Hyphens` (male) or `/actoress/Name-With-Hyphens` (female)
         const canonicalUrl = getPersonPath(
@@ -87,11 +87,10 @@ export default function Person() {
   const roleSegment = resolvePersonRoleSegment(person);
   const allItems = data?.items || [];
   const filtered = allItems.filter((it) => {
+    const isWebSeries = Boolean(it.isWebSeries || it.subType === 'webseries');
     if (filter === 'movie') return (it.type || 'movie') === 'movie';
-    if (filter === 'series')
-      return (
-        it.isWebSeries || it.subType === 'webseries' || it.type === 'tv'
-      );
+    if (filter === 'webseries') return isWebSeries;
+    if (filter === 'tv') return it.type === 'tv' && !isWebSeries;
     return true;
   });
 
@@ -158,19 +157,20 @@ export default function Person() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
+      {/* Filter Tabs — Clearly Differentiating Movies, Web Series, and TV Shows */}
       <div className='mb-6 flex flex-wrap items-center justify-between gap-3'>
         <h2
           style={{ fontFamily: 'var(--font-display)' }}
           className='text-xl font-extrabold'
         >
-          Available Movies & Web Series ({filtered.length})
+          Available Filmography ({filtered.length})
         </h2>
-        <div className='flex gap-2'>
+        <div className='flex flex-wrap gap-2'>
           {[
             { key: 'all', label: `All (${allItems.length})` },
             { key: 'movie', label: '🎬 Movies', icon: Film },
-            { key: 'series', label: '📺 Web Series & TV', icon: Tv },
+            { key: 'webseries', label: '🔥 Web Series', icon: Tv },
+            { key: 'tv', label: '📺 TV Shows', icon: Tv },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -191,7 +191,15 @@ export default function Person() {
       {filtered.length === 0 ? (
         <InfoPatch
           type='not-found'
-          title={`No ${filter === 'movie' ? 'Movies' : filter === 'series' ? 'Web Series' : 'Titles'} Found for ${person.name}`}
+          title={`No ${
+            filter === 'movie'
+              ? 'Movies'
+              : filter === 'webseries'
+                ? 'Web Series'
+                : filter === 'tv'
+                  ? 'TV Shows'
+                  : 'Titles'
+          } Found for ${person.name}`}
           message='Try switching the filter tab to All Titles or browse the main catalog.'
           actions={[
             ...(filter !== 'all'
@@ -205,14 +213,18 @@ export default function Person() {
               : []),
             {
               label: 'Browse Catalog',
-              onClick: () => nav('/browse/movie'),
+              onClick: () => nav('/browse/movies'),
             },
           ]}
         />
       ) : (
         <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'>
           {filtered.map((it) => (
-            <MovieCard key={`${it.type}-${it.id}`} item={it} type={it.type} />
+            <MovieCard
+              key={`${it.type}-${it.id}`}
+              item={it}
+              type={it.isWebSeries || it.subType === 'webseries' ? 'webseries' : it.type}
+            />
           ))}
         </div>
       )}

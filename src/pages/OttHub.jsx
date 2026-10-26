@@ -1,16 +1,30 @@
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import {
+  useParams,
+  useSearchParams,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   Tv,
   Film,
-  Sparkles,
   Filter,
   Flame,
   Star,
   Calendar,
 } from 'lucide-react';
-import { OTT_LIST, MOVIE_GENRES } from '../config/constants';
+import {
+  OTT_LIST,
+  MOVIE_GENRES,
+  resolveOttKey,
+  getOttPath,
+  toGenreSlug,
+  resolveGenreId,
+  resolveGenreName,
+  fromBrowseTypeSlug,
+  toBrowseTypeSlug,
+} from '../config/constants';
 import { tmdb } from '../services/api';
 import MovieCard from '../components/MovieCard';
 import InfoPatch from '../components/ui/InfoPatch';
@@ -18,20 +32,31 @@ import { notifyPatch } from '../utils/notify';
 
 export default function OttHub() {
   const { providerKey } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const nav = useNavigate();
 
   const theme = useSelector((s) => s.theme.mode);
   const isLight = theme === 'light';
 
-  const queryProvider = searchParams.get('provider') || providerKey || 'all';
-  const [selectedOtt, setSelectedOtt] = useState(queryProvider.toLowerCase());
-  const [mediaFilter, setMediaFilter] = useState(
-    searchParams.get('type') || 'all',
-  ); // 'all' | 'movie' | 'webseries'
-  const [selectedGenre, setSelectedGenre] = useState(
-    searchParams.get('genre') || '',
-  );
+  const rawProvider = providerKey || searchParams.get('provider') || 'all';
+  const resolvedProvider = resolveOttKey(rawProvider);
+
+  const rawTypeParam = searchParams.get('type') || 'all';
+  const initialMediaFilter =
+    rawTypeParam === 'all' ? 'all' : fromBrowseTypeSlug(rawTypeParam);
+
+  const rawGenreParam = searchParams.get('genre') || '';
+  const initialGenreName = resolveGenreName(rawGenreParam, 'movie');
+  const initialGenreSlug = initialGenreName
+    ? toGenreSlug(initialGenreName)
+    : rawGenreParam
+      ? toGenreSlug(rawGenreParam)
+      : '';
+
+  const [selectedOtt, setSelectedOtt] = useState(resolvedProvider);
+  const [mediaFilter, setMediaFilter] = useState(initialMediaFilter); // 'all' | 'movie' | 'webseries' | 'tv'
+  const [selectedGenre, setSelectedGenre] = useState(initialGenreSlug);
   const [sortBy, setSortBy] = useState(
     searchParams.get('sort') || 'popularity',
   );
@@ -41,31 +66,79 @@ export default function OttHub() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Sync clean URL: `/ott/netflix`, `/ott/prime-video`, `/ott/jiohotstar`, etc. (never `?provider=prime`)
+  const syncCleanOttUrl = (overrides = {}, replace = false) => {
+    const nextOtt = overrides.ott !== undefined ? overrides.ott : selectedOtt;
+    const nextType =
+      overrides.type !== undefined ? overrides.type : mediaFilter;
+    const nextGenre =
+      overrides.genre !== undefined ? overrides.genre : selectedGenre;
+    const nextSort = overrides.sort !== undefined ? overrides.sort : sortBy;
+
+    const basePath = getOttPath(nextOtt);
+    const nextSearch = new URLSearchParams();
+    if (nextType && nextType !== 'all') {
+      nextSearch.set('type', toBrowseTypeSlug(nextType));
+    }
+    if (nextGenre) {
+      nextSearch.set('genre', toGenreSlug(nextGenre));
+    }
+    if (nextSort && nextSort !== 'popularity') {
+      nextSearch.set('sort', nextSort);
+    }
+
+    const qs = nextSearch.toString();
+    const targetUrl = `${basePath}${qs ? `?${qs}` : ''}`;
+    const currentUrl = `${location.pathname}${location.search}`;
+    if (targetUrl !== currentUrl) {
+      nav(targetUrl, { replace });
+    }
+  };
+
   useEffect(() => {
-    const nextOtt = (
-      searchParams.get('provider') ||
-      providerKey ||
-      'all'
-    ).toLowerCase();
+    const rawOtt = providerKey || searchParams.get('provider') || 'all';
+    const nextOtt = resolveOttKey(rawOtt);
+    const rawType = searchParams.get('type') || 'all';
+    const nextType = rawType === 'all' ? 'all' : fromBrowseTypeSlug(rawType);
+    const rawGenre = searchParams.get('genre') || '';
+    const gName = resolveGenreName(rawGenre, nextType === 'all' ? 'movie' : nextType);
+    const nextGenre = gName
+      ? toGenreSlug(gName)
+      : rawGenre
+        ? toGenreSlug(rawGenre)
+        : '';
+    const nextSort = searchParams.get('sort') || 'popularity';
+
     setSelectedOtt(nextOtt);
+    setMediaFilter(nextType);
+    setSelectedGenre(nextGenre);
+    setSortBy(nextSort);
     setPage(1);
-  }, [providerKey, searchParams]);
+
+    // Normalize legacy `/ott?provider=prime` or `/ott/prime` into `/ott/prime-video`
+    const canonicalBasePath = getOttPath(nextOtt);
+    if (
+      searchParams.has('provider') ||
+      location.pathname !== canonicalBasePath ||
+      (rawGenre && /^\d+$/.test(rawGenre) && nextGenre)
+    ) {
+      const cleanParams = new URLSearchParams();
+      if (nextType !== 'all') cleanParams.set('type', toBrowseTypeSlug(nextType));
+      if (nextGenre) cleanParams.set('genre', nextGenre);
+      if (nextSort !== 'popularity') cleanParams.set('sort', nextSort);
+      const qs = cleanParams.toString();
+      const canonicalUrl = `${canonicalBasePath}${qs ? `?${qs}` : ''}`;
+      if (`${location.pathname}${location.search}` !== canonicalUrl) {
+        nav(canonicalUrl, { replace: true });
+      }
+    }
+  }, [providerKey, searchParams, location.pathname, location.search, nav]);
 
   const handleSelectOtt = (key) => {
-    const normalized = key || 'all';
+    const normalized = resolveOttKey(key || 'all');
     setSelectedOtt(normalized);
     setPage(1);
-    const nextParams = new URLSearchParams(searchParams);
-    if (normalized === 'all') {
-      nextParams.delete('provider');
-    } else {
-      nextParams.set('provider', normalized);
-    }
-    if (providerKey) {
-      nav(`/ott${nextParams.toString() ? `?${nextParams.toString()}` : ''}`);
-    } else {
-      setSearchParams(nextParams);
-    }
+    syncCleanOttUrl({ ott: normalized });
   };
 
   useEffect(() => {
@@ -80,17 +153,24 @@ export default function OttHub() {
     const fetchPage = async () => {
       try {
         if (mediaFilter === 'all') {
+          const movieGenreId = selectedGenre
+            ? resolveGenreId(selectedGenre, 'movie')
+            : undefined;
+          const seriesGenreId = selectedGenre
+            ? resolveGenreId(selectedGenre, 'webseries')
+            : undefined;
+
           const [moviesRes, seriesRes] = await Promise.all([
             tmdb.discover('movie', {
               ott: ottParam,
-              genre: selectedGenre || undefined,
+              genre: movieGenreId,
               sort: sortBy,
               page,
               limit: 18,
             }),
             tmdb.discover('webseries', {
               ott: ottParam,
-              genre: selectedGenre || undefined,
+              genre: seriesGenreId,
               sort: sortBy,
               page,
               limit: 18,
@@ -141,9 +221,12 @@ export default function OttHub() {
             Math.max(moviesRes?.totalPages || 1, seriesRes?.totalPages || 1, 1),
           );
         } else {
+          const resolvedGenreId = selectedGenre
+            ? resolveGenreId(selectedGenre, mediaFilter)
+            : undefined;
           const res = await tmdb.discover(mediaFilter, {
             ott: ottParam,
-            genre: selectedGenre || undefined,
+            genre: resolvedGenreId,
             sort: sortBy,
             page,
             limit: 24,
@@ -200,23 +283,24 @@ export default function OttHub() {
               }`}
             >
               {activeOttMeta
-                ? `${activeOttMeta.label} — Movies & Web Series`
+                ? `${activeOttMeta.label} — Movies, Web Series & TV Shows`
                 : 'All OTT Platforms Catalog'}
             </h1>
             <p
               className={`mt-1 max-w-2xl text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-zinc-400'}`}
             >
-              Select any streaming platform below to filter movies and original
-              web series according to your selected OTT.
+              Select any streaming platform below to filter movies, original
+              web series, and TV shows according to your selected OTT.
             </p>
           </div>
 
-          {/* Media Type Filter Pills */}
+          {/* Media Type Filter Pills — Clearly differentiates Movies, Web Series, and TV Shows */}
           <div className='flex flex-wrap items-center gap-2'>
             {[
               { id: 'all', label: '✨ All Titles' },
               { id: 'movie', label: '🎬 Movies', icon: Film },
-              { id: 'webseries', label: '📺 Web Series', icon: Tv },
+              { id: 'webseries', label: '🔥 Web Series', icon: Tv },
+              { id: 'tv', label: '📺 TV Shows', icon: Tv },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -224,6 +308,7 @@ export default function OttHub() {
                 onClick={() => {
                   setMediaFilter(tab.id);
                   setPage(1);
+                  syncCleanOttUrl({ type: tab.id });
                 }}
                 className={`rounded-full px-4 py-2 text-xs font-extrabold transition ${
                   mediaFilter === tab.id
@@ -337,7 +422,7 @@ export default function OttHub() {
           </div>
         </div>
 
-        {/* Secondary Filter Bar: Genre + Sort */}
+        {/* Secondary Filter Bar: Genre Slugs + Sort */}
         <div
           className={`mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4 ${
             isLight ? 'border-slate-200/90' : 'border-white/10'
@@ -356,6 +441,7 @@ export default function OttHub() {
               onClick={() => {
                 setSelectedGenre('');
                 setPage(1);
+                syncCleanOttUrl({ genre: '' });
               }}
               className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
                 !selectedGenre
@@ -367,27 +453,31 @@ export default function OttHub() {
             >
               All Genres
             </button>
-            {Object.entries(MOVIE_GENRES)
+            {Object.keys(MOVIE_GENRES)
               .slice(0, 8)
-              .map(([gName, gId]) => (
-                <button
-                  key={gId}
-                  type='button'
-                  onClick={() => {
-                    setSelectedGenre(String(gId));
-                    setPage(1);
-                  }}
-                  className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
-                    String(selectedGenre) === String(gId)
-                      ? 'bg-brand text-black shadow-xs'
-                      : isLight
-                        ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
-                        : 'border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10'
-                  }`}
-                >
-                  {gName}
-                </button>
-              ))}
+              .map((gName) => {
+                const gSlug = toGenreSlug(gName);
+                return (
+                  <button
+                    key={gSlug}
+                    type='button'
+                    onClick={() => {
+                      setSelectedGenre(gSlug);
+                      setPage(1);
+                      syncCleanOttUrl({ genre: gSlug });
+                    }}
+                    className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
+                      selectedGenre === gSlug
+                        ? 'bg-brand text-black shadow-xs'
+                        : isLight
+                          ? 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                          : 'border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10'
+                    }`}
+                  >
+                    {gName}
+                  </button>
+                );
+              })}
           </div>
 
           <div className='flex items-center gap-1.5'>
@@ -405,6 +495,7 @@ export default function OttHub() {
                   onClick={() => {
                     setSortBy(s.id);
                     setPage(1);
+                    syncCleanOttUrl({ sort: s.id });
                   }}
                   className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-bold transition ${
                     isSortActive
@@ -450,15 +541,16 @@ export default function OttHub() {
           <InfoPatch
             type="not-found"
             title={`No Streaming Titles Found${activeOttMeta ? ` on ${activeOttMeta.label}` : ''}`}
-            message="No movies or web series matched your current OTT platform and genre combination. Try switching to All OTT or clearing the genre filter."
+            message="No movies, web series, or TV shows matched your current OTT platform and genre combination. Try switching to All OTT or clearing the genre filter."
             actions={[
               {
                 label: 'Show All OTT Titles',
                 primary: true,
                 onClick: () => {
-                  handleSelectOtt('all');
+                  setSelectedOtt('all');
                   setSelectedGenre('');
                   setMediaFilter('all');
+                  nav('/ott');
                   notifyPatch({
                     type: 'info',
                     title: 'OTT Filter Reset',

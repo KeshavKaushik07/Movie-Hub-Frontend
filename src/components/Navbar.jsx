@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
-  Film,
   Search,
   User,
   LogOut,
@@ -24,13 +23,11 @@ import {
   OTT_LIST,
   ROLES,
   ROUTES,
+  resolveOttKey,
 } from '../config/constants';
 import { openLogoutModal } from '../store/authSlice';
 import { toggleTheme } from '../store/themeSlice';
-import {
-  setRegionAndCurrency,
-  openPreferenceModal,
-} from '../store/preferencesSlice';
+import { openPreferenceModal } from '../store/preferencesSlice';
 
 export default function Navbar() {
   const [q, setQ] = useState('');
@@ -40,7 +37,6 @@ export default function Navbar() {
 
   const user = useSelector((s) => s.auth.user);
   const theme = useSelector((s) => s.theme.mode);
-  const { region, currency } = useSelector((s) => s.preferences);
 
   const dispatch = useDispatch();
   const nav = useNavigate();
@@ -69,7 +65,7 @@ export default function Navbar() {
   const onSearch = (e) => {
     e.preventDefault();
     if (!q.trim()) return;
-    nav(`/browse/movie?q=${encodeURIComponent(q.trim())}`);
+    nav(`/browse/movies?q=${encodeURIComponent(q.trim())}`);
     setQ('');
     setMobileSearchOpen(false);
   };
@@ -96,6 +92,11 @@ export default function Navbar() {
     return best;
   };
 
+  const activeOttSlug = loc.pathname.startsWith('/ott/')
+    ? loc.pathname.replace(/^\/ott\/+/, '').split('/')[0]
+    : currentParams.get('provider') || '';
+  const activeOttKey = activeOttSlug ? resolveOttKey(activeOttSlug) : null;
+
   return (
     <header
       className={`sticky top-0 z-[200] w-full border-b backdrop-blur-xl transition-colors duration-300 ${
@@ -110,7 +111,7 @@ export default function Navbar() {
           to={ROUTES.HOME}
           className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight sm:mr-8 sm:shrink-0'
         >
-          <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-amber-500  shadow-md shadow-brand/20 sm:h-9 sm:w-9 rounded-xl overflow-hidden'>
+          <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-amber-500 shadow-md shadow-brand/20 sm:h-9 sm:w-9 overflow-hidden'>
             <img src='/movie-icon.png' alt='' className='object-cover' />
           </span>
           <span
@@ -121,7 +122,7 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop Navigation — Movies, Web Series, OTT (with All OTT uppermost), Blogs & Community */}
+        {/* Desktop Navigation — Movies, Web Series & TV Shows, OTT (with All OTT uppermost), Blogs & Community */}
         <nav className='hidden items-center gap-0.5 lg:flex'>
           {NAV_MENU.map((m) => {
             const isOttMenu = m.key === 'ott' || m.label === 'OTT';
@@ -129,9 +130,6 @@ export default function Navbar() {
             const isMenuActive = isOttMenu
               ? loc.pathname.startsWith('/ott')
               : Boolean(activeItemTo);
-            const activeProvider = loc.pathname.startsWith('/ott')
-              ? currentParams.get('provider')
-              : null;
             return (
               <div
                 key={m.key || m.label}
@@ -203,15 +201,15 @@ export default function Navbar() {
                             {OTT_LIST.map((ott) => (
                               <Link
                                 key={ott.key}
-                                to={`/ott?provider=${ott.key}`}
+                                to={`/ott/${ott.slug}`}
                                 onClick={() => setOpenMenu(null)}
                                 aria-current={
-                                  activeProvider === ott.key
+                                  activeOttKey === ott.key
                                     ? 'page'
                                     : undefined
                                 }
                                 className={`flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                                  activeProvider === ott.key
+                                  activeOttKey === ott.key
                                     ? 'bg-brand/15 text-brand'
                                     : isLight
                                       ? 'text-slate-800 hover:bg-amber-50 hover:text-amber-700'
@@ -287,7 +285,7 @@ export default function Navbar() {
           </Link>
         </nav>
 
-        {/* Fixed-Width Desktop Search Bar (`w-[220px] xl:w-[260px] shrink-0 grow-0` — NEVER changes width on click!) */}
+        {/* Fixed-Width Desktop Search Bar */}
         <form
           onSubmit={onSearch}
           className='relative hidden w-[220px] shrink-0 grow-0 lg:block xl:w-[260px]'
@@ -299,7 +297,7 @@ export default function Navbar() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder='Search movies, actors...'
+            placeholder='Search movies, series, actors...'
             className={`h-9 w-full rounded-full border pr-4 pl-9 text-xs transition-colors focus:border-brand focus:outline-none ${
               isLight
                 ? 'border-slate-200 bg-slate-100 text-slate-900 placeholder-slate-400 focus:bg-white'
@@ -324,30 +322,11 @@ export default function Navbar() {
             {mobileSearchOpen ? <X size={15} /> : <Search size={15} />}
           </button>
 
-          {/* Region & Rupees/USD Toggle Pill */}
-          <button
-            type='button'
-            onClick={() =>
-              dispatch(setRegionAndCurrency(region === 'IN' ? 'GLOBAL' : 'IN'))
-            }
-            title='Switch Region & Currency (India ₹ INR / Global $ USD)'
-            className={`flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2.5 text-[11px] font-extrabold transition ${
-              isLight
-                ? 'border-slate-200 bg-slate-100 text-slate-800 hover:border-brand'
-                : 'border-white/10 bg-white/5 text-zinc-200 hover:border-brand/50'
-            }`}
-          >
-            <span>{region === 'IN' ? '🇮🇳' : '🌍'}</span>
-            <span className='hidden min-[420px]:inline'>
-              {region === 'IN' ? '₹ INR' : '$ USD'}
-            </span>
-          </button>
-
           {/* Taste Preferences Trigger */}
           <button
             type='button'
             onClick={() => dispatch(openPreferenceModal())}
-            title='Customize Taste & Region'
+            title='Customize Your Cinema & Genre Taste'
             className='flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-brand/40 bg-brand/15 px-2.5 text-[11px] font-extrabold text-brand hover:bg-brand/25'
           >
             <SlidersHorizontal size={13} />
@@ -480,8 +459,7 @@ export default function Navbar() {
                       isLight ? 'hover:bg-slate-100' : 'hover:bg-white/10'
                     }`}
                   >
-                    <Sparkles size={14} className='text-brand' /> Taste &
-                    Region ({currency})
+                    <Sparkles size={14} className='text-brand' /> Customize Taste
                   </button>
                   <button
                     type='button'
@@ -535,7 +513,7 @@ export default function Navbar() {
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder='Search movies, web series, actors...'
+              placeholder='Search movies, web series, TV shows, actors...'
               className={`w-full rounded-full border py-2 pr-4 pl-9 text-xs focus:border-brand focus:outline-none ${
                 isLight
                   ? 'border-slate-300 bg-white text-slate-900'

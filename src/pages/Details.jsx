@@ -29,8 +29,8 @@ import {
 } from 'lucide-react';
 import { tmdb, featuredApi, communityApi } from '../services/api';
 import { reviewService } from '../services/reviewService';
-import { OTT_LIST, ROLES, ROUTES } from '../config/constants';
-import { getMovieFinancials, registerSlugMapping, getPersonPath } from '../utils/formatters';
+import { OTT_LIST, ROLES, ROUTES, toGenreSlug, getOttPath, toBrowseTypeSlug } from '../config/constants';
+import { getMovieFinancials, registerSlugMapping, getPersonPath, getTitlePath } from '../utils/formatters';
 import MovieRow from '../components/MovieRow';
 import Reviews from '../components/Reviews';
 import TitleEditorModal from '../components/TitleEditorModal';
@@ -43,9 +43,20 @@ const isValidYoutubeKey = (key) =>
   typeof key === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(key.trim());
 
 export default function Details() {
-  const { type = 'movie', id } = useParams();
+  const { type: paramType, id } = useParams();
   const location = useLocation();
   const nav = useNavigate();
+  const type = paramType
+    ? paramType === "web-series" || paramType === "webseries"
+      ? "webseries"
+      : paramType === "tv-show" || paramType === "tv-shows" || paramType === "tv-series" || paramType === "tv"
+        ? "tv"
+        : "movie"
+    : location.pathname.startsWith("/web-series/")
+      ? "webseries"
+      : location.pathname.startsWith("/tv-show/") || location.pathname.startsWith("/tv-series/")
+        ? "tv"
+        : "movie";
 
   const user = useSelector((s) => s.auth.user);
   const theme = useSelector((s) => s.theme.mode);
@@ -183,7 +194,24 @@ export default function Details() {
       'live-chat': 'Live Fan Chat Room',
     };
     document.title = `${titleName} (${yr}) — ${tabLabels[activeTab] || 'Details'} | Movies Hub`;
-  }, [data, activeTab, region]);
+    const canonicalType =
+      data.isWebSeries || data.subType === "webseries" || type === "webseries"
+        ? "webseries"
+        : data.type === "tv" || type === "tv"
+          ? "tv"
+          : "movie";
+    const canonicalPathWithHash = getTitlePath(data, canonicalType, activeTab);
+    const canonicalPathname = canonicalPathWithHash.split("#")[0];
+    if (
+      canonicalPathname &&
+      (location.pathname.startsWith("/detail/") ||
+        location.pathname.startsWith("/details/") ||
+        /^\d+$/.test(String(id || ""))) &&
+      location.pathname !== canonicalPathname
+    ) {
+      nav(`${canonicalPathname}#${activeTab}`, { replace: true });
+    }
+  }, [data, activeTab, region, type, id, location.pathname, nav]);
 
   useEffect(() => {
     if (!user || !resolvedId) return;
@@ -426,7 +454,7 @@ export default function Details() {
             {
               label: 'Browse Popular Movies',
               primary: true,
-              onClick: () => nav('/browse/movie?category=popular'),
+              onClick: () => nav('/browse/movies?list=popular'),
             },
             {
               label: 'Explore Master OTT Hub',
@@ -602,11 +630,15 @@ export default function Details() {
               variant='poster'
               className='w-36 rounded-2xl border border-white/15 object-contain shadow-2xl sm:w-52'
             />
-            {data.isWebSeries && (
+            {(data.isWebSeries || data.subType === 'webseries' || type === 'webseries') ? (
               <span className='keep-white absolute top-2.5 left-2.5 rounded-lg bg-rose-600 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase shadow'>
                 Web Series
               </span>
-            )}
+            ) : resolvedType === 'tv' ? (
+              <span className='keep-white absolute top-2.5 left-2.5 rounded-lg bg-sky-600 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase shadow'>
+                TV Show
+              </span>
+            ) : null}
           </div>
 
           <div className='flex-1 space-y-3 text-center md:text-left'>
@@ -701,7 +733,7 @@ export default function Details() {
               {(data.genres || []).map((g) => (
                 <Link
                   key={g.id || g.name}
-                  to={`/browse/${resolvedType}?genre=${g.id}`}
+                  to={`/browse/${toBrowseTypeSlug(data.isWebSeries || data.subType === 'webseries' || type === 'webseries' ? 'webseries' : resolvedType)}?genre=${toGenreSlug(g.name || g)}`}
                   className='keep-white rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:border-brand'
                 >
                   {g.name || g}
@@ -876,7 +908,7 @@ export default function Details() {
                             {matchedOttBadges.map((ott) => (
                               <Link
                                 key={ott.key}
-                                to={`/ott?provider=${ott.key}`}
+                                to={getOttPath(ott.key)}
                                 className='flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-bold text-white transition hover:border-brand'
                               >
                                 <span
