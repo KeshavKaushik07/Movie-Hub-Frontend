@@ -33,18 +33,24 @@ const slice = createSlice({
     logoutModalOpen: false,
   },
   reducers: {
-    clearSession: (s) => {
+    clearSession: (s, { payload } = {}) => {
       s.user = null;
       s.access = null;
       s.initializing = false;
       s.logoutModalOpen = false;
-      clearSessionSnapshot();
+      clearSessionSnapshot({ broadcast: !payload?.fromBroadcast });
     },
     setAccess: (s, { payload }) => {
       s.access = payload || null;
       setInMemoryAccessToken(payload);
     },
     setSessionFromRefresh: (s, { payload }) => {
+      // Never resurrect a session if localStorage user details were cleared/logged out
+      if (!readSavedUser() && !payload?.fromBroadcast) {
+        s.user = null;
+        s.access = null;
+        return;
+      }
       s.access = payload?.access || s.access || null;
       if (payload?.user) {
         s.user = payload.user;
@@ -53,6 +59,7 @@ const slice = createSlice({
       saveSessionSnapshot({
         user: s.user,
         access: s.access,
+        fromBroadcast: Boolean(payload?.fromBroadcast),
       });
     },
     syncUserFromStorage: (s) => {
@@ -61,6 +68,7 @@ const slice = createSlice({
         s.user = null;
         s.access = null;
         s.initializing = false;
+        s.logoutModalOpen = false;
         setInMemoryAccessToken(null);
       } else if (!s.user) {
         s.user = latestUser;
@@ -91,6 +99,7 @@ const slice = createSlice({
           saveSessionSnapshot({
             user: payload.user,
             access: payload.access,
+            isLoginOrSignup: true,
           });
         })
         .addCase(t.rejected, (s, a) => {
@@ -108,11 +117,11 @@ const slice = createSlice({
     });
     b.addCase(restoreSession.fulfilled, (s, { payload }) => {
       s.initializing = false;
-      if (!payload?.user) {
+      const localUser = readSavedUser();
+      if (!payload?.user || !localUser) {
         // Rule 2: localStorage had no user details
         s.user = null;
         s.access = null;
-        clearSessionSnapshot();
       } else {
         s.user = payload.user;
         s.access = payload.access || s.access || null;
@@ -127,11 +136,11 @@ const slice = createSlice({
       s.initializing = false;
       s.user = null;
       s.access = null;
-      clearSessionSnapshot();
+      clearSessionSnapshot({ broadcast: true });
     });
 
     b.addCase(fetchMe.fulfilled, (s, { payload }) => {
-      if (payload) {
+      if (payload && readSavedUser()) {
         s.user = payload;
         saveSessionSnapshot({ user: payload });
       }
@@ -141,20 +150,22 @@ const slice = createSlice({
         s.user = null;
         s.access = null;
         s.error = a.payload;
-        clearSessionSnapshot();
+        clearSessionSnapshot({ broadcast: true });
       }
     });
 
     b.addCase(updateProfile.fulfilled, (s, { payload }) => {
-      s.user = payload;
-      saveSessionSnapshot({ user: payload });
+      if (payload && readSavedUser()) {
+        s.user = payload;
+        saveSessionSnapshot({ user: payload });
+      }
     });
 
     b.addCase(deleteMyAccount.fulfilled, (s) => {
       s.user = null;
       s.access = null;
       s.logoutModalOpen = false;
-      clearSessionSnapshot();
+      clearSessionSnapshot({ broadcast: true });
     });
   },
 });
@@ -170,8 +181,8 @@ export const {
 } = slice.actions;
 
 export const logout = () => (dispatch) => {
+  dispatch(clearSession({ fromBroadcast: false }));
   authService.logout().catch(() => {});
-  dispatch(clearSession());
 };
 
 export default slice.reducer;

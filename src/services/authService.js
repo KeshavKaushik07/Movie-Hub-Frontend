@@ -3,6 +3,8 @@ import {
   readSavedUser,
   saveSessionSnapshot,
   setInMemoryAccessToken,
+  getInMemoryAccessToken,
+  requestTokenFromOpenTabs,
   clearSessionSnapshot,
   performTokenRefresh,
 } from './backendApi';
@@ -10,7 +12,12 @@ import {
 export const authService = {
   async login(payload) {
     const { data } = await backend.post('/auth/login', payload);
-    saveSessionSnapshot({ user: data.user, access: data.access });
+    saveSessionSnapshot({
+      user: data.user,
+      access: data.access,
+      refresh: data.refresh,
+      isLoginOrSignup: true,
+    });
     return {
       user: data.user,
       access: data.access,
@@ -19,7 +26,12 @@ export const authService = {
 
   async signup(payload) {
     const { data } = await backend.post('/auth/register', payload);
-    saveSessionSnapshot({ user: data.user, access: data.access });
+    saveSessionSnapshot({
+      user: data.user,
+      access: data.access,
+      refresh: data.refresh,
+      isLoginOrSignup: true,
+    });
     return {
       user: data.user,
       access: data.access,
@@ -27,24 +39,32 @@ export const authService = {
   },
 
   /**
-   * Restores session when reopening a tab or refreshing:
-   * - Rule 2: If `localStorage` was cleared and has no user details (`!savedUser`),
-   *   clears any lingering cookie and returns `{ user: null, access: null }`.
-   * - Rule 3: If `localStorage` has user details, calls `POST /auth/refresh` using the
-   *   `httpOnly` refreshToken cookie to get a fresh in-memory `access` token.
-   *   Only logs out if `/auth/refresh` returns 401/403 (expired or unauthorized refresh token).
+   * Restores session when opening a new tab or refreshing:
+   * - Rule 2: If `localStorage` has no user details (`!savedUser`), returns `{ user: null, access: null }`.
+   * - Multi-Tab Sync: First checks if another open tab already has the active in-memory token via BroadcastChannel.
+   * - Rule 3: Otherwise calls `POST /auth/refresh` using the `httpOnly` refreshToken cookie.
+   *   Logs out all tabs only if `/auth/refresh` returns 401/403 and no open tab holds a valid token.
    */
   async restoreSession() {
     const savedUser = readSavedUser();
     if (!savedUser) {
-      clearSessionSnapshot();
-      backend.post('/auth/logout', {}, { silentPatch: true }).catch(() => {});
+      clearSessionSnapshot({ broadcast: false });
       return { user: null, access: null };
     }
 
+    // 1. Ask any other open tab for the active in-memory token via BroadcastChannel (<100ms)
+    const tabToken = await requestTokenFromOpenTabs(100);
+    if (tabToken && readSavedUser()) {
+      return {
+        access: tabToken,
+        user: readSavedUser() || savedUser,
+      };
+    }
+
+    // 2. Otherwise refresh from the backend httpOnly refreshToken cookie
     try {
       const data = await performTokenRefresh();
-      let user = data?.user || savedUser;
+      let user = data?.user || readSavedUser() || savedUser;
       if (!data?.user && data?.access) {
         try {
           const meRes = await backend.get('/auth/me', {
@@ -54,52 +74,73 @@ export const authService = {
           });
           if (meRes.data?.user) user = meRes.data.user;
         } catch {
-          user = savedUser;
+          user = readSavedUser() || savedUser;
         }
       }
-      saveSessionSnapshot({ user, access: data?.access || null });
+      if (readSavedUser()) {
+        saveSessionSnapshot({
+          user,
+          access: data?.access || null,
+          refresh: data?.refresh,
+        });
+      }
       return {
         access: data?.access || null,
-        user,
+        user: readSavedUser() ? user : null,
       };
     } catch (err) {
+      // Check if another open tab provided a token while `/auth/refresh` was in flight
+      const lateTabToken = getInMemoryAccessToken() || (await requestTokenFromOpenTabs(60));
+      if (lateTabToken && readSavedUser()) {
+        return {
+          access: lateTabToken,
+          user: readSavedUser() || savedUser,
+        };
+      }
+
       const status = err?.response?.status;
-      // Rule 3: Refresh token is expired, invalid, missing, or user account is unauthorized/deactivated
+      // Rule 3: Refresh token is expired, invalid, or user account is unauthorized/deactivated
       if (status === 401 || status === 403) {
-        clearSessionSnapshot();
+        clearSessionSnapshot({ broadcast: true });
         const authErr = new Error(
           err?.response?.data?.message || 'Session expired, please log in again',
         );
         authErr.unauthorized = true;
         throw authErr;
       }
-      // Network hiccup / server restarting: keep savedUser so closing/reopening tab doesn't log out
+
       return {
-        access: null,
-        user: savedUser,
+        access: getInMemoryAccessToken(),
+        user: readSavedUser() || savedUser,
       };
     }
   },
 
   async me() {
     const { data } = await backend.get('/auth/me');
-    if (data?.user) {
+    if (data?.user && readSavedUser()) {
       saveSessionSnapshot({ user: data.user });
     }
     return data.user;
   },
 
   async logout() {
+    // Immediately clear localStorage and broadcast FORCE_LOGOUT to all open tabs first
+    clearSessionSnapshot({ broadcast: true });
     try {
-      await backend.post('/auth/logout', {}, { silentPatch: true });
-    } finally {
-      clearSessionSnapshot();
+      await backend.post(
+        '/auth/logout',
+        {},
+        { silentPatch: true, _skipPreRefresh: true },
+      );
+    } catch {
+      /* ignore */
     }
   },
 
   async updateProfile(payload) {
     const { data } = await backend.patch('/users/me', payload);
-    if (data?.user) {
+    if (data?.user && readSavedUser()) {
       saveSessionSnapshot({ user: data.user });
     }
     return data.user;
@@ -107,13 +148,13 @@ export const authService = {
 
   async changePassword(payload) {
     const { data } = await backend.patch('/users/me/password', payload);
-    if (data.access) setInMemoryAccessToken(data.access);
+    if (data.access) setInMemoryAccessToken(data.access, data.refresh);
     return data;
   },
 
   async deleteMyAccount(password = '') {
     const { data } = await backend.delete('/users/me', { data: { password } });
-    clearSessionSnapshot();
+    clearSessionSnapshot({ broadcast: true });
     return data;
   },
 

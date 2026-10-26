@@ -4,26 +4,32 @@ import { sanitizePayload, safeJsonParse } from '../utils/security';
 import { notifyPatch } from '../utils/notify';
 
 /**
- * HYBRID PERSISTENT USER PROFILE + IN-MEMORY ACCESS TOKEN + HTTPONLY REFRESH COOKIE ENGINE:
+ * CROSS-TAB SYNCHRONIZED SESSION ENGINE:
  * 1. User Profile Details (`id`, `name`, `email`, `role`, `avatarColor`, `bio`, `favoriteGenres`, `preferences`)
- *    are stored in `localStorage` under `user` (and `movieshub_user`) so closing and reopening a tab
- *    keeps the user signed in seamlessly.
- * 2. Access Token (`access`) is stored STRICTLY in React / JS memory (`inMemoryAccessToken` & `state.auth.access`)
- *    — NEVER in `localStorage` or `sessionStorage`.
- * 3. Refresh Token (`refreshToken`) is stored STRICTLY in the browser's `httpOnly` cookie (`withCredentials: true`)
- *    — NEVER in `localStorage` or `sessionStorage`.
- * 4. The user is ONLY logged out when:
- *    (a) They manually click Logout,
- *    (b) `localStorage` is cleared and user details (`user` / `movieshub_user`) cannot be found, or
- *    (c) The `refreshToken` cookie is expired, revoked, or unauthorized (`401` / `403` from `/auth/refresh`).
+ *    are stored in `localStorage` under `user` (and `movieshub_user`) — ZERO tokens in `localStorage` or `sessionStorage`.
+ * 2. Access Token (`inMemoryAccessToken`) lives strictly in JS / React memory and is shared across open tabs
+ *    in real time via `BroadcastChannel('movieshub_auth_sync_v1')` (pure browser memory IPC).
+ * 3. Refresh Token lives in the browser's `httpOnly` cookie (`withCredentials: true`) + in-memory fallback.
+ * 4. Logging out in ANY tab broadcasts `FORCE_LOGOUT` to ALL open tabs immediately and sets `isLoggedOut = true`
+ *    so no other tab can ever write `user` back into `localStorage` or re-login the logged-out tab.
+ * 5. Opening a new tab while logged in immediately hydrates `user` from `localStorage`, receives the active
+ *    in-memory token from open tabs via `BroadcastChannel` in <1ms (or refreshes via `/auth/refresh`),
+ *    and never logs out existing tabs.
  */
 
 const USER_STORAGE_KEY = 'user';
 const ALT_USER_STORAGE_KEY = 'movieshub_user';
+const LOGOUT_EVENT_KEY = 'movieshub_logout_at';
+const AUTH_CHANNEL_NAME = 'movieshub_auth_sync_v1';
 
 let inMemoryAccessToken = null;
+let inMemoryRefreshToken = null;
 let storeRef = null;
 let refreshPromise = null;
+let isLoggedOut = false;
+let lastLogoutAt = 0;
+let authChannel = null;
+let tokenWaiters = [];
 
 /**
  * Strips any token or sensitive fields and returns only safe user profile details for `localStorage`.
@@ -49,10 +55,6 @@ export const sanitizeUserForStorage = (u) => {
   };
 };
 
-/**
- * Migrates any existing user object from legacy storage keys into `user` / `movieshub_user`,
- * and purges all `access` and `refresh` tokens from `localStorage` and `sessionStorage`.
- */
 const migrateAndPurgeLegacyTokenKeys = () => {
   const legacySessionKeys = [
     'movieshub_session_backup_v6',
@@ -70,7 +72,6 @@ const migrateAndPurgeLegacyTokenKeys = () => {
   ];
 
   try {
-    // If `user` is not yet stored under USER_STORAGE_KEY, rescue `user` profile from legacy session backup
     const existingRaw =
       localStorage.getItem(USER_STORAGE_KEY) ||
       localStorage.getItem(ALT_USER_STORAGE_KEY);
@@ -89,7 +90,6 @@ const migrateAndPurgeLegacyTokenKeys = () => {
         }
       }
     } else {
-      // Ensure existing `user` in localStorage has zero token fields
       const parsed = safeJsonParse(existingRaw);
       const cleanUser = sanitizeUserForStorage(parsed?.user || parsed);
       if (cleanUser) {
@@ -120,10 +120,6 @@ const migrateAndPurgeLegacyTokenKeys = () => {
 
 migrateAndPurgeLegacyTokenKeys();
 
-/**
- * Reads the persisted User Details from `localStorage`.
- * Returns `null` if `localStorage` was cleared or user is not logged in.
- */
 export const readSavedUser = () => {
   try {
     const raw =
@@ -142,21 +138,213 @@ export const readSavedSession = () => {
   return user ? { user, access: inMemoryAccessToken } : null;
 };
 
+const notifyTokenWaiters = (access) => {
+  if (!tokenWaiters.length) return;
+  const list = [...tokenWaiters];
+  tokenWaiters = [];
+  list.forEach((resolve) => {
+    try {
+      resolve(access || null);
+    } catch {
+      /* ignore */
+    }
+  });
+};
+
+const postAuthBroadcast = (msg) => {
+  try {
+    if (authChannel) {
+      authChannel.postMessage(msg);
+    }
+  } catch {
+    /* ignore */
+  }
+};
+
+const setupCrossTabAuthSync = () => {
+  if (typeof window === 'undefined') return;
+
+  // 1. In-memory BroadcastChannel across all open tabs of the site
+  if (typeof window.BroadcastChannel === 'function' && !authChannel) {
+    try {
+      authChannel = new window.BroadcastChannel(AUTH_CHANNEL_NAME);
+      authChannel.onmessage = (event) => {
+        const data = event?.data || {};
+        if (data.type === 'FORCE_LOGOUT') {
+          isLoggedOut = true;
+          lastLogoutAt = data.timestamp || Date.now();
+          inMemoryAccessToken = null;
+          inMemoryRefreshToken = null;
+          notifyTokenWaiters(null);
+          try {
+            localStorage.removeItem(USER_STORAGE_KEY);
+            localStorage.removeItem(ALT_USER_STORAGE_KEY);
+          } catch {
+            /* ignore */
+          }
+          if (storeRef) {
+            storeRef.dispatch({
+              type: 'auth/clearSession',
+              payload: { fromBroadcast: true },
+            });
+          }
+        } else if (data.type === 'AUTH_LOGIN' || data.type === 'SYNC_AUTH_STATE') {
+          if (data.timestamp && data.timestamp < lastLogoutAt) return;
+          isLoggedOut = false;
+          if (data.access) {
+            inMemoryAccessToken = data.access;
+            notifyTokenWaiters(data.access);
+          }
+          if (data.refresh) {
+            inMemoryRefreshToken = data.refresh;
+          }
+          if (data.user && storeRef) {
+            storeRef.dispatch({
+              type: 'auth/setSessionFromRefresh',
+              payload: {
+                access: data.access || inMemoryAccessToken,
+                user: data.user,
+                fromBroadcast: true,
+              },
+            });
+          }
+        } else if (data.type === 'REQUEST_AUTH_STATE') {
+          const currentUser = readSavedUser() || storeRef?.getState()?.auth?.user;
+          if (!isLoggedOut && currentUser && (inMemoryAccessToken || inMemoryRefreshToken)) {
+            postAuthBroadcast({
+              type: 'SYNC_AUTH_STATE',
+              user: sanitizeUserForStorage(currentUser),
+              access: inMemoryAccessToken,
+              refresh: inMemoryRefreshToken,
+              timestamp: Date.now(),
+            });
+          }
+        }
+      };
+    } catch {
+      authChannel = null;
+    }
+  }
+
+  // 2. Native window storage listener for cross-tab localStorage changes / clearing
+  window.addEventListener('storage', (e) => {
+    if (e.key === LOGOUT_EVENT_KEY) {
+      isLoggedOut = true;
+      lastLogoutAt = Number(e.newValue) || Date.now();
+      inMemoryAccessToken = null;
+      inMemoryRefreshToken = null;
+      notifyTokenWaiters(null);
+      if (storeRef) {
+        storeRef.dispatch({
+          type: 'auth/clearSession',
+          payload: { fromBroadcast: true },
+        });
+      }
+      return;
+    }
+
+    if (!e.key || e.key === USER_STORAGE_KEY || e.key === ALT_USER_STORAGE_KEY) {
+      const saved = readSavedUser();
+      if (!saved) {
+        // User details were removed or localStorage was cleared -> log out this tab immediately!
+        isLoggedOut = true;
+        lastLogoutAt = Date.now();
+        inMemoryAccessToken = null;
+        inMemoryRefreshToken = null;
+        notifyTokenWaiters(null);
+        if (storeRef) {
+          storeRef.dispatch({
+            type: 'auth/clearSession',
+            payload: { fromBroadcast: true },
+          });
+        }
+      } else {
+        // Another tab logged in -> hydrate user and request in-memory token from that tab
+        isLoggedOut = false;
+        if (storeRef) {
+          storeRef.dispatch({
+            type: 'auth/setSessionFromRefresh',
+            payload: {
+              user: saved,
+              access: inMemoryAccessToken,
+              fromBroadcast: true,
+            },
+          });
+        }
+        postAuthBroadcast({ type: 'REQUEST_AUTH_STATE' });
+      }
+    }
+  });
+
+  // If this tab booted with a saved user in localStorage, immediately ask any open tab for in-memory tokens
+  if (readSavedUser()) {
+    postAuthBroadcast({ type: 'REQUEST_AUTH_STATE' });
+  }
+};
+
+setupCrossTabAuthSync();
+
 /**
- * Saves the User Details to `localStorage` (NEVER tokens) and keeps `access` strictly in JS memory.
+ * Waits briefly (up to `timeoutMs`) for another open tab to share its in-memory Access Token
+ * via BroadcastChannel before making a network call to `/auth/refresh`.
  */
-export const saveSessionSnapshot = ({ user, access } = {}) => {
-  if (access !== undefined) {
+export const requestTokenFromOpenTabs = (timeoutMs = 90) => {
+  if (inMemoryAccessToken) return Promise.resolve(inMemoryAccessToken);
+  if (!authChannel) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      tokenWaiters = tokenWaiters.filter((fn) => fn !== onToken);
+      resolve(inMemoryAccessToken || null);
+    }, timeoutMs);
+    const onToken = (tok) => {
+      clearTimeout(timer);
+      resolve(tok || null);
+    };
+    tokenWaiters.push(onToken);
+    postAuthBroadcast({ type: 'REQUEST_AUTH_STATE' });
+  });
+};
+
+/**
+ * Saves User Details to `localStorage` (NEVER tokens) and keeps `access`/`refresh` strictly in JS memory.
+ * Guarded against stale background writes after logout (`isLoggedOut` / `!readSavedUser()`).
+ */
+export const saveSessionSnapshot = ({
+  user,
+  access,
+  refresh,
+  isLoginOrSignup = false,
+  fromBroadcast = false,
+} = {}) => {
+  if (isLoginOrSignup) {
+    isLoggedOut = false;
+  } else if (isLoggedOut || Date.now() - lastLogoutAt < 2500) {
+    // Prevent any in-flight background request in another tab from resurrecting a logged-out user!
+    return;
+  }
+
+  // If this is a background update (not an explicit login/signup), only write to localStorage
+  // if `user` still exists in localStorage (Rule 2: never resurrect cleared localStorage)
+  if (!isLoginOrSignup && !readSavedUser()) {
+    return;
+  }
+
+  if (access !== undefined && access !== null) {
     inMemoryAccessToken = access || null;
   }
+  if (refresh !== undefined && refresh !== null) {
+    inMemoryRefreshToken = refresh || null;
+  }
+
+  let cleanUser = null;
   if (user !== undefined) {
-    const cleanUser = sanitizeUserForStorage(user);
+    cleanUser = sanitizeUserForStorage(user);
     try {
       if (cleanUser) {
         const serialized = JSON.stringify(cleanUser);
         localStorage.setItem(USER_STORAGE_KEY, serialized);
         localStorage.setItem(ALT_USER_STORAGE_KEY, serialized);
-      } else {
+      } else if (isLoginOrSignup) {
         localStorage.removeItem(USER_STORAGE_KEY);
         localStorage.removeItem(ALT_USER_STORAGE_KEY);
       }
@@ -164,33 +352,71 @@ export const saveSessionSnapshot = ({ user, access } = {}) => {
       /* ignore */
     }
   }
+
+  if (!fromBroadcast && (isLoginOrSignup || access)) {
+    const effectiveUser = cleanUser || readSavedUser();
+    if (effectiveUser) {
+      postAuthBroadcast({
+        type: isLoginOrSignup ? 'AUTH_LOGIN' : 'SYNC_AUTH_STATE',
+        user: effectiveUser,
+        access: inMemoryAccessToken,
+        refresh: inMemoryRefreshToken,
+        timestamp: Date.now(),
+      });
+    }
+  }
 };
 
 /**
- * Completely clears in-memory access token and removes User Details from `localStorage`.
+ * Completely clears in-memory tokens, removes User Details from `localStorage`,
+ * and broadcasts `FORCE_LOGOUT` so every open tab logs out simultaneously!
  */
-export const clearSessionSnapshot = () => {
+export const clearSessionSnapshot = ({ broadcast = true } = {}) => {
+  isLoggedOut = true;
+  lastLogoutAt = Date.now();
   inMemoryAccessToken = null;
+  inMemoryRefreshToken = null;
+  notifyTokenWaiters(null);
+
   try {
     localStorage.removeItem(USER_STORAGE_KEY);
     localStorage.removeItem(ALT_USER_STORAGE_KEY);
+    if (broadcast) {
+      localStorage.setItem(LOGOUT_EVENT_KEY, String(lastLogoutAt));
+    }
   } catch {
     /* ignore */
   }
+
   migrateAndPurgeLegacyTokenKeys();
+
+  if (broadcast) {
+    postAuthBroadcast({
+      type: 'FORCE_LOGOUT',
+      timestamp: lastLogoutAt,
+    });
+  }
 };
 
-export const setInMemoryAccessToken = (token, _refresh = undefined, user = undefined) => {
+export const setInMemoryAccessToken = (
+  token,
+  refresh = undefined,
+  user = undefined,
+) => {
+  if (isLoggedOut && token) return;
   inMemoryAccessToken = token || null;
-  if (user !== undefined) {
-    saveSessionSnapshot({ user, access: inMemoryAccessToken });
+  if (refresh !== undefined && refresh !== null) {
+    inMemoryRefreshToken = refresh || null;
+  }
+  if (user !== undefined && !isLoggedOut && readSavedUser()) {
+    saveSessionSnapshot({ user, access: inMemoryAccessToken, refresh: inMemoryRefreshToken });
   }
 };
 
 export const getInMemoryAccessToken = () =>
   inMemoryAccessToken || storeRef?.getState()?.auth?.access || null;
 
-export const getRefreshToken = () => null;
+export const getRefreshToken = () => inMemoryRefreshToken || null;
 
 export const injectStore = (s) => {
   storeRef = s;
@@ -206,31 +432,56 @@ export const backend = axios.create({
 });
 
 /**
- * Requests a fresh Access Token using the browser's `httpOnly` refreshToken cookie.
- * Concurrent callers share the same in-flight `refreshPromise`.
+ * Requests a fresh Access Token using the browser's `httpOnly` refreshToken cookie
+ * (plus in-memory refresh token fallback if present).
+ * Concurrent callers share a single in-flight `refreshPromise`.
  */
 export const performTokenRefresh = async () => {
+  if (isLoggedOut || !readSavedUser()) {
+    const err = new Error('Not signed in');
+    err.response = { status: 401 };
+    throw err;
+  }
+
   if (!refreshPromise) {
+    const memRefresh = getRefreshToken();
     refreshPromise = axios
       .post(
         `${BACKEND.URL}/auth/refresh`,
-        {},
+        memRefresh ? { refresh: memRefresh } : {},
         {
           withCredentials: true,
           headers: {
             'X-Requested-With': 'XMLHttpRequest',
+            ...(memRefresh ? { 'x-refresh-token': memRefresh } : {}),
           },
         },
       )
       .then((res) => {
         const data = res.data || {};
+        if (isLoggedOut || !readSavedUser()) {
+          return { access: null, user: null };
+        }
         if (data.access) {
-          setInMemoryAccessToken(data.access);
+          inMemoryAccessToken = data.access;
+          notifyTokenWaiters(data.access);
         }
-        if (data.user) {
-          saveSessionSnapshot({ user: data.user, access: data.access });
+        if (data.refresh) {
+          inMemoryRefreshToken = data.refresh;
         }
-        return data;
+        const savedUser = readSavedUser();
+        const mergedUser = data.user || savedUser;
+        if (mergedUser) {
+          saveSessionSnapshot({
+            user: mergedUser,
+            access: data.access,
+            refresh: data.refresh,
+          });
+        }
+        return {
+          ...data,
+          user: mergedUser,
+        };
       })
       .finally(() => {
         refreshPromise = null;
@@ -243,44 +494,47 @@ backend.interceptors.request.use(async (cfg) => {
   const url = cfg?.url || '';
   const isAuthEndpoint = /\/auth\/(login|signup|register|refresh|logout)/.test(url);
 
-  // Rule 2: If the user was logged in in Redux memory, but `localStorage` was cleared
-  // (so user details no longer exist in localStorage), log out immediately!
+  // Rule 2: If `localStorage` was cleared (`!savedUser`) while Redux still had a user, log out immediately
   const savedUser = readSavedUser();
   if (!isAuthEndpoint && !savedUser && (inMemoryAccessToken || storeRef?.getState()?.auth?.user)) {
-    inMemoryAccessToken = null;
+    clearSessionSnapshot({ broadcast: false });
     if (storeRef) {
-      storeRef.dispatch({ type: 'auth/clearSession' });
+      storeRef.dispatch({ type: 'auth/clearSession', payload: { fromBroadcast: true } });
     }
   }
 
-  // If `localStorage` has user details (e.g. tab was just reopened) but `inMemoryAccessToken`
-  // is not yet in memory, silently refresh it from the httpOnly cookie before sending protected requests
   let token = getInMemoryAccessToken();
-  if (!token && savedUser && !isAuthEndpoint && !cfg._skipPreRefresh) {
-    try {
-      const refreshed = await performTokenRefresh();
-      if (refreshed?.access) {
-        token = refreshed.access;
-        if (storeRef) {
-          storeRef.dispatch({
-            type: 'auth/setSessionFromRefresh',
-            payload: { access: refreshed.access, user: refreshed.user || savedUser },
-          });
+
+  // If this tab just opened (`savedUser` exists in localStorage, but `token` is not in memory yet),
+  // first ask any open tab via BroadcastChannel (90ms), then fall back to `/auth/refresh`
+  if (!token && savedUser && !isLoggedOut && !isAuthEndpoint && !cfg._skipPreRefresh) {
+    token = await requestTokenFromOpenTabs(90);
+    if (!token && readSavedUser() && !isLoggedOut) {
+      try {
+        const refreshed = await performTokenRefresh();
+        if (refreshed?.access) {
+          token = refreshed.access;
+          if (storeRef) {
+            storeRef.dispatch({
+              type: 'auth/setSessionFromRefresh',
+              payload: {
+                access: refreshed.access,
+                user: refreshed.user || savedUser,
+              },
+            });
+          }
         }
-      }
-    } catch (refreshErr) {
-      const rStatus = refreshErr?.response?.status;
-      if (rStatus === 401 || rStatus === 403) {
-        clearSessionSnapshot();
-        if (storeRef) {
-          storeRef.dispatch({ type: 'auth/clearSession' });
-        }
+      } catch {
+        // Do not wipe localStorage on a pre-flight refresh error; let the actual endpoint or 401 handler decide
       }
     }
   }
 
   if (token) {
     cfg.headers.Authorization = `Bearer ${token}`;
+  }
+  if (inMemoryRefreshToken) {
+    cfg.headers['x-refresh-token'] = inMemoryRefreshToken;
   }
   cfg.headers['X-Requested-With'] = 'XMLHttpRequest';
 
@@ -322,15 +576,13 @@ backend.interceptors.response.use(
     const url = original?.url || '';
     const isAuthEndpoint = /\/auth\/(login|signup|register|refresh|logout)/.test(url);
 
-    // When Access Token expires (401), request a new Access Token using the httpOnly Refresh Token cookie,
-    // store the new Access Token in memory, and retry the original request!
+    // When Access Token expires (401), request a new Access Token and retry the original request!
     if (status === 401 && !original?._retry && !isAuthEndpoint) {
-      // Only attempt refresh if user details exist in localStorage (Rule 2)
       const savedUser = readSavedUser();
-      if (!savedUser) {
-        clearSessionSnapshot();
+      if (!savedUser || isLoggedOut) {
+        clearSessionSnapshot({ broadcast: false });
         if (storeRef) {
-          storeRef.dispatch({ type: 'auth/clearSession' });
+          storeRef.dispatch({ type: 'auth/clearSession', payload: { fromBroadcast: true } });
         }
       } else {
         original._retry = true;
@@ -338,7 +590,7 @@ backend.interceptors.response.use(
         try {
           const data = await performTokenRefresh();
           if (data?.access) {
-            setInMemoryAccessToken(data.access);
+            inMemoryAccessToken = data.access;
             if (storeRef) {
               storeRef.dispatch({
                 type: 'auth/setSessionFromRefresh',
@@ -353,11 +605,19 @@ backend.interceptors.response.use(
           }
         } catch (refreshErr) {
           const rStatus = refreshErr?.response?.status;
-          // Rule 3: If Refresh Token is expired or unauthorized (401/403), log the user out!
+          // Rule 3: If Refresh Token is expired or unauthorized (401/403) and no open tab has a token, log out all tabs!
+          const tabToken = await requestTokenFromOpenTabs(60);
+          if (tabToken) {
+            original.headers = {
+              ...(original.headers || {}),
+              Authorization: `Bearer ${tabToken}`,
+            };
+            return backend(original);
+          }
           if (rStatus === 401 || rStatus === 403) {
-            clearSessionSnapshot();
+            clearSessionSnapshot({ broadcast: true });
             if (storeRef) {
-              storeRef.dispatch({ type: 'auth/clearSession' });
+              storeRef.dispatch({ type: 'auth/clearSession', payload: { fromBroadcast: true } });
             }
           }
         }

@@ -87,28 +87,16 @@ export default function App() {
     dispatch(restoreSession());
 
     const checkLocalUserStorage = () => {
-      const saved = readSavedUser();
-      if (!saved) {
+      if (!readSavedUser()) {
         dispatch(syncUserFromStorage());
       }
     };
 
-    const handleStorageEvent = (e) => {
-      if (!e.key || e.key === 'user' || e.key === 'movieshub_user') {
-        const saved = readSavedUser();
-        if (!saved) {
-          dispatch(syncUserFromStorage());
-        } else {
-          dispatch(restoreSession());
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageEvent);
     window.addEventListener('focus', checkLocalUserStorage);
+    document.addEventListener('visibilitychange', checkLocalUserStorage);
     return () => {
-      window.removeEventListener('storage', handleStorageEvent);
       window.removeEventListener('focus', checkLocalUserStorage);
+      document.removeEventListener('visibilitychange', checkLocalUserStorage);
     };
   }, [dispatch]);
 
