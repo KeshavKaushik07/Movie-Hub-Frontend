@@ -1,5 +1,7 @@
 import {
   backend,
+  readSavedUser,
+  saveSessionSnapshot,
   setInMemoryAccessToken,
   clearSessionSnapshot,
   performTokenRefresh,
@@ -8,7 +10,7 @@ import {
 export const authService = {
   async login(payload) {
     const { data } = await backend.post('/auth/login', payload);
-    setInMemoryAccessToken(data.access);
+    saveSessionSnapshot({ user: data.user, access: data.access });
     return {
       user: data.user,
       access: data.access,
@@ -17,7 +19,7 @@ export const authService = {
 
   async signup(payload) {
     const { data } = await backend.post('/auth/register', payload);
-    setInMemoryAccessToken(data.access);
+    saveSessionSnapshot({ user: data.user, access: data.access });
     return {
       user: data.user,
       access: data.access,
@@ -25,38 +27,71 @@ export const authService = {
   },
 
   /**
-   * Restores user session on app mount by sending the httpOnly Refresh Token cookie
-   * to `POST /auth/refresh`, receiving a fresh Access Token in memory.
+   * Restores session when reopening a tab or refreshing:
+   * - Rule 2: If `localStorage` was cleared and has no user details (`!savedUser`),
+   *   clears any lingering cookie and returns `{ user: null, access: null }`.
+   * - Rule 3: If `localStorage` has user details, calls `POST /auth/refresh` using the
+   *   `httpOnly` refreshToken cookie to get a fresh in-memory `access` token.
+   *   Only logs out if `/auth/refresh` returns 401/403 (expired or unauthorized refresh token).
    */
   async restoreSession() {
+    const savedUser = readSavedUser();
+    if (!savedUser) {
+      clearSessionSnapshot();
+      backend.post('/auth/logout', {}, { silentPatch: true }).catch(() => {});
+      return { user: null, access: null };
+    }
+
     try {
       const data = await performTokenRefresh();
-      let user = data?.user || null;
-      if (!user && data?.access) {
-        const meRes = await backend.get('/auth/me');
-        user = meRes.data?.user || null;
+      let user = data?.user || savedUser;
+      if (!data?.user && data?.access) {
+        try {
+          const meRes = await backend.get('/auth/me', {
+            silentPatch: true,
+            _skipPreRefresh: true,
+            headers: { Authorization: `Bearer ${data.access}` },
+          });
+          if (meRes.data?.user) user = meRes.data.user;
+        } catch {
+          user = savedUser;
+        }
       }
-      if (data?.access) {
-        setInMemoryAccessToken(data.access);
-      }
+      saveSessionSnapshot({ user, access: data?.access || null });
       return {
         access: data?.access || null,
         user,
       };
     } catch (err) {
-      clearSessionSnapshot();
-      throw err;
+      const status = err?.response?.status;
+      // Rule 3: Refresh token is expired, invalid, missing, or user account is unauthorized/deactivated
+      if (status === 401 || status === 403) {
+        clearSessionSnapshot();
+        const authErr = new Error(
+          err?.response?.data?.message || 'Session expired, please log in again',
+        );
+        authErr.unauthorized = true;
+        throw authErr;
+      }
+      // Network hiccup / server restarting: keep savedUser so closing/reopening tab doesn't log out
+      return {
+        access: null,
+        user: savedUser,
+      };
     }
   },
 
   async me() {
     const { data } = await backend.get('/auth/me');
+    if (data?.user) {
+      saveSessionSnapshot({ user: data.user });
+    }
     return data.user;
   },
 
   async logout() {
     try {
-      await backend.post('/auth/logout', {});
+      await backend.post('/auth/logout', {}, { silentPatch: true });
     } finally {
       clearSessionSnapshot();
     }
@@ -64,6 +99,9 @@ export const authService = {
 
   async updateProfile(payload) {
     const { data } = await backend.patch('/users/me', payload);
+    if (data?.user) {
+      saveSessionSnapshot({ user: data.user });
+    }
     return data.user;
   },
 

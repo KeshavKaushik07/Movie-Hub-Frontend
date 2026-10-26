@@ -1,9 +1,13 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authService } from '../services/authService';
 import {
+  readSavedUser,
+  saveSessionSnapshot,
   setInMemoryAccessToken,
   clearSessionSnapshot,
 } from '../services/backendApi';
+
+const savedBootUser = readSavedUser();
 
 const errText = (e) => e.response?.data?.message || e.message;
 const thunk = (name, fn) =>
@@ -21,9 +25,9 @@ export const deleteMyAccount = thunk('deleteMyAccount', authService.deleteMyAcco
 const slice = createSlice({
   name: 'auth',
   initialState: {
-    user: null,
-    access: null, // Held strictly in React/Redux memory (never in localStorage)
-    initializing: true, // Waits for cookie-based /auth/refresh check on app mount
+    user: savedBootUser || null, // Hydrated immediately from localStorage ('user' / 'movieshub_user')
+    access: null, // Strictly in React/Redux memory (never in localStorage)
+    initializing: false,
     loading: false,
     error: null,
     logoutModalOpen: false,
@@ -42,10 +46,24 @@ const slice = createSlice({
     },
     setSessionFromRefresh: (s, { payload }) => {
       s.access = payload?.access || s.access || null;
-      if (payload?.user) s.user = payload.user;
+      if (payload?.user) {
+        s.user = payload.user;
+      }
       s.initializing = false;
-      if (payload?.access) {
-        setInMemoryAccessToken(payload.access);
+      saveSessionSnapshot({
+        user: s.user,
+        access: s.access,
+      });
+    },
+    syncUserFromStorage: (s) => {
+      const latestUser = readSavedUser();
+      if (!latestUser) {
+        s.user = null;
+        s.access = null;
+        s.initializing = false;
+        setInMemoryAccessToken(null);
+      } else if (!s.user) {
+        s.user = latestUser;
       }
     },
     clearError: (s) => {
@@ -70,7 +88,10 @@ const slice = createSlice({
           s.initializing = false;
           s.user = payload.user || null;
           s.access = payload.access || null;
-          setInMemoryAccessToken(payload.access);
+          saveSessionSnapshot({
+            user: payload.user,
+            access: payload.access,
+          });
         })
         .addCase(t.rejected, (s, a) => {
           s.loading = false;
@@ -79,15 +100,30 @@ const slice = createSlice({
     );
 
     b.addCase(restoreSession.pending, (s) => {
-      if (!s.user) s.initializing = true;
+      const localUser = readSavedUser();
+      if (!localUser) {
+        s.user = null;
+        s.access = null;
+      }
     });
     b.addCase(restoreSession.fulfilled, (s, { payload }) => {
       s.initializing = false;
-      s.access = payload?.access || null;
-      s.user = payload?.user || null;
-      setInMemoryAccessToken(payload?.access || null);
+      if (!payload?.user) {
+        // Rule 2: localStorage had no user details
+        s.user = null;
+        s.access = null;
+        clearSessionSnapshot();
+      } else {
+        s.user = payload.user;
+        s.access = payload.access || s.access || null;
+        saveSessionSnapshot({
+          user: payload.user,
+          access: s.access,
+        });
+      }
     });
     b.addCase(restoreSession.rejected, (s) => {
+      // Rule 3: Refresh token expired or unauthorized (401/403)
       s.initializing = false;
       s.user = null;
       s.access = null;
@@ -97,6 +133,7 @@ const slice = createSlice({
     b.addCase(fetchMe.fulfilled, (s, { payload }) => {
       if (payload) {
         s.user = payload;
+        saveSessionSnapshot({ user: payload });
       }
     });
     b.addCase(fetchMe.rejected, (s, a) => {
@@ -110,6 +147,7 @@ const slice = createSlice({
 
     b.addCase(updateProfile.fulfilled, (s, { payload }) => {
       s.user = payload;
+      saveSessionSnapshot({ user: payload });
     });
 
     b.addCase(deleteMyAccount.fulfilled, (s) => {
@@ -125,6 +163,7 @@ export const {
   clearSession,
   setAccess,
   setSessionFromRefresh,
+  syncUserFromStorage,
   clearError,
   openLogoutModal,
   closeLogoutModal,

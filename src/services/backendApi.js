@@ -1,27 +1,64 @@
 import axios from 'axios';
 import { BACKEND } from '../config/constants';
-import { sanitizePayload } from '../utils/security';
+import { sanitizePayload, safeJsonParse } from '../utils/security';
 import { notifyPatch } from '../utils/notify';
 
 /**
- * PURE IN-MEMORY ACCESS TOKEN + HTTPONLY REFRESH COOKIE ENGINE:
- * - Access Token is stored ONLY in JavaScript / React (Redux) memory (`inMemoryAccessToken` & `state.auth.access`).
- * - Refresh Token is stored ONLY in the browser's `httpOnly` cookie (`withCredentials: true`).
- * - ZERO tokens (`access` or `refresh`) are ever stored in `localStorage` or `sessionStorage`.
- * - When an API request returns 401 (expired access token), the interceptor automatically calls
- *   `POST /auth/refresh` (sending the `httpOnly` refresh cookie), stores the new access token
- *   in memory, and retries the original request seamlessly.
+ * HYBRID PERSISTENT USER PROFILE + IN-MEMORY ACCESS TOKEN + HTTPONLY REFRESH COOKIE ENGINE:
+ * 1. User Profile Details (`id`, `name`, `email`, `role`, `avatarColor`, `bio`, `favoriteGenres`, `preferences`)
+ *    are stored in `localStorage` under `user` (and `movieshub_user`) so closing and reopening a tab
+ *    keeps the user signed in seamlessly.
+ * 2. Access Token (`access`) is stored STRICTLY in React / JS memory (`inMemoryAccessToken` & `state.auth.access`)
+ *    — NEVER in `localStorage` or `sessionStorage`.
+ * 3. Refresh Token (`refreshToken`) is stored STRICTLY in the browser's `httpOnly` cookie (`withCredentials: true`)
+ *    — NEVER in `localStorage` or `sessionStorage`.
+ * 4. The user is ONLY logged out when:
+ *    (a) They manually click Logout,
+ *    (b) `localStorage` is cleared and user details (`user` / `movieshub_user`) cannot be found, or
+ *    (c) The `refreshToken` cookie is expired, revoked, or unauthorized (`401` / `403` from `/auth/refresh`).
  */
+
+const USER_STORAGE_KEY = 'user';
+const ALT_USER_STORAGE_KEY = 'movieshub_user';
 
 let inMemoryAccessToken = null;
 let storeRef = null;
 let refreshPromise = null;
 
-// Purge any legacy token or session keys from localStorage and sessionStorage immediately on load
-const purgeLegacyTokenStorage = () => {
-  const legacyKeys = [
-    'movieshub_tab_session_v6',
+/**
+ * Strips any token or sensitive fields and returns only safe user profile details for `localStorage`.
+ */
+export const sanitizeUserForStorage = (u) => {
+  if (!u || typeof u !== 'object') return null;
+  const raw = u._doc ? { ...u, ...u._doc } : u;
+  const id = raw.id || raw._id || null;
+  const email = raw.email || '';
+  if (!id && !email) return null;
+  return {
+    id: id ? String(id) : null,
+    name: raw.name || '',
+    email,
+    role: raw.role || 'user',
+    avatarColor: raw.avatarColor || '#f5b942',
+    bio: raw.bio || '',
+    location: raw.location || '',
+    favoriteGenres: Array.isArray(raw.favoriteGenres) ? raw.favoriteGenres : [],
+    preferences: raw.preferences || undefined,
+    isActive: raw.isActive !== false,
+    createdAt: raw.createdAt || undefined,
+  };
+};
+
+/**
+ * Migrates any existing user object from legacy storage keys into `user` / `movieshub_user`,
+ * and purges all `access` and `refresh` tokens from `localStorage` and `sessionStorage`.
+ */
+const migrateAndPurgeLegacyTokenKeys = () => {
+  const legacySessionKeys = [
     'movieshub_session_backup_v6',
+    'movieshub_tab_session_v6',
+  ];
+  const pureTokenKeys = [
     'accessToken',
     'refreshToken',
     'access',
@@ -31,40 +68,127 @@ const purgeLegacyTokenStorage = () => {
     'guest_started_at',
     'guest_started_at_v4',
   ];
+
   try {
-    legacyKeys.forEach((k) => localStorage.removeItem(k));
+    // If `user` is not yet stored under USER_STORAGE_KEY, rescue `user` profile from legacy session backup
+    const existingRaw =
+      localStorage.getItem(USER_STORAGE_KEY) ||
+      localStorage.getItem(ALT_USER_STORAGE_KEY);
+    if (!existingRaw) {
+      for (const k of legacySessionKeys) {
+        const raw = localStorage.getItem(k) || sessionStorage.getItem(k);
+        if (raw) {
+          const parsed = safeJsonParse(raw);
+          const cleanUser = sanitizeUserForStorage(parsed?.user || parsed);
+          if (cleanUser) {
+            const serialized = JSON.stringify(cleanUser);
+            localStorage.setItem(USER_STORAGE_KEY, serialized);
+            localStorage.setItem(ALT_USER_STORAGE_KEY, serialized);
+            break;
+          }
+        }
+      }
+    } else {
+      // Ensure existing `user` in localStorage has zero token fields
+      const parsed = safeJsonParse(existingRaw);
+      const cleanUser = sanitizeUserForStorage(parsed?.user || parsed);
+      if (cleanUser) {
+        const serialized = JSON.stringify(cleanUser);
+        localStorage.setItem(USER_STORAGE_KEY, serialized);
+        localStorage.setItem(ALT_USER_STORAGE_KEY, serialized);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    [...legacySessionKeys, ...pureTokenKeys].forEach((k) =>
+      localStorage.removeItem(k),
+    );
   } catch {
     /* ignore */
   }
   try {
-    legacyKeys.forEach((k) => sessionStorage.removeItem(k));
+    [...legacySessionKeys, ...pureTokenKeys].forEach((k) =>
+      sessionStorage.removeItem(k),
+    );
   } catch {
     /* ignore */
   }
 };
 
-purgeLegacyTokenStorage();
+migrateAndPurgeLegacyTokenKeys();
 
-export const setInMemoryAccessToken = (token) => {
+/**
+ * Reads the persisted User Details from `localStorage`.
+ * Returns `null` if `localStorage` was cleared or user is not logged in.
+ */
+export const readSavedUser = () => {
+  try {
+    const raw =
+      localStorage.getItem(USER_STORAGE_KEY) ||
+      localStorage.getItem(ALT_USER_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = safeJsonParse(raw);
+    return sanitizeUserForStorage(parsed?.user || parsed);
+  } catch {
+    return null;
+  }
+};
+
+export const readSavedSession = () => {
+  const user = readSavedUser();
+  return user ? { user, access: inMemoryAccessToken } : null;
+};
+
+/**
+ * Saves the User Details to `localStorage` (NEVER tokens) and keeps `access` strictly in JS memory.
+ */
+export const saveSessionSnapshot = ({ user, access } = {}) => {
+  if (access !== undefined) {
+    inMemoryAccessToken = access || null;
+  }
+  if (user !== undefined) {
+    const cleanUser = sanitizeUserForStorage(user);
+    try {
+      if (cleanUser) {
+        const serialized = JSON.stringify(cleanUser);
+        localStorage.setItem(USER_STORAGE_KEY, serialized);
+        localStorage.setItem(ALT_USER_STORAGE_KEY, serialized);
+      } else {
+        localStorage.removeItem(USER_STORAGE_KEY);
+        localStorage.removeItem(ALT_USER_STORAGE_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+};
+
+/**
+ * Completely clears in-memory access token and removes User Details from `localStorage`.
+ */
+export const clearSessionSnapshot = () => {
+  inMemoryAccessToken = null;
+  try {
+    localStorage.removeItem(USER_STORAGE_KEY);
+    localStorage.removeItem(ALT_USER_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+  migrateAndPurgeLegacyTokenKeys();
+};
+
+export const setInMemoryAccessToken = (token, _refresh = undefined, user = undefined) => {
   inMemoryAccessToken = token || null;
+  if (user !== undefined) {
+    saveSessionSnapshot({ user, access: inMemoryAccessToken });
+  }
 };
 
 export const getInMemoryAccessToken = () =>
   inMemoryAccessToken || storeRef?.getState()?.auth?.access || null;
-
-// Compatibility helpers (strictly in-memory; never write to localStorage or sessionStorage)
-export const readSavedSession = () => null;
-
-export const saveSessionSnapshot = ({ access } = {}) => {
-  if (access !== undefined) {
-    inMemoryAccessToken = access || null;
-  }
-};
-
-export const clearSessionSnapshot = () => {
-  inMemoryAccessToken = null;
-  purgeLegacyTokenStorage();
-};
 
 export const getRefreshToken = () => null;
 
@@ -82,8 +206,8 @@ export const backend = axios.create({
 });
 
 /**
- * Requests a new Access Token using the browser's httpOnly refreshToken cookie.
- * Concurrent 401 responses share a single in-flight `refreshPromise`.
+ * Requests a fresh Access Token using the browser's `httpOnly` refreshToken cookie.
+ * Concurrent callers share the same in-flight `refreshPromise`.
  */
 export const performTokenRefresh = async () => {
   if (!refreshPromise) {
@@ -103,6 +227,9 @@ export const performTokenRefresh = async () => {
         if (data.access) {
           setInMemoryAccessToken(data.access);
         }
+        if (data.user) {
+          saveSessionSnapshot({ user: data.user, access: data.access });
+        }
         return data;
       })
       .finally(() => {
@@ -112,8 +239,46 @@ export const performTokenRefresh = async () => {
   return refreshPromise;
 };
 
-backend.interceptors.request.use((cfg) => {
-  const token = getInMemoryAccessToken();
+backend.interceptors.request.use(async (cfg) => {
+  const url = cfg?.url || '';
+  const isAuthEndpoint = /\/auth\/(login|signup|register|refresh|logout)/.test(url);
+
+  // Rule 2: If the user was logged in in Redux memory, but `localStorage` was cleared
+  // (so user details no longer exist in localStorage), log out immediately!
+  const savedUser = readSavedUser();
+  if (!isAuthEndpoint && !savedUser && (inMemoryAccessToken || storeRef?.getState()?.auth?.user)) {
+    inMemoryAccessToken = null;
+    if (storeRef) {
+      storeRef.dispatch({ type: 'auth/clearSession' });
+    }
+  }
+
+  // If `localStorage` has user details (e.g. tab was just reopened) but `inMemoryAccessToken`
+  // is not yet in memory, silently refresh it from the httpOnly cookie before sending protected requests
+  let token = getInMemoryAccessToken();
+  if (!token && savedUser && !isAuthEndpoint && !cfg._skipPreRefresh) {
+    try {
+      const refreshed = await performTokenRefresh();
+      if (refreshed?.access) {
+        token = refreshed.access;
+        if (storeRef) {
+          storeRef.dispatch({
+            type: 'auth/setSessionFromRefresh',
+            payload: { access: refreshed.access, user: refreshed.user || savedUser },
+          });
+        }
+      }
+    } catch (refreshErr) {
+      const rStatus = refreshErr?.response?.status;
+      if (rStatus === 401 || rStatus === 403) {
+        clearSessionSnapshot();
+        if (storeRef) {
+          storeRef.dispatch({ type: 'auth/clearSession' });
+        }
+      }
+    }
+  }
+
   if (token) {
     cfg.headers.Authorization = `Bearer ${token}`;
   }
@@ -157,30 +322,44 @@ backend.interceptors.response.use(
     const url = original?.url || '';
     const isAuthEndpoint = /\/auth\/(login|signup|register|refresh|logout)/.test(url);
 
-    // If Access Token is expired (401), automatically request a new Access Token using
-    // the httpOnly Refresh Token cookie, store it in memory, and retry the original request!
+    // When Access Token expires (401), request a new Access Token using the httpOnly Refresh Token cookie,
+    // store the new Access Token in memory, and retry the original request!
     if (status === 401 && !original?._retry && !isAuthEndpoint) {
-      original._retry = true;
-      try {
-        const data = await performTokenRefresh();
-        if (data?.access) {
-          setInMemoryAccessToken(data.access);
-          if (storeRef) {
-            storeRef.dispatch({
-              type: 'auth/setSessionFromRefresh',
-              payload: { access: data.access, user: data.user },
-            });
-          }
-          original.headers = {
-            ...(original.headers || {}),
-            Authorization: `Bearer ${data.access}`,
-          };
-          return backend(original);
-        }
-      } catch {
+      // Only attempt refresh if user details exist in localStorage (Rule 2)
+      const savedUser = readSavedUser();
+      if (!savedUser) {
         clearSessionSnapshot();
         if (storeRef) {
           storeRef.dispatch({ type: 'auth/clearSession' });
+        }
+      } else {
+        original._retry = true;
+        original._skipPreRefresh = true;
+        try {
+          const data = await performTokenRefresh();
+          if (data?.access) {
+            setInMemoryAccessToken(data.access);
+            if (storeRef) {
+              storeRef.dispatch({
+                type: 'auth/setSessionFromRefresh',
+                payload: { access: data.access, user: data.user || savedUser },
+              });
+            }
+            original.headers = {
+              ...(original.headers || {}),
+              Authorization: `Bearer ${data.access}`,
+            };
+            return backend(original);
+          }
+        } catch (refreshErr) {
+          const rStatus = refreshErr?.response?.status;
+          // Rule 3: If Refresh Token is expired or unauthorized (401/403), log the user out!
+          if (rStatus === 401 || rStatus === 403) {
+            clearSessionSnapshot();
+            if (storeRef) {
+              storeRef.dispatch({ type: 'auth/clearSession' });
+            }
+          }
         }
       }
     }
@@ -220,3 +399,5 @@ backend.interceptors.response.use(
     return Promise.reject(err);
   },
 );
+
+export default backend;

@@ -30,11 +30,7 @@ import {
 import { tmdb, featuredApi, communityApi } from '../services/api';
 import { reviewService } from '../services/reviewService';
 import { OTT_LIST, ROLES, ROUTES } from '../config/constants';
-import {
-  getMovieFinancials,
-  registerSlugMapping,
-  getPersonPath,
-} from '../utils/formatters';
+import { getMovieFinancials, registerSlugMapping, getPersonPath } from '../utils/formatters';
 import MovieRow from '../components/MovieRow';
 import Reviews from '../components/Reviews';
 import TitleEditorModal from '../components/TitleEditorModal';
@@ -100,8 +96,7 @@ export default function Details() {
             const parsed = Number(s.seasonNumber ?? s.season_number);
             return Number.isInteger(parsed) && parsed >= 0 ? parsed : idx + 1;
           });
-          const firstRegular =
-            unwrappedSeasons.find((num) => num > 0) ?? unwrappedSeasons[0] ?? 1;
+          const firstRegular = unwrappedSeasons.find((num) => num > 0) ?? unwrappedSeasons[0] ?? 1;
           setSelectedSeason(firstRegular);
         } else {
           setSelectedSeason(1);
@@ -211,8 +206,7 @@ export default function Details() {
         const parsed = Number(s.seasonNumber ?? s.season_number);
         const sNum = Number.isInteger(parsed) && parsed >= 0 ? parsed : idx + 1;
         const epCount = Number(s.episodeCount ?? s.episode_count ?? 0);
-        const posterPath =
-          s.posterPath || s.poster_path || data?.poster_path || '';
+        const posterPath = s.posterPath || s.poster_path || data?.poster_path || '';
         const airDate = s.airDate || s.air_date || '';
         const voteAvg = Number(s.voteAverage ?? s.vote_average ?? 0);
         return {
@@ -249,10 +243,8 @@ export default function Details() {
         seasonNumber: i + 1,
         season_number: i + 1,
         name: `Season ${i + 1}`,
-        episodeCount:
-          Number(data?.numberOfEpisodes || data?.number_of_episodes) || 0,
-        episode_count:
-          Number(data?.numberOfEpisodes || data?.number_of_episodes) || 0,
+        episodeCount: Number(data?.numberOfEpisodes || data?.number_of_episodes) || 0,
+        episode_count: Number(data?.numberOfEpisodes || data?.number_of_episodes) || 0,
         airDate: data?.first_air_date || '',
         air_date: data?.first_air_date || '',
         posterPath: data?.poster_path || '',
@@ -267,9 +259,9 @@ export default function Details() {
   const safeSelectedSeason =
     Number.isInteger(Number(selectedSeason)) && Number(selectedSeason) >= 0
       ? Number(selectedSeason)
-      : (normalizedSeasons.find((s) => s.seasonNumber > 0)?.seasonNumber ??
+      : normalizedSeasons.find((s) => s.seasonNumber > 0)?.seasonNumber ??
         normalizedSeasons[0]?.seasonNumber ??
-        1);
+        1;
 
   const activeSeasonMeta =
     normalizedSeasons.find((s) => s.seasonNumber === safeSelectedSeason) ||
@@ -290,11 +282,7 @@ export default function Details() {
       const s = sd?._doc ? { ...sd, ...sd._doc } : sd || {};
       return Number(s.seasonNumber ?? s.season_number) === safeSelectedSeason;
     });
-    if (
-      preloaded &&
-      Array.isArray(preloaded.episodes) &&
-      preloaded.episodes.length > 0
-    ) {
+    if (preloaded && Array.isArray(preloaded.episodes) && preloaded.episodes.length > 0) {
       setSeasonData(preloaded);
       setSeasonLoading(false);
       return;
@@ -316,15 +304,7 @@ export default function Details() {
     return () => {
       cancelled = true;
     };
-  }, [
-    type,
-    resolvedId,
-    safeSelectedSeason,
-    data?.type,
-    data?.subType,
-    data?.isWebSeries,
-    data?.seasonsDetails,
-  ]);
+  }, [type, resolvedId, safeSelectedSeason, data?.type, data?.subType, data?.isWebSeries, data?.seasonsDetails]);
 
   useEffect(() => {
     if (activeTab !== 'live-chat' || !resolvedId) return;
@@ -869,8 +849,8 @@ export default function Details() {
                   <div className='flex flex-wrap items-center justify-between gap-2'>
                     <div>
                       <h3 className='flex items-center gap-2 text-base font-extrabold text-white'>
-                        <Tv size={17} className='text-brand' /> Where to Watch{' '}
-                        {title}
+                        <Tv size={17} className='text-brand' /> Where to
+                        Watch {title}
                       </h3>
                       <p className='text-xs text-zinc-400'>
                         Official OTT streaming, free, rental & digital purchase
@@ -1328,11 +1308,7 @@ export default function Details() {
                           return (
                             <Link
                               key={`crew-${member.id || member.name}`}
-                              to={getPersonPath(
-                                member,
-                                member.id,
-                                member.gender,
-                              )}
+                              to={getPersonPath(member, member.id, member.gender)}
                               className='group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand sm:w-44'
                             >
                               <div className='relative aspect-[2/3] w-full overflow-hidden bg-zinc-950'>
@@ -1611,8 +1587,7 @@ export default function Details() {
                   Seasons & Episode Guide
                 </h2>
                 <p className='text-xs text-zinc-400'>
-                  Select any season below to view its full details, air dates,
-                  and episode guide
+                  Select any season below to view its full details, air dates, and episode guide
                 </p>
               </div>
               <div className='w-64'>
@@ -1662,11 +1637,7 @@ export default function Details() {
                     activeSeasonMeta?.posterPath ||
                     data?.posterUrl
                   }
-                  alt={
-                    seasonData?.name ||
-                    activeSeasonMeta?.name ||
-                    `Season ${safeSelectedSeason}`
-                  }
+                  alt={seasonData?.name || activeSeasonMeta?.name || `Season ${safeSelectedSeason}`}
                   size='w342'
                   variant='poster'
                   className='h-36 w-24 shrink-0 rounded-xl object-cover shadow-md sm:h-40 sm:w-28'
@@ -1674,34 +1645,19 @@ export default function Details() {
                 <div className='min-w-0 flex-1 space-y-2'>
                   <div className='flex flex-wrap items-center gap-2'>
                     <h3 className='text-base font-extrabold text-white sm:text-lg'>
-                      {seasonData?.name ||
-                        activeSeasonMeta?.name ||
-                        `Season ${safeSelectedSeason}`}
+                      {seasonData?.name || activeSeasonMeta?.name || `Season ${safeSelectedSeason}`}
                     </h3>
                     {(seasonData?.airDate || activeSeasonMeta?.airDate) && (
                       <span className='rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] font-bold text-zinc-300'>
-                        📅{' '}
-                        {String(
-                          seasonData?.airDate || activeSeasonMeta?.airDate,
-                        ).slice(0, 4)}
+                        📅 {String(seasonData?.airDate || activeSeasonMeta?.airDate).slice(0, 4)}
                       </span>
                     )}
                     <span className='rounded-full bg-brand/15 px-2.5 py-0.5 text-[11px] font-extrabold text-brand'>
-                      🎬{' '}
-                      {seasonData?.episodes?.length ||
-                        activeSeasonMeta?.episodeCount ||
-                        0}{' '}
-                      Episodes
+                      🎬 {seasonData?.episodes?.length || activeSeasonMeta?.episodeCount || 0} Episodes
                     </span>
-                    {Number(
-                      seasonData?.voteAverage || activeSeasonMeta?.voteAverage,
-                    ) > 0 && (
+                    {Number(seasonData?.voteAverage || activeSeasonMeta?.voteAverage) > 0 && (
                       <span className='rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-400'>
-                        ★{' '}
-                        {Number(
-                          seasonData?.voteAverage ||
-                            activeSeasonMeta?.voteAverage,
-                        ).toFixed(1)}
+                        ★ {Number(seasonData?.voteAverage || activeSeasonMeta?.voteAverage).toFixed(1)}
                       </span>
                     )}
                   </div>
@@ -1722,55 +1678,39 @@ export default function Details() {
             ) : seasonData?.episodes?.length ? (
               <div className='grid gap-3.5 sm:grid-cols-2'>
                 {seasonData.episodes.map((rawEp, idx) => {
-                  const ep = rawEp?._doc
-                    ? { ...rawEp, ...rawEp._doc }
-                    : rawEp || {};
-                  const epNum =
-                    ep.episodeNumber ?? ep.episode_number ?? idx + 1;
+                  const ep = rawEp?._doc ? { ...rawEp, ...rawEp._doc } : rawEp || {};
+                  const epNum = ep.episodeNumber ?? ep.episode_number ?? idx + 1;
                   const epAir = ep.airDate || ep.air_date || '';
                   const epVote = Number(ep.voteAverage ?? ep.vote_average ?? 0);
-                  const stillSrc =
-                    ep.stillUrl ||
-                    ep.stillPath ||
-                    ep.still_path ||
-                    data?.backdropUrl;
+                  const stillSrc = ep.stillUrl || ep.stillPath || ep.still_path || data?.backdropUrl;
                   return (
                     <div
                       key={epNum}
-                      className='flex min-w-0 gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-2.5 transition hover:border-brand/40 sm:gap-3.5 sm:p-3.5'
+                      className='flex gap-3.5 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 transition hover:border-brand/40'
                     >
                       <SafeImage
                         src={stillSrc}
                         alt={ep.name || `Episode ${epNum}`}
                         size='w300'
                         variant='backdrop'
-                        className='h-20 w-28 shrink-0 rounded-xl object-cover sm:h-24 sm:w-36'
+                        className='h-24 w-36 shrink-0 rounded-xl object-cover'
                       />
-
                       <div className='min-w-0 flex-1'>
-                        <div className='min-w-0'>
-                          <span
-                            title={ep.name || `Episode ${epNum}`}
-                            className='block truncate text-xs font-extrabold text-brand sm:text-sm'
-                          >
-                            S{String(safeSelectedSeason).padStart(2, '0')}E
-                            {String(epNum).padStart(2, '0')} •{' '}
-                            {ep.name || `Episode ${epNum}`}
+                        <div className='flex flex-wrap items-center justify-between gap-1.5'>
+                          <span className='truncate text-xs font-extrabold text-brand sm:text-sm'>
+                            S{String(safeSelectedSeason).padStart(2, '0')}E{String(epNum).padStart(2, '0')} • {ep.name || `Episode ${epNum}`}
                           </span>
-
                           {epVote > 0 && (
-                            <span className='mt-1 inline-block rounded-md bg-brand/15 px-1.5 py-0.5 text-[10px] font-extrabold text-brand'>
+                            <span className='shrink-0 rounded-md bg-brand/15 px-1.5 py-0.5 text-[10px] font-extrabold text-brand'>
                               ★ {epVote.toFixed(1)}
                             </span>
                           )}
                         </div>
-
                         <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-zinc-400'>
                           {ep.runtime ? <span>⏱ {ep.runtime}m</span> : null}
                           {epAir ? <span>📅 {epAir}</span> : null}
                         </div>
-
-                        <p className='mt-1.5 line-clamp-2 break-words text-xs leading-relaxed text-zinc-400'>
+                        <p className='mt-1.5 line-clamp-2 text-xs leading-relaxed text-zinc-400'>
                           {ep.overview || 'No episode synopsis available.'}
                         </p>
                       </div>
@@ -1826,7 +1766,9 @@ export default function Details() {
                     className='rounded-2xl bg-white/[0.04] p-3 text-xs'
                   >
                     <div className='flex items-center justify-between text-zinc-400'>
-                      <b className='text-brand'>{m.sender?.name || 'Fan'}</b>
+                      <b className='text-brand'>
+                        {m.sender?.name || 'Fan'}
+                      </b>
                       <span className='text-[10px]'>
                         {new Date(m.createdAt).toLocaleTimeString()}
                       </span>
@@ -1852,7 +1794,10 @@ export default function Details() {
             ) : (
               <p className='text-center text-xs text-zinc-400'>
                 Please{' '}
-                <Link to='/login' className='font-bold text-brand underline'>
+                <Link
+                  to='/login'
+                  className='font-bold text-brand underline'
+                >
                   log in
                 </Link>{' '}
                 to send messages in live chat.

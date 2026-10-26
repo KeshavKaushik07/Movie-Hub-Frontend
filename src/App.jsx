@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { ROLES, ROUTES } from './config/constants';
-import { restoreSession } from './store/authSlice';
+import { restoreSession, syncUserFromStorage } from './store/authSlice';
+import { readSavedUser } from './services/backendApi';
 import { registerRoutesFromReactTree } from './utils/sitemapGenerator';
 
 import Navbar from './components/Navbar';
@@ -84,6 +85,31 @@ export default function App() {
 
   useEffect(() => {
     dispatch(restoreSession());
+
+    const checkLocalUserStorage = () => {
+      const saved = readSavedUser();
+      if (!saved) {
+        dispatch(syncUserFromStorage());
+      }
+    };
+
+    const handleStorageEvent = (e) => {
+      if (!e.key || e.key === 'user' || e.key === 'movieshub_user') {
+        const saved = readSavedUser();
+        if (!saved) {
+          dispatch(syncUserFromStorage());
+        } else {
+          dispatch(restoreSession());
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('focus', checkLocalUserStorage);
+    return () => {
+      window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('focus', checkLocalUserStorage);
+    };
   }, [dispatch]);
 
   useEffect(() => {
