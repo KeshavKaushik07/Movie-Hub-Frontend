@@ -23,6 +23,7 @@ import MovieCard from '../components/MovieCard';
 import CustomSelect from '../components/ui/CustomSelect';
 import InfoPatch from '../components/ui/InfoPatch';
 import SafeImage from '../components/ui/SafeImage';
+import { getPersonPath } from '../utils/formatters';
 import { notifyPatch } from '../utils/notify';
 import { sanitizeText } from '../utils/security';
 
@@ -319,7 +320,7 @@ export default function Browse() {
           </div>
 
           <Link
-            to={`/person/${encodeURIComponent(matchedPerson.name)}${matchedPerson.id ? `?id=${matchedPerson.id}` : ''}`}
+            to={getPersonPath(matchedPerson, matchedPerson.id, matchedPerson.gender)}
             className='inline-flex items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 text-xs font-extrabold text-black shadow-md transition hover:brightness-105'
           >
             Full Filmography & Biography <ArrowRight size={14} />

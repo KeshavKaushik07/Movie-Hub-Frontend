@@ -143,6 +143,7 @@ export default function Admin() {
 
   // SuperAdmin Media DB, Crawler & API Keys
   const [dbTitles, setDbTitles] = useState([]);
+  const [dbTitlesTotal, setDbTitlesTotal] = useState(undefined);
   const [titleQuery, setTitleQuery] = useState('');
   const [titleTypeFilter, setTitleTypeFilter] = useState('');
   const [modalTitle, setModalTitle] = useState(null);
@@ -162,24 +163,77 @@ export default function Admin() {
   const [keys, setKeys] = useState([]);
   const [newKey, setNewKey] = useState({ label: '', key: '', priority: 10 });
 
+  // Track which real lists have loaded so sidebar badges always reflect real section counts
+  const [loadedFlags, setLoadedFlags] = useState({
+    featured: false,
+    blogs: false,
+    community: false,
+    moderation: false,
+    users: false,
+    keys: false,
+  });
+
   // ==================== DATA LOADERS ====================
   const loadOverview = () => reviewService.admin.stats().then(setStats).catch(() => {});
-  const loadFeatured = () => featuredApi.listAdmin().then(setFeaturedItems).catch(() => {});
+  const loadFeatured = () =>
+    featuredApi
+      .listAdmin()
+      .then((list) => {
+        setFeaturedItems(Array.isArray(list) ? list : []);
+        setLoadedFlags((p) => ({ ...p, featured: true }));
+      })
+      .catch(() => {});
   const loadBlogs = () =>
-    blogApi.list({ status: 'all', limit: 50 }).then((r) => setBlogs(r.items || [])).catch(() => {});
-  const loadCommunity = () => communityApi.listRooms().then(setCommRooms).catch(() => {});
+    blogApi
+      .list({ status: 'all', limit: 100 })
+      .then((r) => {
+        setBlogs(r.items || []);
+        setLoadedFlags((p) => ({ ...p, blogs: true }));
+      })
+      .catch(() => {});
+  const loadCommunity = () =>
+    communityApi
+      .listRooms()
+      .then((list) => {
+        setCommRooms(Array.isArray(list) ? list : []);
+        setLoadedFlags((p) => ({ ...p, community: true }));
+      })
+      .catch(() => {});
   const loadModeration = () => {
-    reviewService.admin.reviews().then((d) => setAllReviews(d.reviews || [])).catch(() => {});
-    reviewService.admin.comments().then((d) => setAllComments(d.comments || [])).catch(() => {});
+    reviewService.admin
+      .reviews()
+      .then((d) => {
+        setAllReviews(d.reviews || []);
+        setLoadedFlags((p) => ({ ...p, moderation: true }));
+      })
+      .catch(() => {});
+    reviewService.admin
+      .comments()
+      .then((d) => setAllComments(d.comments || []))
+      .catch(() => {});
   };
-  const loadUsers = () => authService.users({ q: userSearch }).then(setUsers).catch(() => {});
+  const loadUsers = () =>
+    authService
+      .users({ q: userSearch })
+      .then((list) => {
+        setUsers(Array.isArray(list) ? list : []);
+        if (!userSearch.trim()) {
+          setLoadedFlags((p) => ({ ...p, users: true }));
+        }
+      })
+      .catch(() => {});
   const loadCatalog = () => {
     if (!isSuper) return;
     reviewService.superadmin
       .titles({ q: titleQuery, type: titleTypeFilter })
-      .then((d) => setDbTitles(d.items || []))
+      .then((d) => {
+        setDbTitles(d.items || []);
+        if (!titleQuery.trim() && !titleTypeFilter && Number.isFinite(d?.total)) {
+          setDbTitlesTotal(d.total);
+        }
+      })
       .catch(() => {});
-    featuredApi.listAdmin().then(setFeaturedItems).catch(() => {});
+    loadFeatured();
   };
   const loadCrawler = () => {
     if (!isSuper) return;
@@ -203,8 +257,29 @@ export default function Admin() {
   };
   const loadKeys = () => {
     if (!isSuper) return;
-    reviewService.superadmin.keys().then(setKeys).catch(() => {});
+    reviewService.superadmin
+      .keys()
+      .then((list) => {
+        setKeys(Array.isArray(list) ? list : []);
+        setLoadedFlags((p) => ({ ...p, keys: true }));
+      })
+      .catch(() => {});
   };
+
+  // Preload all real section lists on mount so Sidebar numbers always match real content
+  useEffect(() => {
+    loadOverview();
+    loadFeatured();
+    loadBlogs();
+    loadCommunity();
+    loadModeration();
+    loadUsers();
+    if (isSuper) {
+      loadCatalog();
+      loadCrawler();
+      loadKeys();
+    }
+  }, [isSuper]); // eslint-disable-line
 
   const refreshActiveSection = () => {
     loadOverview();
@@ -428,6 +503,15 @@ export default function Admin() {
         setSidebarOpen={setSidebarOpen}
         onLogout={() => dispatch(openLogoutModal())}
         stats={stats}
+        liveCounts={{
+          featured: loadedFlags.featured ? featuredItems.length : undefined,
+          blogs: loadedFlags.blogs ? blogs.length : undefined,
+          community: loadedFlags.community ? commRooms.length : undefined,
+          reviews: loadedFlags.moderation ? allReviews.length : undefined,
+          users: loadedFlags.users && !userSearch.trim() ? users.length : undefined,
+          titles: dbTitlesTotal ?? stats?.counts?.titles,
+          apiKeys: loadedFlags.keys ? keys.length : undefined,
+        }}
       />
 
       <div className="flex min-w-0 flex-1 flex-col">

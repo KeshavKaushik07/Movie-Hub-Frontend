@@ -2,12 +2,8 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authService } from '../services/authService';
 import {
   setInMemoryAccessToken,
-  readSavedSession,
-  saveSessionSnapshot,
   clearSessionSnapshot,
 } from '../services/backendApi';
-
-const savedBoot = readSavedSession();
 
 const errText = (e) => e.response?.data?.message || e.message;
 const thunk = (name, fn) =>
@@ -25,9 +21,9 @@ export const deleteMyAccount = thunk('deleteMyAccount', authService.deleteMyAcco
 const slice = createSlice({
   name: 'auth',
   initialState: {
-    user: savedBoot?.user || null,
-    access: savedBoot?.access || null,
-    initializing: !savedBoot?.user,
+    user: null,
+    access: null, // Held strictly in React/Redux memory (never in localStorage)
+    initializing: true, // Waits for cookie-based /auth/refresh check on app mount
     loading: false,
     error: null,
     logoutModalOpen: false,
@@ -41,18 +37,16 @@ const slice = createSlice({
       clearSessionSnapshot();
     },
     setAccess: (s, { payload }) => {
-      s.access = payload;
+      s.access = payload || null;
       setInMemoryAccessToken(payload);
     },
     setSessionFromRefresh: (s, { payload }) => {
-      s.access = payload.access || s.access || null;
-      if (payload.user) s.user = payload.user;
+      s.access = payload?.access || s.access || null;
+      if (payload?.user) s.user = payload.user;
       s.initializing = false;
-      saveSessionSnapshot({
-        user: s.user,
-        access: s.access,
-        refresh: payload.refresh,
-      });
+      if (payload?.access) {
+        setInMemoryAccessToken(payload.access);
+      }
     },
     clearError: (s) => {
       s.error = null;
@@ -74,13 +68,9 @@ const slice = createSlice({
         .addCase(t.fulfilled, (s, { payload }) => {
           s.loading = false;
           s.initializing = false;
-          s.user = payload.user;
-          s.access = payload.access;
-          saveSessionSnapshot({
-            user: payload.user,
-            access: payload.access,
-            refresh: payload.refresh,
-          });
+          s.user = payload.user || null;
+          s.access = payload.access || null;
+          setInMemoryAccessToken(payload.access);
         })
         .addCase(t.rejected, (s, a) => {
           s.loading = false;
@@ -93,27 +83,20 @@ const slice = createSlice({
     });
     b.addCase(restoreSession.fulfilled, (s, { payload }) => {
       s.initializing = false;
-      if (payload?.access) s.access = payload.access;
-      if (payload?.user) s.user = payload.user;
-      saveSessionSnapshot({
-        user: s.user,
-        access: s.access,
-        refresh: payload?.refresh,
-      });
+      s.access = payload?.access || null;
+      s.user = payload?.user || null;
+      setInMemoryAccessToken(payload?.access || null);
     });
     b.addCase(restoreSession.rejected, (s) => {
       s.initializing = false;
-      const latestSaved = readSavedSession();
-      if (!latestSaved?.user) {
-        s.user = null;
-        s.access = null;
-      }
+      s.user = null;
+      s.access = null;
+      clearSessionSnapshot();
     });
 
     b.addCase(fetchMe.fulfilled, (s, { payload }) => {
       if (payload) {
         s.user = payload;
-        saveSessionSnapshot({ user: payload });
       }
     });
     b.addCase(fetchMe.rejected, (s, a) => {
@@ -127,7 +110,6 @@ const slice = createSlice({
 
     b.addCase(updateProfile.fulfilled, (s, { payload }) => {
       s.user = payload;
-      saveSessionSnapshot({ user: payload });
     });
 
     b.addCase(deleteMyAccount.fulfilled, (s) => {

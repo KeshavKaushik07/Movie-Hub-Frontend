@@ -1,88 +1,49 @@
 import {
   backend,
   setInMemoryAccessToken,
-  saveSessionSnapshot,
   clearSessionSnapshot,
-  readSavedSession,
   performTokenRefresh,
-  getRefreshToken,
 } from './backendApi';
 
 export const authService = {
   async login(payload) {
     const { data } = await backend.post('/auth/login', payload);
-    setInMemoryAccessToken(data.access, data.refresh, data.user);
-    saveSessionSnapshot({
+    setInMemoryAccessToken(data.access);
+    return {
       user: data.user,
       access: data.access,
-      refresh: data.refresh,
-    });
-    return data;
+    };
   },
 
   async signup(payload) {
     const { data } = await backend.post('/auth/register', payload);
-    setInMemoryAccessToken(data.access, data.refresh, data.user);
-    saveSessionSnapshot({
+    setInMemoryAccessToken(data.access);
+    return {
       user: data.user,
       access: data.access,
-      refresh: data.refresh,
-    });
-    return data;
+    };
   },
 
+  /**
+   * Restores user session on app mount by sending the httpOnly Refresh Token cookie
+   * to `POST /auth/refresh`, receiving a fresh Access Token in memory.
+   */
   async restoreSession() {
-    const saved = readSavedSession();
     try {
       const data = await performTokenRefresh();
-      let user = data?.user || saved?.user || null;
+      let user = data?.user || null;
       if (!user && data?.access) {
         const meRes = await backend.get('/auth/me');
         user = meRes.data?.user || null;
       }
-      if (user) {
-        saveSessionSnapshot({
-          user,
-          access: data?.access || saved?.access,
-          refresh: data?.refresh || saved?.refresh,
-        });
+      if (data?.access) {
+        setInMemoryAccessToken(data.access);
       }
       return {
-        access: data?.access || saved?.access || null,
-        refresh: data?.refresh || saved?.refresh || null,
+        access: data?.access || null,
         user,
       };
     } catch (err) {
-      // If we already have a valid access token in this tab, verify via /auth/me before giving up
-      if (saved?.access) {
-        try {
-          const meRes = await backend.get('/auth/me');
-          if (meRes.data?.user) {
-            saveSessionSnapshot({
-              user: meRes.data.user,
-              access: saved.access,
-              refresh: saved.refresh,
-            });
-            return {
-              access: saved.access,
-              refresh: saved.refresh,
-              user: meRes.data.user,
-            };
-          }
-        } catch (meErr) {
-          if (
-            meErr?.response?.status === 401 ||
-            meErr?.response?.status === 403
-          ) {
-            clearSessionSnapshot();
-            throw meErr;
-          }
-        }
-        // Network error / server restarting: keep cached user session alive
-        if (!err?.response && saved?.user) {
-          return saved;
-        }
-      }
       clearSessionSnapshot();
       throw err;
     }
@@ -90,14 +51,12 @@ export const authService = {
 
   async me() {
     const { data } = await backend.get('/auth/me');
-    if (data?.user) saveSessionSnapshot({ user: data.user });
     return data.user;
   },
 
   async logout() {
-    const refresh = getRefreshToken();
     try {
-      await backend.post('/auth/logout', refresh ? { refresh } : {});
+      await backend.post('/auth/logout', {});
     } finally {
       clearSessionSnapshot();
     }
@@ -105,13 +64,12 @@ export const authService = {
 
   async updateProfile(payload) {
     const { data } = await backend.patch('/users/me', payload);
-    if (data?.user) saveSessionSnapshot({ user: data.user });
     return data.user;
   },
 
   async changePassword(payload) {
     const { data } = await backend.patch('/users/me/password', payload);
-    if (data.access) setInMemoryAccessToken(data.access, data.refresh);
+    if (data.access) setInMemoryAccessToken(data.access);
     return data;
   },
 

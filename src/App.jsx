@@ -37,6 +37,9 @@ const userRoutesTree = (
     <Route path={ROUTES.BROWSE} element={<Browse />} />
     <Route path={ROUTES.DETAILS} element={<Details />} />
     <Route path={ROUTES.DETAILS_LEGACY} element={<Details />} />
+    <Route path={ROUTES.ACTOR} element={<Person />} />
+    <Route path={ROUTES.ACTORESS} element={<Person />} />
+    <Route path={ROUTES.ACTRESS} element={<Person />} />
     <Route path={ROUTES.PERSON} element={<Person />} />
     <Route path={ROUTES.BLOGS} element={<Blogs />} />
     <Route path={ROUTES.BLOG_DETAIL} element={<BlogDetail />} />

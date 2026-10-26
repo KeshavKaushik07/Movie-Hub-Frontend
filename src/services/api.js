@@ -6,7 +6,218 @@ import {
   toSlug,
 } from '../utils/formatters';
 
-const CACHE_PREFIX = 'movieshub_cache_v4:';
+const CACHE_PREFIX = 'movieshub_cache_v5:';
+
+// Automatically purge older cache versions or any broken season:undefined entries on load
+try {
+  for (const k of Object.keys(localStorage)) {
+    if (
+      (k.startsWith('movieshub_cache') && !k.startsWith(CACHE_PREFIX)) ||
+      k.includes(':undefined') ||
+      k.includes(':NaN')
+    ) {
+      localStorage.removeItem(k);
+    }
+  }
+} catch {
+  /* ignore */
+}
+
+// Unwraps Mongoose subdocument wrapper objects ({ _doc: { ... }, posterUrl: ... }) if returned by backend
+export const unwrapSubdoc = (item) => {
+  if (!item || typeof item !== 'object') return item;
+  if (item._doc && typeof item._doc === 'object') {
+    const { _doc, $__, $isNew, ...rest } = item;
+    return { ...rest, ..._doc };
+  }
+  return item;
+};
+
+export const normalizeSeasonData = (rawSeason, fallbackSeasonNumber = 1) => {
+  if (!rawSeason || typeof rawSeason !== 'object') return null;
+  const s = unwrapSubdoc(rawSeason.season || rawSeason);
+  const sNum =
+    s.seasonNumber !== undefined && s.seasonNumber !== null
+      ? Number(s.seasonNumber)
+      : s.season_number !== undefined && s.season_number !== null
+        ? Number(s.season_number)
+        : Number(fallbackSeasonNumber) || 1;
+  const posterPath = s.posterPath || s.poster_path || '';
+  const airDate = s.airDate || s.air_date || '';
+  const episodes = (Array.isArray(s.episodes) ? s.episodes : []).map((rawEp, idx) => {
+    const ep = unwrapSubdoc(rawEp) || {};
+    const epNum =
+      ep.episodeNumber !== undefined && ep.episodeNumber !== null
+        ? Number(ep.episodeNumber)
+        : ep.episode_number !== undefined && ep.episode_number !== null
+          ? Number(ep.episode_number)
+          : idx + 1;
+    const stillPath = ep.stillPath || ep.still_path || '';
+    const epAirDate = ep.airDate || ep.air_date || '';
+    const voteAverage = Number(ep.voteAverage ?? ep.vote_average ?? 0);
+    return {
+      ...ep,
+      episodeNumber: epNum,
+      episode_number: epNum,
+      name: ep.name || `Episode ${epNum}`,
+      overview: ep.overview || '',
+      airDate: epAirDate,
+      air_date: epAirDate,
+      runtime: ep.runtime || null,
+      stillPath,
+      still_path: stillPath,
+      stillUrl:
+        ep.stillUrl ||
+        (stillPath
+          ? stillPath.startsWith('http')
+            ? stillPath
+            : `https://image.tmdb.org/t/p/w300${stillPath}`
+          : null),
+      voteAverage,
+      vote_average: voteAverage,
+    };
+  });
+
+  return {
+    ...s,
+    seasonNumber: sNum,
+    season_number: sNum,
+    name: s.name || (sNum === 0 ? 'Specials' : `Season ${sNum}`),
+    overview: s.overview || '',
+    airDate,
+    air_date: airDate,
+    posterPath,
+    poster_path: posterPath,
+    posterUrl:
+      s.posterUrl ||
+      (posterPath
+        ? posterPath.startsWith('http')
+          ? posterPath
+          : `https://image.tmdb.org/t/p/w342${posterPath}`
+        : null),
+    voteAverage: Number(s.voteAverage ?? s.vote_average ?? 0),
+    episodeCount: episodes.length || Number(s.episodeCount ?? s.episode_count ?? 0),
+    episodes,
+  };
+};
+
+export const normalizeDetailData = (rawDetail) => {
+  if (!rawDetail || typeof rawDetail !== 'object') return rawDetail;
+  const d = unwrapSubdoc(rawDetail);
+
+  const rawSeasons = Array.isArray(d.seasons) ? d.seasons : [];
+  let seasons = rawSeasons
+    .map((rawS, idx) => {
+      const s = unwrapSubdoc(rawS) || {};
+      const parsedNum = Number(s.seasonNumber ?? s.season_number);
+      const sNum = Number.isInteger(parsedNum) && parsedNum >= 0 ? parsedNum : idx + 1;
+      const epCount = Number(s.episodeCount ?? s.episode_count ?? 0);
+      const posterPath = s.posterPath || s.poster_path || d.poster_path || '';
+      const airDate = s.airDate || s.air_date || '';
+      const voteAvg = Number(s.voteAverage ?? s.vote_average ?? 0);
+      return {
+        ...s,
+        seasonNumber: sNum,
+        season_number: sNum,
+        name: s.name || (sNum === 0 ? 'Specials' : `Season ${sNum}`),
+        episodeCount: epCount,
+        episode_count: epCount,
+        airDate,
+        air_date: airDate,
+        posterPath,
+        poster_path: posterPath,
+        posterUrl:
+          s.posterUrl ||
+          (posterPath
+            ? posterPath.startsWith('http')
+              ? posterPath
+              : `https://image.tmdb.org/t/p/w342${posterPath}`
+            : null),
+        overview: s.overview || '',
+        voteAverage: voteAvg,
+        vote_average: voteAvg,
+      };
+    })
+    .sort((a, b) => {
+      if (a.seasonNumber === 0 && b.seasonNumber !== 0) return 1;
+      if (b.seasonNumber === 0 && a.seasonNumber !== 0) return -1;
+      return a.seasonNumber - b.seasonNumber;
+    });
+
+  const isTv = d.type === 'tv' || d.media_type === 'tv' || d.subType === 'webseries' || d.isWebSeries;
+  const fallbackTotalSeasons =
+    Number(d.numberOfSeasons || d.number_of_seasons) ||
+    seasons.filter((s) => s.seasonNumber > 0).length ||
+    seasons.length ||
+    (isTv ? 1 : 0);
+
+  if (isTv && seasons.length === 0 && fallbackTotalSeasons > 0) {
+    seasons = Array.from({ length: fallbackTotalSeasons }, (_, i) => ({
+      seasonNumber: i + 1,
+      season_number: i + 1,
+      name: `Season ${i + 1}`,
+      episodeCount: Number(d.numberOfEpisodes || d.number_of_episodes) || 0,
+      episode_count: Number(d.numberOfEpisodes || d.number_of_episodes) || 0,
+      airDate: d.first_air_date || '',
+      air_date: d.first_air_date || '',
+      posterPath: d.poster_path || '',
+      poster_path: d.poster_path || '',
+      posterUrl: d.posterUrl || null,
+      overview: d.overview || '',
+      voteAverage: Number(d.rating || d.vote_average) || 0,
+      vote_average: Number(d.rating || d.vote_average) || 0,
+    }));
+  }
+
+  const rawVideos = d.videoList || d.videos?.results || [];
+  const videos = rawVideos
+    .map((rawV) => {
+      const v = unwrapSubdoc(rawV) || {};
+      const key =
+        v.key ||
+        (typeof v.url === 'string' && v.url.includes('v=')
+          ? v.url.split('v=')[1]?.split('&')[0]
+          : null);
+      if (!key) return null;
+      return {
+        ...v,
+        id: v.id || key,
+        key,
+        name: v.name || v.type || 'Official Video',
+        site: v.site || 'YouTube',
+        type: v.type || 'Trailer',
+        url: v.url || `https://www.youtube.com/watch?v=${key}`,
+        embedUrl: v.embedUrl || `https://www.youtube.com/embed/${key}`,
+        thumbnailUrl: v.thumbnailUrl || `https://img.youtube.com/vi/${key}/hqdefault.jpg`,
+      };
+    })
+    .filter(Boolean);
+
+  const unwrapList = (arr) => (Array.isArray(arr) ? arr.map(unwrapSubdoc) : []);
+  const wp = d.watchProviders || {};
+
+  return {
+    ...d,
+    numberOfSeasons: fallbackTotalSeasons || d.numberOfSeasons,
+    number_of_seasons: fallbackTotalSeasons || d.number_of_seasons,
+    seasons,
+    seasonsDetails: Array.isArray(d.seasonsDetails)
+      ? d.seasonsDetails.map((sd) => normalizeSeasonData(sd)).filter(Boolean)
+      : [],
+    videoList: videos,
+    videos: { results: videos },
+    productionCompanies: unwrapList(d.productionCompanies),
+    networks: unwrapList(d.networks),
+    tmdbReviews: unwrapList(d.tmdbReviews),
+    watchProviders: {
+      ...wp,
+      flatrate: unwrapList(wp.flatrate),
+      free: unwrapList(wp.free),
+      rent: unwrapList(wp.rent),
+      buy: unwrapList(wp.buy),
+    },
+  };
+};
 
 // Clear all cached catalog/detail responses in localStorage & sessionStorage after edits/syncs
 export const clearCatalogCache = () => {
@@ -256,7 +467,7 @@ export const tmdb = {
         if (targetId) {
           try {
             const r = await backend.get(`/titles/${effectiveType}/${targetId}`);
-            const d = r.data.detail || r.data.titleObj || r.data;
+            const d = normalizeDetailData(r.data.detail || r.data.titleObj || r.data);
             if (d?.id) registerSlugMapping(toSlug(d.title || d.name), d);
             return d;
           } catch {
@@ -267,7 +478,7 @@ export const tmdb = {
           const r = await backend.get(
             `/titles/${effectiveType}/${encodeURIComponent(rawParam)}`,
           );
-          const d = r.data.detail || r.data.titleObj || r.data;
+          const d = normalizeDetailData(r.data.detail || r.data.titleObj || r.data);
           if (d?.id) registerSlugMapping(toSlug(d.title || d.name), d);
           return d;
         } catch (err) {
@@ -284,7 +495,7 @@ export const tmdb = {
             const bestType =
               (best.type || best.media_type) === 'tv' ? 'tv' : 'movie';
             const r3 = await backend.get(`/titles/${bestType}/${best.id}`);
-            const d3 = r3.data.detail || r3.data.titleObj || r3.data;
+            const d3 = normalizeDetailData(r3.data.detail || r3.data.titleObj || r3.data);
             if (d3?.id) registerSlugMapping(rawParam.toLowerCase(), d3);
             return d3;
           }
@@ -293,24 +504,26 @@ export const tmdb = {
       },
       () => {
         const all = getAllCachedTitles();
-        return (
+        const found =
           all.find(
             (m) =>
               String(m.id) === rawParam ||
               toSlug(m.title || m.name) === rawParam.toLowerCase(),
-          ) || null
-        );
+          ) || null;
+        return found ? normalizeDetailData(found) : null;
       },
-    );
+    ).then((res) => normalizeDetailData(res));
   },
 
-  season: (tvId, seasonNumber) => {
-    const key = `season:${tvId}:${seasonNumber}`;
+  season: (tvId, seasonNumber = 1) => {
+    const parsed = Number(seasonNumber);
+    const safeSeason = Number.isInteger(parsed) && parsed >= 0 ? parsed : 1;
+    const key = `season:${tvId}:${safeSeason}`;
     return requestBackendWithCache(key, () =>
       backend
-        .get(`/titles/tv/${tvId}/season/${seasonNumber}`)
-        .then((r) => r.data.season),
-    );
+        .get(`/titles/tv/${tvId}/season/${safeSeason}`)
+        .then((r) => normalizeSeasonData(r.data?.season || r.data, safeSeason)),
+    ).then((res) => normalizeSeasonData(res, safeSeason));
   },
 
   person: (name, id = null) => {

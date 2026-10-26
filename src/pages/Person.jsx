@@ -1,21 +1,49 @@
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import {
+  useParams,
+  useSearchParams,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom';
 import { ArrowLeft, Film, Tv, Sparkles, MapPin, Calendar } from 'lucide-react';
 import { tmdb } from '../services/api';
 import MovieCard from '../components/MovieCard';
 import SafeImage from '../components/ui/SafeImage';
 import InfoPatch from '../components/ui/InfoPatch';
+import {
+  getPersonPath,
+  parsePersonSlugToName,
+  resolvePersonRoleSegment,
+} from '../utils/formatters';
 
 export default function Person() {
   const { name } = useParams();
   const [searchParams] = useSearchParams();
   const personId = searchParams.get('id');
   const nav = useNavigate();
+  const location = useLocation();
 
-  const decodedName = decodeURIComponent(name || '');
+  // Convert hyphenated slug ("Shiva-Rajkumar") or URL-encoded spaces ("Shiva%20Rajkumar") into clean display/search name ("Shiva Rajkumar")
+  const decodedName = parsePersonSlugToName(name || '');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+
+  // Immediately normalize `/person/Shiva%20Rajkumar` -> `/actor/Shiva-Rajkumar` or `/actoress/Deepika-Padukone` on mount
+  useEffect(() => {
+    if (!decodedName) return;
+    const initialPath = getPersonPath({ name: decodedName, id: personId }, personId);
+    const currentFull = `${location.pathname}${location.search}`;
+    if (
+      location.pathname.startsWith('/person/') ||
+      location.pathname.includes('%20') ||
+      location.pathname.includes(' ')
+    ) {
+      if (currentFull !== initialPath) {
+        nav(initialPath, { replace: true });
+      }
+    }
+  }, [decodedName, personId, location.pathname, location.search, nav]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -24,78 +52,106 @@ export default function Person() {
       .person(decodedName, personId)
       .then((res) => {
         setData(res);
-        document.title = `${res?.person?.name || decodedName} — Movies & Web Series Filmography | Movies Hub`;
+        const resolvedPerson = res?.person || { name: decodedName };
+        const roleLabel =
+          resolvePersonRoleSegment(resolvedPerson) === 'actoress'
+            ? 'Actoress'
+            : 'Actor';
+        document.title = `${resolvedPerson.name || decodedName} (${roleLabel}) — Movies & Web Series Filmography | Movies Hub`;
+
+        // Ensure browser URL strictly uses `/actor/Name-With-Hyphens` (male) or `/actoress/Name-With-Hyphens` (female)
+        const canonicalUrl = getPersonPath(
+          resolvedPerson,
+          personId || resolvedPerson.id,
+        );
+        const currentUrl = `${window.location.pathname}${window.location.search}`;
+        if (canonicalUrl && currentUrl !== canonicalUrl) {
+          nav(canonicalUrl, { replace: true });
+        }
       })
       .finally(() => setLoading(false));
-  }, [decodedName, personId]);
+  }, [decodedName, personId, nav]);
 
   if (loading) {
     return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+      <div className='flex h-[70vh] items-center justify-center'>
+        <div className='h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent' />
       </div>
     );
   }
 
-  const person = data?.person || { name: decodedName, knownForDepartment: 'Acting' };
+  const person = data?.person || {
+    name: decodedName,
+    knownForDepartment: 'Acting',
+  };
+  const roleSegment = resolvePersonRoleSegment(person);
   const allItems = data?.items || [];
   const filtered = allItems.filter((it) => {
     if (filter === 'movie') return (it.type || 'movie') === 'movie';
-    if (filter === 'series') return it.isWebSeries || it.subType === 'webseries' || it.type === 'tv';
+    if (filter === 'series')
+      return (
+        it.isWebSeries || it.subType === 'webseries' || it.type === 'tv'
+      );
     return true;
   });
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6'>
       <button
-        type="button"
+        type='button'
         onClick={() => nav(-1)}
-        className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10 hover:text-white"
+        className='mb-6 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-white/10 hover:text-white'
       >
         <ArrowLeft size={14} /> Back
       </button>
 
-      {/* Actor / Director Profile Hero Card */}
-      <div className="mb-8 flex flex-col items-center gap-6 rounded-3xl border border-white/10 bg-[#0e131f] p-6 sm:flex-row sm:items-start sm:p-8">
+      {/* Actor / Actoress Profile Hero Card */}
+      <div className='mb-8 flex flex-col items-center gap-6 rounded-3xl border border-white/10 bg-[#0e131f] p-6 sm:flex-row sm:items-start sm:p-8'>
         {person.profileUrl && (
-          <div className="aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl border-2 border-brand/50 bg-zinc-950 shadow-2xl sm:w-48">
+          <div className='aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl border-2 border-[#f5b942]/50 bg-zinc-950 shadow-2xl sm:w-48'>
             <SafeImage
               src={person.profileUrl}
               alt={person.name}
-              size="h632"
-              variant="poster"
-              className="h-full w-full object-contain object-center"
+              size='h632'
+              variant='poster'
+              className='h-full w-full object-contain object-center'
             />
           </div>
         )}
 
-        <div className="flex-1 text-center sm:text-left">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-3 py-1 text-xs font-bold text-brand">
-            <Sparkles size={12} /> {person.knownForDepartment || 'Acting & Cinema'}
+        <div className='flex-1 text-center sm:text-left'>
+          <span className='inline-flex items-center gap-1.5 rounded-full bg-[#f5b942]/15 px-3 py-1 text-xs font-bold text-[#f5b942]'>
+            <Sparkles size={12} />{' '}
+            {roleSegment === 'actoress'
+              ? 'Actoress'
+              : person.knownForDepartment &&
+                  person.knownForDepartment !== 'Acting'
+                ? person.knownForDepartment
+                : 'Actor'}
           </span>
           <h1
             style={{ fontFamily: 'var(--font-display)' }}
-            className="mt-2 text-2xl font-extrabold text-white sm:text-4xl"
+            className='mt-2 text-2xl font-extrabold text-white sm:text-4xl'
           >
             {person.name}
           </h1>
 
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-4 text-xs text-zinc-400 sm:justify-start">
+          <div className='mt-2 flex flex-wrap items-center justify-center gap-4 text-xs text-zinc-400 sm:justify-start'>
             <span>🎬 {allItems.length} Titles in Catalog</span>
             {person.birthday && (
-              <span className="flex items-center gap-1">
+              <span className='flex items-center gap-1'>
                 <Calendar size={13} /> Born: {person.birthday}
               </span>
             )}
             {person.placeOfBirth && (
-              <span className="flex items-center gap-1">
+              <span className='flex items-center gap-1'>
                 <MapPin size={13} /> {person.placeOfBirth}
               </span>
             )}
           </div>
 
           {person.biography && (
-            <p className="mt-4 line-clamp-4 max-w-3xl text-xs leading-relaxed text-zinc-300 sm:text-sm">
+            <p className='mt-4 line-clamp-4 max-w-3xl text-xs leading-relaxed text-zinc-300 sm:text-sm'>
               {person.biography}
             </p>
           )}
@@ -103,11 +159,14 @@ export default function Person() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 style={{ fontFamily: 'var(--font-display)' }} className="text-xl font-extrabold">
+      <div className='mb-6 flex flex-wrap items-center justify-between gap-3'>
+        <h2
+          style={{ fontFamily: 'var(--font-display)' }}
+          className='text-xl font-extrabold'
+        >
           Available Movies & Web Series ({filtered.length})
         </h2>
-        <div className="flex gap-2">
+        <div className='flex gap-2'>
           {[
             { key: 'all', label: `All (${allItems.length})` },
             { key: 'movie', label: '🎬 Movies', icon: Film },
@@ -115,11 +174,11 @@ export default function Person() {
           ].map((tab) => (
             <button
               key={tab.key}
-              type="button"
+              type='button'
               onClick={() => setFilter(tab.key)}
               className={`rounded-full px-4 py-2 text-xs font-bold transition ${
                 filter === tab.key
-                  ? 'bg-brand text-black'
+                  ? 'bg-[#f5b942] text-black'
                   : 'border border-white/10 bg-[#0e131f] text-zinc-300 hover:bg-white/10'
               }`}
             >
@@ -131,9 +190,9 @@ export default function Person() {
 
       {filtered.length === 0 ? (
         <InfoPatch
-          type="not-found"
+          type='not-found'
           title={`No ${filter === 'movie' ? 'Movies' : filter === 'series' ? 'Web Series' : 'Titles'} Found for ${person.name}`}
-          message="Try switching the filter tab to All Titles or browse the main catalog."
+          message='Try switching the filter tab to All Titles or browse the main catalog.'
           actions={[
             ...(filter !== 'all'
               ? [
@@ -151,7 +210,7 @@ export default function Person() {
           ]}
         />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        <div className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'>
           {filtered.map((it) => (
             <MovieCard key={`${it.type}-${it.id}`} item={it} type={it.type} />
           ))}

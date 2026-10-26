@@ -12,6 +12,7 @@ import {
   Film,
 } from 'lucide-react';
 import { tmdb } from '../services/api';
+import { getPersonPath } from '../utils/formatters';
 import { OTT_LIST, INDUSTRY_LIST, MOVIE_GENRES } from '../config/constants';
 import { openPreferenceModal, setRegionAndCurrency } from '../store/preferencesSlice';
 import Carousel from '../components/Carousel';
@@ -237,7 +238,7 @@ export default function Home() {
             .map((celeb) => (
               <Link
                 key={celeb.name}
-                to={`/person/${encodeURIComponent(celeb.name)}${celeb.id ? `?id=${celeb.id}` : ''}`}
+                to={getPersonPath(celeb, celeb.id, celeb.gender)}
                 className="group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand/50 sm:w-44"
               >
                 <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-950">

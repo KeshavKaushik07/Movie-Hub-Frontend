@@ -30,7 +30,11 @@ import {
 import { tmdb, featuredApi, communityApi } from '../services/api';
 import { reviewService } from '../services/reviewService';
 import { OTT_LIST, ROLES, ROUTES } from '../config/constants';
-import { getMovieFinancials, registerSlugMapping } from '../utils/formatters';
+import {
+  getMovieFinancials,
+  registerSlugMapping,
+  getPersonPath,
+} from '../utils/formatters';
 import MovieRow from '../components/MovieRow';
 import Reviews from '../components/Reviews';
 import TitleEditorModal from '../components/TitleEditorModal';
@@ -91,11 +95,16 @@ export default function Details() {
         setDeadActorIds({});
         setDeadCrewIds({});
         if (d?.seasons?.length) {
-          const firstS =
-            d.seasons.find((s) => (s.seasonNumber ?? s.season_number) > 0) ||
-            d.seasons[0];
-          if (firstS)
-            setSelectedSeason(firstS.seasonNumber ?? firstS.season_number);
+          const unwrappedSeasons = d.seasons.map((rawS, idx) => {
+            const s = rawS?._doc ? { ...rawS, ...rawS._doc } : rawS || {};
+            const parsed = Number(s.seasonNumber ?? s.season_number);
+            return Number.isInteger(parsed) && parsed >= 0 ? parsed : idx + 1;
+          });
+          const firstRegular =
+            unwrappedSeasons.find((num) => num > 0) ?? unwrappedSeasons[0] ?? 1;
+          setSelectedSeason(firstRegular);
+        } else {
+          setSelectedSeason(1);
         }
       })
       .finally(() => setLoading(false));
@@ -194,17 +203,128 @@ export default function Details() {
       .catch(() => {});
   }, [user, resolvedId]);
 
+  const normalizedSeasons = (() => {
+    const rawList = Array.isArray(data?.seasons) ? data.seasons : [];
+    const mapped = rawList
+      .map((rawS, idx) => {
+        const s = rawS?._doc ? { ...rawS, ...rawS._doc } : rawS || {};
+        const parsed = Number(s.seasonNumber ?? s.season_number);
+        const sNum = Number.isInteger(parsed) && parsed >= 0 ? parsed : idx + 1;
+        const epCount = Number(s.episodeCount ?? s.episode_count ?? 0);
+        const posterPath =
+          s.posterPath || s.poster_path || data?.poster_path || '';
+        const airDate = s.airDate || s.air_date || '';
+        const voteAvg = Number(s.voteAverage ?? s.vote_average ?? 0);
+        return {
+          ...s,
+          seasonNumber: sNum,
+          season_number: sNum,
+          name: s.name || (sNum === 0 ? 'Specials' : `Season ${sNum}`),
+          episodeCount: epCount,
+          episode_count: epCount,
+          airDate,
+          air_date: airDate,
+          posterPath,
+          posterUrl:
+            s.posterUrl ||
+            (posterPath
+              ? posterPath.startsWith('http')
+                ? posterPath
+                : `https://image.tmdb.org/t/p/w342${posterPath}`
+              : data?.posterUrl || null),
+          overview: s.overview || '',
+          voteAverage: voteAvg,
+        };
+      })
+      .sort((a, b) => {
+        if (a.seasonNumber === 0 && b.seasonNumber !== 0) return 1;
+        if (b.seasonNumber === 0 && a.seasonNumber !== 0) return -1;
+        return a.seasonNumber - b.seasonNumber;
+      });
+
+    if (mapped.length > 0) return mapped;
+    const count = Number(data?.numberOfSeasons || data?.number_of_seasons) || 0;
+    if (count > 0) {
+      return Array.from({ length: count }, (_, i) => ({
+        seasonNumber: i + 1,
+        season_number: i + 1,
+        name: `Season ${i + 1}`,
+        episodeCount:
+          Number(data?.numberOfEpisodes || data?.number_of_episodes) || 0,
+        episode_count:
+          Number(data?.numberOfEpisodes || data?.number_of_episodes) || 0,
+        airDate: data?.first_air_date || '',
+        air_date: data?.first_air_date || '',
+        posterPath: data?.poster_path || '',
+        posterUrl: data?.posterUrl || null,
+        overview: data?.overview || '',
+        voteAverage: Number(data?.rating || data?.vote_average) || 0,
+      }));
+    }
+    return [];
+  })();
+
+  const safeSelectedSeason =
+    Number.isInteger(Number(selectedSeason)) && Number(selectedSeason) >= 0
+      ? Number(selectedSeason)
+      : (normalizedSeasons.find((s) => s.seasonNumber > 0)?.seasonNumber ??
+        normalizedSeasons[0]?.seasonNumber ??
+        1);
+
+  const activeSeasonMeta =
+    normalizedSeasons.find((s) => s.seasonNumber === safeSelectedSeason) ||
+    normalizedSeasons[0] ||
+    null;
+
   useEffect(() => {
-    const isSeries =
-      type === 'tv' || type === 'webseries' || data?.type === 'tv';
-    if (!isSeries || !resolvedId || activeTab !== 'seasons') return;
+    const isTvSeries =
+      type === 'tv' ||
+      type === 'webseries' ||
+      data?.type === 'tv' ||
+      data?.subType === 'webseries' ||
+      Boolean(data?.isWebSeries);
+    if (!isTvSeries || !resolvedId) return;
+
+    // Check if data.seasonsDetails already has this season preloaded
+    const preloaded = (data?.seasonsDetails || []).find((sd) => {
+      const s = sd?._doc ? { ...sd, ...sd._doc } : sd || {};
+      return Number(s.seasonNumber ?? s.season_number) === safeSelectedSeason;
+    });
+    if (
+      preloaded &&
+      Array.isArray(preloaded.episodes) &&
+      preloaded.episodes.length > 0
+    ) {
+      setSeasonData(preloaded);
+      setSeasonLoading(false);
+      return;
+    }
+
+    let cancelled = false;
     setSeasonLoading(true);
     tmdb
-      .season(resolvedId, selectedSeason)
-      .then(setSeasonData)
-      .catch(() => setSeasonData(null))
-      .finally(() => setSeasonLoading(false));
-  }, [type, resolvedId, selectedSeason, activeTab, data?.type]);
+      .season(resolvedId, safeSelectedSeason)
+      .then((res) => {
+        if (!cancelled) setSeasonData(res);
+      })
+      .catch(() => {
+        if (!cancelled) setSeasonData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSeasonLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    type,
+    resolvedId,
+    safeSelectedSeason,
+    data?.type,
+    data?.subType,
+    data?.isWebSeries,
+    data?.seasonsDetails,
+  ]);
 
   useEffect(() => {
     if (activeTab !== 'live-chat' || !resolvedId) return;
@@ -695,7 +815,7 @@ export default function Details() {
                   },
                 ]
               : []),
-            ...(isSeries && (data.seasons || []).length > 0
+            ...(isSeries && normalizedSeasons.length > 0
               ? [
                   {
                     id: 'seasons',
@@ -749,8 +869,8 @@ export default function Details() {
                   <div className='flex flex-wrap items-center justify-between gap-2'>
                     <div>
                       <h3 className='flex items-center gap-2 text-base font-extrabold text-white'>
-                        <Tv size={17} className='text-brand' /> Where to
-                        Watch {title}
+                        <Tv size={17} className='text-brand' /> Where to Watch{' '}
+                        {title}
                       </h3>
                       <p className='text-xs text-zinc-400'>
                         Official OTT streaming, free, rental & digital purchase
@@ -906,7 +1026,7 @@ export default function Details() {
                       {data.directors.map((d) => (
                         <Link
                           key={d}
-                          to={`/person/${encodeURIComponent(d)}`}
+                          to={getPersonPath(d)}
                           className='rounded-lg bg-brand/15 px-2 py-0.5 font-bold text-brand hover:underline'
                         >
                           {d}
@@ -922,7 +1042,7 @@ export default function Details() {
                       {data.musicDirectors.slice(0, 4).map((m) => (
                         <Link
                           key={m}
-                          to={`/person/${encodeURIComponent(m)}`}
+                          to={getPersonPath(m)}
                           className='rounded-lg bg-emerald-500/15 px-2 py-0.5 font-bold text-emerald-400 hover:underline'
                         >
                           {m}
@@ -938,7 +1058,7 @@ export default function Details() {
                       {data.writers.slice(0, 4).map((w) => (
                         <Link
                           key={w}
-                          to={`/person/${encodeURIComponent(w)}`}
+                          to={getPersonPath(w)}
                           className='rounded-lg bg-white/10 px-2 py-0.5 font-semibold text-zinc-200 hover:underline'
                         >
                           {w}
@@ -1101,7 +1221,7 @@ export default function Details() {
                           return (
                             <Link
                               key={`cast-${c.id || c.name}-${c.character || ''}`}
-                              to={`/person/${encodeURIComponent(c.name)}${c.id ? `?id=${c.id}` : ''}`}
+                              to={getPersonPath(c, c.id, c.gender)}
                               className='group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand sm:w-44'
                             >
                               <div className='relative aspect-[2/3] w-full overflow-hidden bg-zinc-950'>
@@ -1208,7 +1328,11 @@ export default function Details() {
                           return (
                             <Link
                               key={`crew-${member.id || member.name}`}
-                              to={`/person/${encodeURIComponent(member.name)}${member.id ? `?id=${member.id}` : ''}`}
+                              to={getPersonPath(
+                                member,
+                                member.id,
+                                member.gender,
+                              )}
                               className='group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand sm:w-44'
                             >
                               <div className='relative aspect-[2/3] w-full overflow-hidden bg-zinc-950'>
@@ -1482,53 +1606,177 @@ export default function Details() {
         {activeTab === 'seasons' && isSeries && (
           <div className='space-y-6'>
             <div className='flex flex-wrap items-center justify-between gap-3'>
-              <h2 className='text-lg font-extrabold'>
-                Seasons & Episode Guide
-              </h2>
-              <div className='w-56'>
+              <div>
+                <h2 className='text-lg font-extrabold'>
+                  Seasons & Episode Guide
+                </h2>
+                <p className='text-xs text-zinc-400'>
+                  Select any season below to view its full details, air dates,
+                  and episode guide
+                </p>
+              </div>
+              <div className='w-64'>
                 <CustomSelect
-                  value={selectedSeason}
+                  value={safeSelectedSeason}
                   onChange={(v) => setSelectedSeason(Number(v))}
-                  options={(data.seasons || []).map((s) => {
-                    const sNum = s.seasonNumber ?? s.season_number;
-                    const epCount = s.episodeCount ?? s.episode_count ?? 0;
-                    return {
-                      value: sNum,
-                      label: `${s.name || `Season ${sNum}`} (${epCount} eps)`,
-                    };
-                  })}
+                  options={normalizedSeasons.map((s) => ({
+                    value: s.seasonNumber,
+                    label: `${s.name || `Season ${s.seasonNumber}`}${s.episodeCount ? ` (${s.episodeCount} eps)` : ''}`,
+                  }))}
                 />
               </div>
             </div>
+
+            {/* Quick Season Selector Pills */}
+            {normalizedSeasons.length > 1 && (
+              <div className='no-scrollbar flex items-center gap-2 overflow-x-auto pb-1'>
+                {normalizedSeasons.map((s) => {
+                  const isActive = s.seasonNumber === safeSelectedSeason;
+                  return (
+                    <button
+                      key={s.seasonNumber}
+                      type='button'
+                      onClick={() => setSelectedSeason(s.seasonNumber)}
+                      className={`shrink-0 cursor-pointer rounded-xl border px-3.5 py-2 text-xs font-extrabold transition ${
+                        isActive
+                          ? 'border-brand bg-brand text-black shadow-sm'
+                          : 'border-white/10 bg-[#0e131f] text-zinc-300 hover:border-brand/50 hover:text-white'
+                      }`}
+                    >
+                      {s.name || `Season ${s.seasonNumber}`}
+                      {s.episodeCount > 0 ? ` (${s.episodeCount})` : ''}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Selected Season Overview & Details Card */}
+            {(activeSeasonMeta || seasonData) && (
+              <div className='flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#0e131f] p-4 sm:flex-row sm:items-start sm:p-5'>
+                <SafeImage
+                  src={
+                    seasonData?.posterUrl ||
+                    activeSeasonMeta?.posterUrl ||
+                    seasonData?.posterPath ||
+                    activeSeasonMeta?.posterPath ||
+                    data?.posterUrl
+                  }
+                  alt={
+                    seasonData?.name ||
+                    activeSeasonMeta?.name ||
+                    `Season ${safeSelectedSeason}`
+                  }
+                  size='w342'
+                  variant='poster'
+                  className='h-36 w-24 shrink-0 rounded-xl object-cover shadow-md sm:h-40 sm:w-28'
+                />
+                <div className='min-w-0 flex-1 space-y-2'>
+                  <div className='flex flex-wrap items-center gap-2'>
+                    <h3 className='text-base font-extrabold text-white sm:text-lg'>
+                      {seasonData?.name ||
+                        activeSeasonMeta?.name ||
+                        `Season ${safeSelectedSeason}`}
+                    </h3>
+                    {(seasonData?.airDate || activeSeasonMeta?.airDate) && (
+                      <span className='rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] font-bold text-zinc-300'>
+                        📅{' '}
+                        {String(
+                          seasonData?.airDate || activeSeasonMeta?.airDate,
+                        ).slice(0, 4)}
+                      </span>
+                    )}
+                    <span className='rounded-full bg-brand/15 px-2.5 py-0.5 text-[11px] font-extrabold text-brand'>
+                      🎬{' '}
+                      {seasonData?.episodes?.length ||
+                        activeSeasonMeta?.episodeCount ||
+                        0}{' '}
+                      Episodes
+                    </span>
+                    {Number(
+                      seasonData?.voteAverage || activeSeasonMeta?.voteAverage,
+                    ) > 0 && (
+                      <span className='rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-400'>
+                        ★{' '}
+                        {Number(
+                          seasonData?.voteAverage ||
+                            activeSeasonMeta?.voteAverage,
+                        ).toFixed(1)}
+                      </span>
+                    )}
+                  </div>
+                  <p className='text-xs leading-relaxed text-zinc-300 sm:text-sm'>
+                    {seasonData?.overview ||
+                      activeSeasonMeta?.overview ||
+                      data?.overview ||
+                      `Official episode guide for ${data?.title || data?.name} — ${seasonData?.name || activeSeasonMeta?.name || `Season ${safeSelectedSeason}`}.`}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {seasonLoading ? (
               <div className='flex h-40 items-center justify-center'>
                 <div className='h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent' />
               </div>
             ) : seasonData?.episodes?.length ? (
-              <div className='grid gap-3 sm:grid-cols-2'>
-                {seasonData.episodes.map((ep) => (
-                  <div
-                    key={ep.episodeNumber || ep.episode_number}
-                    className='flex gap-3.5 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5'
-                  >
-                    <SafeImage
-                      src={ep.stillUrl || ep.stillPath || ep.still_path}
-                      alt={ep.name}
-                      size='w300'
-                      variant='backdrop'
-                      className='h-20 w-32 shrink-0 rounded-xl object-cover'
-                    />
-                    <div className='min-w-0 flex-1'>
-                      <span className='text-xs font-bold text-brand'>
-                        E{ep.episodeNumber || ep.episode_number} • {ep.name}
-                      </span>
-                      <p className='mt-1 line-clamp-2 text-xs text-zinc-400'>
-                        {ep.overview || 'No episode synopsis available.'}
-                      </p>
+              <div className='grid gap-3.5 sm:grid-cols-2'>
+                {seasonData.episodes.map((rawEp, idx) => {
+                  const ep = rawEp?._doc
+                    ? { ...rawEp, ...rawEp._doc }
+                    : rawEp || {};
+                  const epNum =
+                    ep.episodeNumber ?? ep.episode_number ?? idx + 1;
+                  const epAir = ep.airDate || ep.air_date || '';
+                  const epVote = Number(ep.voteAverage ?? ep.vote_average ?? 0);
+                  const stillSrc =
+                    ep.stillUrl ||
+                    ep.stillPath ||
+                    ep.still_path ||
+                    data?.backdropUrl;
+                  return (
+                    <div
+                      key={epNum}
+                      className='flex min-w-0 gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-2.5 transition hover:border-brand/40 sm:gap-3.5 sm:p-3.5'
+                    >
+                      <SafeImage
+                        src={stillSrc}
+                        alt={ep.name || `Episode ${epNum}`}
+                        size='w300'
+                        variant='backdrop'
+                        className='h-20 w-28 shrink-0 rounded-xl object-cover sm:h-24 sm:w-36'
+                      />
+
+                      <div className='min-w-0 flex-1'>
+                        <div className='min-w-0'>
+                          <span
+                            title={ep.name || `Episode ${epNum}`}
+                            className='block truncate text-xs font-extrabold text-brand sm:text-sm'
+                          >
+                            S{String(safeSelectedSeason).padStart(2, '0')}E
+                            {String(epNum).padStart(2, '0')} •{' '}
+                            {ep.name || `Episode ${epNum}`}
+                          </span>
+
+                          {epVote > 0 && (
+                            <span className='mt-1 inline-block rounded-md bg-brand/15 px-1.5 py-0.5 text-[10px] font-extrabold text-brand'>
+                              ★ {epVote.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-zinc-400'>
+                          {ep.runtime ? <span>⏱ {ep.runtime}m</span> : null}
+                          {epAir ? <span>📅 {epAir}</span> : null}
+                        </div>
+
+                        <p className='mt-1.5 line-clamp-2 break-words text-xs leading-relaxed text-zinc-400'>
+                          {ep.overview || 'No episode synopsis available.'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className='text-xs text-zinc-400'>
@@ -1578,9 +1826,7 @@ export default function Details() {
                     className='rounded-2xl bg-white/[0.04] p-3 text-xs'
                   >
                     <div className='flex items-center justify-between text-zinc-400'>
-                      <b className='text-brand'>
-                        {m.sender?.name || 'Fan'}
-                      </b>
+                      <b className='text-brand'>{m.sender?.name || 'Fan'}</b>
                       <span className='text-[10px]'>
                         {new Date(m.createdAt).toLocaleTimeString()}
                       </span>
@@ -1606,10 +1852,7 @@ export default function Details() {
             ) : (
               <p className='text-center text-xs text-zinc-400'>
                 Please{' '}
-                <Link
-                  to='/login'
-                  className='font-bold text-brand underline'
-                >
+                <Link to='/login' className='font-bold text-brand underline'>
                   log in
                 </Link>{' '}
                 to send messages in live chat.

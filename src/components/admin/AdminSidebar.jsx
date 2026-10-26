@@ -23,8 +23,28 @@ export default function AdminSidebar({
   setSidebarOpen,
   onLogout,
   stats,
+  liveCounts = {},
 }) {
   const c = stats?.counts || {};
+
+  const featuredBadge =
+    liveCounts.featured !== undefined ? liveCounts.featured : c.featuredHeroCount;
+  const blogsBadge =
+    liveCounts.blogs !== undefined ? liveCounts.blogs : c.blogsCount;
+  const communityBadge =
+    liveCounts.community !== undefined ? liveCounts.community : c.communityRoomsCount;
+  const reviewsBadge =
+    liveCounts.reviews !== undefined ? liveCounts.reviews : c.reviews;
+  const usersBadge =
+    liveCounts.users !== undefined ? liveCounts.users : c.users;
+  const rawTitlesTotal =
+    liveCounts.titles !== undefined ? liveCounts.titles : c.titles;
+  const titlesBadge =
+    rawTitlesTotal !== undefined && rawTitlesTotal !== null
+      ? rawTitlesTotal >= 1000
+        ? `${Math.round((rawTitlesTotal / 1000) * 10) / 10}k`
+        : rawTitlesTotal
+      : undefined;
 
   const navGroups = [
     {
@@ -41,35 +61,35 @@ export default function AdminSidebar({
           to: '/admin/featured',
           label: 'Featured Hero Carousel',
           icon: Sparkles,
-          badge: c.featuredHeroCount,
+          badge: featuredBadge,
         },
         {
           key: 'blogs',
           to: '/admin/blogs',
           label: 'Blog Studio & Editor',
           icon: BookOpen,
-          badge: c.blogsCount,
+          badge: blogsBadge,
         },
         {
           key: 'community',
           to: '/admin/community',
           label: 'Community & Chat Rooms',
           icon: MessageSquare,
-          badge: c.communityRoomsCount,
+          badge: communityBadge,
         },
         {
           key: 'reviews',
           to: '/admin/reviews',
           label: 'Critics & Moderation',
           icon: Award,
-          badge: c.reviews,
+          badge: reviewsBadge,
         },
         {
           key: 'users',
           to: '/admin/users',
           label: isSuper ? 'Users & Staff Roles' : 'User Management',
           icon: Users,
-          badge: c.users,
+          badge: usersBadge,
         },
       ],
     },
@@ -83,9 +103,7 @@ export default function AdminSidebar({
                 to: '/admin/catalog',
                 label: 'Media & Box Office DB',
                 icon: Database,
-                badge: c.titles
-                  ? `${Math.round((c.titles / 1000) * 10) / 10}k`
-                  : undefined,
+                badge: titlesBadge,
               },
               {
                 key: 'crawler',
@@ -98,6 +116,7 @@ export default function AdminSidebar({
                 to: '/admin/api-keys',
                 label: 'TMDB API Key Pool',
                 icon: KeyRound,
+                badge: liveCounts.apiKeys,
               },
             ],
           },
@@ -204,7 +223,7 @@ export default function AdminSidebar({
             onClick={onLogout}
             className='admin-btn admin-btn-danger w-full py-2.5'
           >
-            <LogOut size={14} /> Sign Out
+            <LogOut size={14} /> Sign Out ({user?.name?.split(' ')[0]})
           </button>
         </div>
       </aside>

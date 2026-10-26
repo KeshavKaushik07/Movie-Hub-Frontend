@@ -1,110 +1,72 @@
 import axios from 'axios';
 import { BACKEND } from '../config/constants';
-import { sanitizePayload, safeJsonParse } from '../utils/security';
+import { sanitizePayload } from '../utils/security';
 import { notifyPatch } from '../utils/notify';
 
 /**
- * SESSION & TOKEN LIFECYCLE + SECURITY & STATUS PATCH INTERCEPTOR:
- * - Primary Access Token lives in memory (`inMemoryAccessToken`).
- * - Tab-scoped session snapshot (`sessionStorage`) + fallback profile cache keep your login
- *   alive across manual/hard refreshes (F5 / Ctrl+R) and allow testing 2 different user accounts
- *   in 2 tabs simultaneously without cookie collisions logging you out mid-chat.
- * - Sanitizes all outgoing payloads against XSS & NoSQL prototype keys.
- * - Emits Frontend Information Patches (`notifyPatch`) for mutating actions & errors.
+ * PURE IN-MEMORY ACCESS TOKEN + HTTPONLY REFRESH COOKIE ENGINE:
+ * - Access Token is stored ONLY in JavaScript / React (Redux) memory (`inMemoryAccessToken` & `state.auth.access`).
+ * - Refresh Token is stored ONLY in the browser's `httpOnly` cookie (`withCredentials: true`).
+ * - ZERO tokens (`access` or `refresh`) are ever stored in `localStorage` or `sessionStorage`.
+ * - When an API request returns 401 (expired access token), the interceptor automatically calls
+ *   `POST /auth/refresh` (sending the `httpOnly` refresh cookie), stores the new access token
+ *   in memory, and retries the original request seamlessly.
  */
-const TAB_SESSION_KEY = 'movieshub_tab_session_v6';
-const FALLBACK_SESSION_KEY = 'movieshub_session_backup_v6';
 
 let inMemoryAccessToken = null;
-let inMemoryRefreshToken = null;
 let storeRef = null;
 let refreshPromise = null;
 
-export const readSavedSession = () => {
+// Purge any legacy token or session keys from localStorage and sessionStorage immediately on load
+const purgeLegacyTokenStorage = () => {
+  const legacyKeys = [
+    'movieshub_tab_session_v6',
+    'movieshub_session_backup_v6',
+    'accessToken',
+    'refreshToken',
+    'access',
+    'refresh',
+    'token',
+    'auth',
+    'guest_started_at',
+    'guest_started_at_v4',
+  ];
   try {
-    const tabRaw = sessionStorage.getItem(TAB_SESSION_KEY);
-    if (tabRaw) {
-      const parsed = safeJsonParse(tabRaw);
-      if (parsed && (parsed.user || parsed.refresh || parsed.access)) return parsed;
-    }
+    legacyKeys.forEach((k) => localStorage.removeItem(k));
   } catch {
     /* ignore */
   }
   try {
-    const fbRaw = localStorage.getItem(FALLBACK_SESSION_KEY);
-    if (fbRaw) {
-      const parsed = safeJsonParse(fbRaw);
-      if (parsed && (parsed.user || parsed.refresh || parsed.access)) return parsed;
-    }
+    legacyKeys.forEach((k) => sessionStorage.removeItem(k));
   } catch {
     /* ignore */
   }
-  return null;
 };
 
-export const saveSessionSnapshot = ({ user, access, refresh } = {}) => {
-  const existing = readSavedSession() || {};
-  const next = {
-    user: user !== undefined ? user : existing.user || null,
-    access: access !== undefined ? access : inMemoryAccessToken || existing.access || null,
-    refresh: refresh !== undefined ? refresh : inMemoryRefreshToken || existing.refresh || null,
-    updatedAt: Date.now(),
-  };
-  if (next.access) inMemoryAccessToken = next.access;
-  if (next.refresh) inMemoryRefreshToken = next.refresh;
-  try {
-    sessionStorage.setItem(TAB_SESSION_KEY, JSON.stringify(next));
-  } catch {
-    /* ignore */
-  }
-  try {
-    localStorage.setItem(FALLBACK_SESSION_KEY, JSON.stringify(next));
-  } catch {
-    /* ignore */
+purgeLegacyTokenStorage();
+
+export const setInMemoryAccessToken = (token) => {
+  inMemoryAccessToken = token || null;
+};
+
+export const getInMemoryAccessToken = () =>
+  inMemoryAccessToken || storeRef?.getState()?.auth?.access || null;
+
+// Compatibility helpers (strictly in-memory; never write to localStorage or sessionStorage)
+export const readSavedSession = () => null;
+
+export const saveSessionSnapshot = ({ access } = {}) => {
+  if (access !== undefined) {
+    inMemoryAccessToken = access || null;
   }
 };
 
 export const clearSessionSnapshot = () => {
   inMemoryAccessToken = null;
-  inMemoryRefreshToken = null;
-  try {
-    sessionStorage.removeItem(TAB_SESSION_KEY);
-  } catch {
-    /* ignore */
-  }
-  try {
-    localStorage.removeItem(FALLBACK_SESSION_KEY);
-  } catch {
-    /* ignore */
-  }
+  purgeLegacyTokenStorage();
 };
 
-// Initialize from existing tab/fallback snapshot on module load so hard refresh is instant
-const bootSession = readSavedSession();
-if (bootSession?.access) inMemoryAccessToken = bootSession.access;
-if (bootSession?.refresh) inMemoryRefreshToken = bootSession.refresh;
-
-// Clean up any legacy timer keys
-try {
-  localStorage.removeItem('guest_started_at');
-  localStorage.removeItem('guest_started_at_v4');
-} catch {
-  /* ignore */
-}
-
-export const setInMemoryAccessToken = (token, refresh = undefined, user = undefined) => {
-  inMemoryAccessToken = token || null;
-  if (refresh !== undefined) inMemoryRefreshToken = refresh || null;
-  if (token || refresh || user) {
-    saveSessionSnapshot({ access: token, refresh, user });
-  }
-};
-
-export const getInMemoryAccessToken = () =>
-  inMemoryAccessToken || storeRef?.getState()?.auth?.access || readSavedSession()?.access || null;
-
-export const getRefreshToken = () =>
-  inMemoryRefreshToken || readSavedSession()?.refresh || null;
+export const getRefreshToken = () => null;
 
 export const injectStore = (s) => {
   storeRef = s;
@@ -112,36 +74,34 @@ export const injectStore = (s) => {
 
 export const backend = axios.create({
   baseURL: BACKEND.URL,
-  withCredentials: true,
+  withCredentials: true, // Always send httpOnly refreshToken cookie
   timeout: 15000,
   headers: {
     'X-Requested-With': 'XMLHttpRequest',
   },
 });
 
+/**
+ * Requests a new Access Token using the browser's httpOnly refreshToken cookie.
+ * Concurrent 401 responses share a single in-flight `refreshPromise`.
+ */
 export const performTokenRefresh = async () => {
   if (!refreshPromise) {
-    const savedRefresh = getRefreshToken();
     refreshPromise = axios
       .post(
         `${BACKEND.URL}/auth/refresh`,
-        savedRefresh ? { refresh: savedRefresh } : {},
+        {},
         {
           withCredentials: true,
           headers: {
             'X-Requested-With': 'XMLHttpRequest',
-            ...(savedRefresh ? { 'x-refresh-token': savedRefresh } : {}),
           },
         },
       )
       .then((res) => {
         const data = res.data || {};
         if (data.access) {
-          saveSessionSnapshot({
-            access: data.access,
-            refresh: data.refresh || savedRefresh,
-            user: data.user,
-          });
+          setInMemoryAccessToken(data.access);
         }
         return data;
       })
@@ -156,10 +116,6 @@ backend.interceptors.request.use((cfg) => {
   const token = getInMemoryAccessToken();
   if (token) {
     cfg.headers.Authorization = `Bearer ${token}`;
-  }
-  const rToken = getRefreshToken();
-  if (rToken) {
-    cfg.headers['x-refresh-token'] = rToken;
   }
   cfg.headers['X-Requested-With'] = 'XMLHttpRequest';
 
@@ -178,7 +134,11 @@ backend.interceptors.response.use(
     const url = res.config?.url || '';
     const isSilentAuth = /\/auth\/(refresh|me)/.test(url);
 
-    if (['post', 'put', 'patch', 'delete'].includes(method) && !res.config?.silentPatch && !isSilentAuth) {
+    if (
+      ['post', 'put', 'patch', 'delete'].includes(method) &&
+      !res.config?.silentPatch &&
+      !isSilentAuth
+    ) {
       const serverMsg = res.data?.message;
       if (serverMsg) {
         notifyPatch({
@@ -197,26 +157,30 @@ backend.interceptors.response.use(
     const url = original?.url || '';
     const isAuthEndpoint = /\/auth\/(login|signup|register|refresh|logout)/.test(url);
 
+    // If Access Token is expired (401), automatically request a new Access Token using
+    // the httpOnly Refresh Token cookie, store it in memory, and retry the original request!
     if (status === 401 && !original?._retry && !isAuthEndpoint) {
       original._retry = true;
       try {
         const data = await performTokenRefresh();
         if (data?.access) {
+          setInMemoryAccessToken(data.access);
           if (storeRef) {
-            storeRef.dispatch({ type: 'auth/setSessionFromRefresh', payload: data });
+            storeRef.dispatch({
+              type: 'auth/setSessionFromRefresh',
+              payload: { access: data.access, user: data.user },
+            });
           }
-          original.headers.Authorization = `Bearer ${data.access}`;
+          original.headers = {
+            ...(original.headers || {}),
+            Authorization: `Bearer ${data.access}`,
+          };
           return backend(original);
         }
-      } catch (refreshErr) {
-        const rStatus = refreshErr?.response?.status;
-        const msg = String(refreshErr?.response?.data?.message || '').toLowerCase();
-        // Only clear session if the backend explicitly rejected the refresh token as deactivated/invalid
-        if (rStatus === 403 || msg.includes('deactivated')) {
-          clearSessionSnapshot();
-          if (storeRef) {
-            storeRef.dispatch({ type: 'auth/clearSession' });
-          }
+      } catch {
+        clearSessionSnapshot();
+        if (storeRef) {
+          storeRef.dispatch({ type: 'auth/clearSession' });
         }
       }
     }
@@ -248,7 +212,7 @@ backend.interceptors.response.use(
                 ? 'Rate Limit Reached'
                 : status === 401
                   ? 'Authentication Required'
-                  : 'Action Failed',
+                  : 'Operation Failed',
         message: errMsg,
       });
     }
@@ -256,5 +220,3 @@ backend.interceptors.response.use(
     return Promise.reject(err);
   },
 );
-
-export default backend;

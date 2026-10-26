@@ -72,6 +72,148 @@ export const resolveSlugMapping = (slug) => {
   return null;
 };
 
+const personGenderMemory = new Map();
+
+const KNOWN_FEMALE_NAMES = new Set([
+  'deepika', 'alia', 'samantha', 'rashmika', 'katrina', 'kareena', 'priyanka', 'anushka',
+  'shraddha', 'kriti', 'kiara', 'taapsee', 'vidya', 'kangana', 'nayanthara', 'trisha',
+  'pooja', 'tamannaah', 'tamanna', 'kajal', 'madhuri', 'sridevi', 'rekha',
+  'kajol', 'rani', 'aishwarya', 'janhvi', 'sara', 'ananya', 'suhana', 'triptii', 'tripti',
+  'mrunal', 'wamiqa', 'sobhita', 'radhika', 'tabu', 'hema', 'jaya', 'shabana', 'smita',
+  'konkona', 'bipasha', 'sonam', 'sonakshi', 'parineeti', 'disha', 'jacqueline', 'nora',
+  'yami', 'bhumi', 'richa', 'huma', 'nimrat', 'shefali', 'tillotama', 'neena', 'ratna',
+  'supriya', 'revathi', 'ramya', 'soundarya', 'keerthy', 'krithi', 'sreeleela', 'meenakshi',
+  'nazriya', 'manju', 'parvathy', 'kalyani', 'nikhila', 'mamitha', 'anaswara', 'rukmini',
+  'jyothika', 'simran', 'asin', 'genelia', 'ileana', 'hansika', 'shruti', 'raashi',
+  'rakul', 'lavanya', 'nivetha', 'anupama', 'malavika', 'andrea', 'amala', 'sneha',
+  'bhavana', 'kavya', 'navya', 'priyamani', 'swathi', 'nithya', 'archana', 'aditi',
+  'diana', 'vaani', 'fatima', 'sanya', 'zaira', 'sharvari', 'medha', 'pratibha',
+  'nitanshi', 'chhaya', 'mona', 'rasika', 'shweta', 'sayani', 'kritika',
+  'gauahar', 'karisma', 'twinkle', 'raveena', 'urmila', 'manisha', 'juhi', 'preity',
+  'shilpa', 'lara', 'celina', 'esha', 'amrita', 'ameesha', 'gracy', 'dia', 'soha',
+  'neha', 'kalki', 'nimisha', 'darshana', 'grace', 'bindu', 'waheeda', 'nargis',
+  'mumtaz', 'zeenat', 'parveen', 'neetu', 'dimple', 'poonam', 'padmini',
+  'savitri', 'jamuna', 'sarada', 'suhasini', 'nadhiya', 'bhanupriya', 'radha', 'ambika',
+  'khushbu', 'roja', 'devayani', 'rambha', 'laila', 'sadha', 'gopika',
+  'zendaya', 'margot', 'scarlett', 'emma', 'jennifer', 'angelina', 'natalie', 'anne',
+  'emily', 'florence', 'sydney', 'ana', 'gal', 'elizabeth', 'brie', 'cate', 'kate',
+  'meryl', 'viola', 'sandra', 'julia', 'nicole', 'charlize', 'amy', 'jessica', 'rachel',
+  'amanda', 'lily', 'jenna', 'millie', 'sadie', 'anya', 'daisy', 'saoirse', 'rebecca',
+  'hayley', 'vanessa', 'salma', 'penelope', 'eva', 'marion', 'lea', 'winona', 'uma',
+  'cameron', 'drew', 'halle', 'gwyneth', 'reese', 'renée', 'renee', 'hilary', 'keira',
+  'rosamund', 'carey', 'felicity', 'claire', 'olivia', 'gemma', 'tilda', 'helena',
+  'maggie', 'judi', 'helen', 'julianne', 'sigourney', 'jodie', 'michelle',
+  'awkwafina', 'constance', 'sonoya', 'karen', 'pom', 'zoe', 'zoë', 'letitia',
+  'lupita', 'danai', 'tessa', 'hailee', 'chloë', 'chloe', 'sophie', 'maisie', 'emilia',
+  'lena', 'gwendoline', 'natalia', 'maya', 'robin', 'gillian', 'kaley',
+  'courteney', 'lisa', 'sarah', 'ellen', 'kristen', 'dakota', 'elle', 'kirsten',
+  'blake', 'leighton', 'nina', 'candice', 'kat', 'phoebe', 'freya', 'billie',
+]);
+
+/**
+ * Formats an actor/actoress name with hyphens (-) instead of spaces (%20):
+ * e.g. "Shiva Rajkumar" -> "Shiva-Rajkumar"
+ */
+export const formatPersonSlug = (name = '') =>
+  String(name || '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-zA-Z0-9\u00C0-\u024F-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'Artist';
+
+/**
+ * Converts a hyphenated URL param ("Shiva-Rajkumar") back into a normal name ("Shiva Rajkumar").
+ */
+export const parsePersonSlugToName = (slug = '') =>
+  decodeURIComponent(String(slug || ''))
+    .replace(/-+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * Determines whether a person URL should use "/actor" (male) or "/actoress" (female).
+ * TMDB gender convention: 1 = female ("actoress"), 2 = male ("actor").
+ */
+export const resolvePersonRoleSegment = (personOrName, genderOverride = null) => {
+  const obj =
+    typeof personOrName === 'object' && personOrName !== null
+      ? personOrName
+      : { name: String(personOrName || '') };
+  const rawName = parsePersonSlugToName(obj.name || '');
+  const nameKey = rawName.toLowerCase();
+  const genderVal =
+    genderOverride ?? obj.gender ?? (nameKey ? personGenderMemory.get(nameKey) : null);
+
+  if (
+    genderVal === 1 ||
+    String(genderVal).toLowerCase() === 'female' ||
+    String(genderVal).toLowerCase() === 'actoress' ||
+    String(genderVal).toLowerCase() === 'actress'
+  ) {
+    if (nameKey) personGenderMemory.set(nameKey, 1);
+    return 'actoress';
+  }
+  if (
+    genderVal === 2 ||
+    String(genderVal).toLowerCase() === 'male' ||
+    String(genderVal).toLowerCase() === 'actor'
+  ) {
+    if (nameKey) personGenderMemory.set(nameKey, 2);
+    return 'actor';
+  }
+
+  const bio = String(obj.biography || '');
+  if (bio) {
+    const femMatches = (bio.match(/\b(she|her|actress|heroine)\b/gi) || []).length;
+    const maleMatches = (bio.match(/\b(he|him|his|actor)\b/gi) || []).length;
+    if (femMatches > maleMatches) {
+      if (nameKey) personGenderMemory.set(nameKey, 1);
+      return 'actoress';
+    }
+    if (maleMatches > femMatches) {
+      if (nameKey) personGenderMemory.set(nameKey, 2);
+      return 'actor';
+    }
+  }
+
+  const firstWord = nameKey.split(/\s+/)[0]?.replace(/[^a-z]/g, '');
+  if (firstWord && KNOWN_FEMALE_NAMES.has(firstWord)) {
+    return 'actoress';
+  }
+  if (
+    nameKey === 'sai pallavi' ||
+    nameKey === 'sai tamhankar' ||
+    nameKey === 'saiyami kher' ||
+    nameKey === 'meena kumari'
+  ) {
+    return 'actoress';
+  }
+
+  return 'actor';
+};
+
+/**
+ * Generates clean Actor / Actoress URLs with hyphens (-) instead of %20 spaces:
+ * Male:   /actor/Shiva-Rajkumar?id=1343007
+ * Female: /actoress/Deepika-Padukone?id=85883
+ */
+export const getPersonPath = (
+  personOrName,
+  idOverride = null,
+  genderOverride = null,
+) => {
+  const obj =
+    typeof personOrName === 'object' && personOrName !== null
+      ? personOrName
+      : { name: String(personOrName || '') };
+  const cleanName = parsePersonSlugToName(obj.name || '');
+  const slug = formatPersonSlug(cleanName);
+  const id = idOverride ?? obj.id ?? obj.tmdbId ?? null;
+  const roleSegment = resolvePersonRoleSegment(obj, genderOverride);
+  return `/${roleSegment}/${slug}${id ? `?id=${id}` : ''}`;
+};
+
 /**
  * Generates clean SEO URLs using ONLY the movie/series name slug (no numeric ID in URL!):
  * e.g. `/detail/movie/mirzapur` or `/detail/movie/pushpa-2-the-rule`
@@ -84,7 +226,14 @@ export const getTitlePath = (item = {}, typeOverride = null, hash = '') => {
       ? 'webseries'
       : item.type || item.media_type || (item.first_air_date ? 'tv' : 'movie'));
   const routeType = rawType === 'webseries' ? 'webseries' : rawType === 'tv' ? 'tv' : 'movie';
-  const slug = item.slug || toSlug(item.title || item.name || item.originalTitle || `${routeType}-${item.id || item.tmdbId || 'title'}`);
+  const slug =
+    item.slug ||
+    toSlug(
+      item.title ||
+        item.name ||
+        item.originalTitle ||
+        `${routeType}-${item.id || item.tmdbId || 'title'}`,
+    );
 
   if (item.id || item.tmdbId) {
     registerSlugMapping(slug, { ...item, type: routeType });
@@ -243,7 +392,10 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
                 : 'Flop';
   }
 
-  const profitUsd = hasBudget && hasRevenue && finalRevenueUsd > finalBudgetUsd ? finalRevenueUsd - finalBudgetUsd : 0;
+  const profitUsd =
+    hasBudget && hasRevenue && finalRevenueUsd > finalBudgetUsd
+      ? finalRevenueUsd - finalBudgetUsd
+      : 0;
   const roiPercent =
     hasBudget && hasRevenue
       ? Math.round(((finalRevenueUsd - finalBudgetUsd) / finalBudgetUsd) * 100)
@@ -261,27 +413,45 @@ export const getMovieFinancials = (item = {}, region = 'IN') => {
     profitText: profitUsd > 0 ? formatBudgetOrBoxOffice(profitUsd, { region }) : '',
     indiaNetText:
       indiaNetParsed.value > 0
-        ? formatBudgetOrBoxOffice(indiaNetParsed.value, { region, sourceCurrency: indiaNetParsed.currency })
+        ? formatBudgetOrBoxOffice(indiaNetParsed.value, {
+            region,
+            sourceCurrency: indiaNetParsed.currency,
+          })
         : '',
     indiaGrossText:
       indiaGrossParsed.value > 0
-        ? formatBudgetOrBoxOffice(indiaGrossParsed.value, { region, sourceCurrency: indiaGrossParsed.currency })
+        ? formatBudgetOrBoxOffice(indiaGrossParsed.value, {
+            region,
+            sourceCurrency: indiaGrossParsed.currency,
+          })
         : '',
     openingWeekendText:
       openingWeekendParsed.value > 0
-        ? formatBudgetOrBoxOffice(openingWeekendParsed.value, { region, sourceCurrency: openingWeekendParsed.currency })
+        ? formatBudgetOrBoxOffice(openingWeekendParsed.value, {
+            region,
+            sourceCurrency: openingWeekendParsed.currency,
+          })
         : '',
     openingDayText:
       openingDayParsed.value > 0
-        ? formatBudgetOrBoxOffice(openingDayParsed.value, { region, sourceCurrency: openingDayParsed.currency })
+        ? formatBudgetOrBoxOffice(openingDayParsed.value, {
+            region,
+            sourceCurrency: openingDayParsed.currency,
+          })
         : '',
     domesticText:
       domesticParsed.value > 0
-        ? formatBudgetOrBoxOffice(domesticParsed.value, { region, sourceCurrency: domesticParsed.currency })
+        ? formatBudgetOrBoxOffice(domesticParsed.value, {
+            region,
+            sourceCurrency: domesticParsed.currency,
+          })
         : '',
     internationalText:
       intlParsed.value > 0
-        ? formatBudgetOrBoxOffice(intlParsed.value, { region, sourceCurrency: intlParsed.currency })
+        ? formatBudgetOrBoxOffice(intlParsed.value, {
+            region,
+            sourceCurrency: intlParsed.currency,
+          })
         : '',
     usdBudgetSub: hasBudget ? `$${(finalBudgetUsd / 1_000_000).toFixed(1)}M USD` : '',
     usdRevenueSub: hasRevenue ? `$${(finalRevenueUsd / 1_000_000).toFixed(1)}M USD` : '',
@@ -352,9 +522,18 @@ export const createFallbackSvg = (label = 'Image Not Available', variant = 'post
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
-export const resolveImage = (path, size = 'w500', fallbackLabel = 'Movies Hub', variant = 'poster') => {
+export const resolveImage = (
+  path,
+  size = 'w500',
+  fallbackLabel = 'Movies Hub',
+  variant = 'poster',
+) => {
   if (!path) return createFallbackSvg(fallbackLabel, variant);
-  if (String(path).startsWith('http://') || String(path).startsWith('https://') || String(path).startsWith('data:')) {
+  if (
+    String(path).startsWith('http://') ||
+    String(path).startsWith('https://') ||
+    String(path).startsWith('data:')
+  ) {
     return path;
   }
   return `${TMDB.IMG}/${size}${path}`;

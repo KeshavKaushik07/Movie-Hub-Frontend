@@ -8,7 +8,7 @@ import {
   NAV_MENU,
 } from '../config/constants';
 import { sitemapApi, tmdb, blogApi, communityApi } from '../services/api';
-import { toSlug } from './formatters';
+import { toSlug, getPersonPath } from './formatters';
 
 /**
  * ============================================================================
@@ -243,12 +243,13 @@ export const buildCompleteDynamicSitemap = async (siteUrl = window.location.orig
       changefreq: 'weekly',
     }));
 
-    const celebNames = new Set(
-      [...(celebsIN || []), ...(celebsGlobal || [])].map((c) => c.name).filter(Boolean),
-    );
-    dbSections.celebrities = Array.from(celebNames).map((name) => ({
-      path: `/person/${encodeURIComponent(name)}`,
-      label: name,
+    const celebMap = new Map();
+    [...(celebsIN || []), ...(celebsGlobal || [])].forEach((c) => {
+      if (c && c.name && !celebMap.has(c.name)) celebMap.set(c.name, c);
+    });
+    dbSections.celebrities = Array.from(celebMap.values()).map((c) => ({
+      path: getPersonPath(c, c.id, c.gender),
+      label: c.name,
       priority: '0.7',
       changefreq: 'weekly',
     }));
