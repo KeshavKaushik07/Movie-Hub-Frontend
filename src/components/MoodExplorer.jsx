@@ -4,6 +4,7 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 import { tmdb } from '../services/api';
 import { resolveGenreId, toBrowseTypeSlug } from '../config/constants';
 import MovieCard from './MovieCard';
+import { MoodRowSkeleton } from './ui/Skeletons';
 
 const MOODS = [
   {
@@ -172,9 +173,7 @@ export default function MoodExplorer() {
         {/* Matching Mood Results */}
         <div className="mt-5">
           {loading ? (
-            <div className="flex h-40 items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-            </div>
+            <MoodRowSkeleton cards={6} />
           ) : items.length > 0 ? (
             <div className="no-scrollbar flex gap-3.5 overflow-x-auto pb-2">
               {items.map((it) => (

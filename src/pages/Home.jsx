@@ -25,6 +25,7 @@ import ScrollRow from '../components/ScrollRow';
 import Top10Showcase from '../components/Top10Showcase';
 import MoodExplorer from '../components/MoodExplorer';
 import SafeImage from '../components/ui/SafeImage';
+import { HomeSkeleton } from '../components/ui/Skeletons';
 
 const GENRE_CARDS = [
   { name: 'Action', slug: 'action', id: 28, emoji: '💥', tone: 'from-rose-500/20 to-orange-500/10 border-rose-500/30' },
@@ -71,11 +72,7 @@ export default function Home() {
   }, [prefs.region, prefs.industries, prefs.genres]);
 
   if (loading && !feed) {
-    return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-      </div>
-    );
+    return <HomeSkeleton />;
   }
 
   const heroItems = feed?.hero || [];

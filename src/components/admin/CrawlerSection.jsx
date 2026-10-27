@@ -1,4 +1,5 @@
 import { Play, Square, Save, Cpu } from 'lucide-react';
+import { AdminCrawlerSkeleton } from '../ui/Skeletons';
 
 export default function CrawlerSection({
   crawler,
@@ -8,7 +9,7 @@ export default function CrawlerSection({
   onStopCrawler,
   onSaveQuotas,
 }) {
-  if (!crawler) return null;
+  if (!crawler) return <AdminCrawlerSkeleton />;
 
   return (
     <div className="space-y-6 rounded-2xl border border-white/10 bg-[#0e131f] p-6 shadow-xl">

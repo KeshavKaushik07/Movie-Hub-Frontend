@@ -16,6 +16,7 @@ import { BLOG_CATEGORIES, ROLES } from '../config/constants';
 import SafeImage from '../components/ui/SafeImage';
 import CustomSelect from '../components/ui/CustomSelect';
 import InfoPatch from '../components/ui/InfoPatch';
+import { BlogsSkeleton } from '../components/ui/Skeletons';
 
 export default function Blogs() {
   const user = useSelector((s) => s.auth.user);
@@ -128,9 +129,7 @@ export default function Blogs() {
       </div>
 
       {loading ? (
-        <div className="flex h-64 items-center justify-center">
-          <div className="h-9 w-9 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-        </div>
+        <BlogsSkeleton />
       ) : blogs.length === 0 ? (
         <InfoPatch
           type="not-found"

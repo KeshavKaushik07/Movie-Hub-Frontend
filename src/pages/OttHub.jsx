@@ -28,6 +28,7 @@ import {
 import { tmdb } from '../services/api';
 import MovieCard from '../components/MovieCard';
 import InfoPatch from '../components/ui/InfoPatch';
+import { OttGridSkeleton, OttHubPageSkeleton } from '../components/ui/Skeletons';
 import { notifyPatch } from '../utils/notify';
 
 export default function OttHub() {
@@ -63,6 +64,7 @@ export default function OttHub() {
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -238,7 +240,10 @@ export default function OttHub() {
       } catch {
         if (alive) setItems([]);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setHasLoadedOnce(true);
+        }
       }
     };
 
@@ -249,6 +254,10 @@ export default function OttHub() {
   }, [selectedOtt, mediaFilter, selectedGenre, sortBy, page]);
 
   const activeOttMeta = OTT_LIST.find((o) => o.key === selectedOtt);
+
+  if (loading && !hasLoadedOnce) {
+    return <OttHubPageSkeleton />;
+  }
 
   return (
     <div className='mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8'>
@@ -534,9 +543,7 @@ export default function OttHub() {
         </div>
 
         {loading ? (
-          <div className='flex h-64 items-center justify-center'>
-            <div className='h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent' />
-          </div>
+          <OttGridSkeleton count={12} />
         ) : items.length === 0 ? (
           <InfoPatch
             type="not-found"

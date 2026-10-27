@@ -15,6 +15,7 @@ import {
 import { reviewService } from '../services/reviewService';
 import { ROLES, ROUTES } from '../config/constants';
 import CustomSelect from './ui/CustomSelect';
+import { ReviewsSkeleton } from './ui/Skeletons';
 
 const ensureExternalHref = (raw) => {
   if (!raw || typeof raw !== 'string') return '';
@@ -33,6 +34,8 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
   const [filterMode, setFilterMode] = useState('all'); // 'all' | 'critics' | 'audience'
   const [userReviews, setUserReviews] = useState([]);
   const [criticReviews, setCriticReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [loadingComments, setLoadingComments] = useState(true);
   const [rating, setRating] = useState(8);
   const [headline, setHeadline] = useState('');
   const [text, setText] = useState('');
@@ -61,6 +64,7 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
 
   const loadReviews = () => {
     if (!tmdbId) return Promise.resolve();
+    setLoadingReviews(true);
     return reviewService
       .forTitle(type, tmdbId)
       .then((data) => {
@@ -73,15 +77,18 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
           setSpoiler(!!data.mine.spoiler);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingReviews(false));
   };
 
   const loadComments = () => {
     if (!tmdbId) return Promise.resolve();
+    setLoadingComments(true);
     return reviewService
       .commentsForTitle(type, tmdbId)
       .then(setComments)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoadingComments(false));
   };
 
   useEffect(() => {
@@ -415,7 +422,10 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
               )}
 
               <div className="space-y-3">
-                {userReviews.map((r) => {
+                {loadingReviews ? (
+                  <ReviewsSkeleton count={3} />
+                ) : (
+                  userReviews.map((r) => {
                   const isSpoilerHidden = r.spoiler && !revealedSpoilers[r.id];
                   return (
                     <div key={r.id} className="rounded-2xl border border-white/10 bg-[#0e131f] p-5">
@@ -459,7 +469,8 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
                       )}
                     </div>
                   );
-                })}
+                })
+                )}
               </div>
             </div>
           )}
@@ -482,7 +493,10 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
             </form>
           )}
           <div className="space-y-3">
-            {topLevelComments.map((c) => {
+            {loadingComments ? (
+              <ReviewsSkeleton count={3} />
+            ) : (
+              topLevelComments.map((c) => {
               const replies = repliesByParent[c.id] || [];
               return (
                 <div key={c.id} className="rounded-2xl border border-white/10 bg-[#0e131f] p-4">
@@ -534,7 +548,8 @@ export default function Reviews({ tmdbId, type, activeSubTab = 'reviews' }) {
                   )}
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         </div>
       )}

@@ -10,6 +10,7 @@ import { tmdb } from '../services/api';
 import MovieCard from '../components/MovieCard';
 import SafeImage from '../components/ui/SafeImage';
 import InfoPatch from '../components/ui/InfoPatch';
+import { PersonSkeleton } from '../components/ui/Skeletons';
 import {
   getPersonPath,
   parsePersonSlugToName,
@@ -73,11 +74,7 @@ export default function Person() {
   }, [decodedName, personId, nav]);
 
   if (loading) {
-    return (
-      <div className='flex h-[70vh] items-center justify-center'>
-        <div className='h-10 w-10 animate-spin rounded-full border-2 border-[#f5b942] border-t-transparent' />
-      </div>
-    );
+    return <PersonSkeleton />;
   }
 
   const person = data?.person || {

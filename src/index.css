@@ -554,3 +554,120 @@ textarea:disabled,
     display: none !important;
   }
 }
+
+/* ============================================================================
+   STRUCTURAL SKELETON LOADING — CINEMATIC REFLECTION SWEEP
+   Supports Dark Mode and Light Mode
+   ============================================================================ */
+
+@keyframes skeletonReflection {
+  0% {
+    transform: translateX(-150%);
+  }
+  100% {
+    transform: translateX(150%);
+  }
+}
+
+/* Main skeleton */
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: rgba(255, 255, 255, 0.065);
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transform: translateX(-150%);
+
+  /* Wide, diagonal reflection with a subtle brand-gold center */
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.015) 35%,
+    rgba(255, 255, 255, 0.07) 43%,
+    rgba(245, 185, 66, 0.1) 48%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(245, 185, 66, 0.08) 53%,
+    rgba(255, 255, 255, 0.035) 60%,
+    transparent 75%
+  );
+
+  animation: skeletonReflection 2s ease-in-out infinite;
+}
+
+/* Subtle skeleton variant */
+.skeleton-shimmer-subtle {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: rgba(14, 19, 31, 0.85);
+}
+
+.skeleton-shimmer-subtle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  transform: translateX(-150%);
+
+  background: linear-gradient(
+    105deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.015) 38%,
+    rgba(255, 255, 255, 0.055) 50%,
+    rgba(255, 255, 255, 0.015) 62%,
+    transparent 75%
+  );
+
+  animation: skeletonReflection 2.6s ease-in-out infinite;
+}
+
+/* Light theme */
+[data-theme='light'] .skeleton-shimmer {
+  background-color: #e2e8f0 !important;
+}
+
+[data-theme='light'] .skeleton-shimmer::after {
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.15) 36%,
+    rgba(255, 255, 255, 0.55) 44%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(255, 255, 255, 0.55) 56%,
+    rgba(255, 255, 255, 0.15) 64%,
+    transparent 80%
+  );
+}
+
+[data-theme='light'] .skeleton-shimmer-subtle {
+  background-color: #ffffff !important;
+  box-shadow: 0 6px 24px -4px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme='light'] .skeleton-shimmer-subtle::after {
+  background: linear-gradient(
+    105deg,
+    transparent 25%,
+    rgba(241, 245, 249, 0.35) 40%,
+    rgba(241, 245, 249, 0.8) 50%,
+    rgba(241, 245, 249, 0.35) 60%,
+    transparent 75%
+  );
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer::after,
+  .skeleton-shimmer-subtle::after {
+    animation: none;
+    transform: none;
+  }
+}

@@ -36,6 +36,7 @@ import Reviews from '../components/Reviews';
 import TitleEditorModal from '../components/TitleEditorModal';
 import SafeImage from '../components/ui/SafeImage';
 import InfoPatch from '../components/ui/InfoPatch';
+import { DetailsSkeleton, SeasonEpisodesSkeleton, CommunityMessagesSkeleton } from '../components/ui/Skeletons';
 import { notifyPatch } from '../utils/notify';
 import CustomSelect from '../components/ui/CustomSelect';
 
@@ -88,6 +89,7 @@ export default function Details() {
 
   const [movieRoom, setMovieRoom] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
   const [chatText, setChatText] = useState('');
 
   const loadDetail = () => {
@@ -336,6 +338,7 @@ export default function Details() {
 
   useEffect(() => {
     if (activeTab !== 'live-chat' || !resolvedId) return;
+    setChatLoading(true);
     communityApi
       .getOrCreateMovieRoom(resolvedType, resolvedId)
       .then((room) => {
@@ -345,7 +348,8 @@ export default function Details() {
       .then((res) => {
         setChatMessages(res.messages || []);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setChatLoading(false));
   }, [activeTab, resolvedType, resolvedId]);
 
   const sendMovieChat = async (e) => {
@@ -437,11 +441,7 @@ export default function Details() {
   };
 
   if (loading) {
-    return (
-      <div className='flex h-[70vh] items-center justify-center'>
-        <div className='h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent' />
-      </div>
-    );
+    return <DetailsSkeleton />;
   }
   if (!data) {
     return (
@@ -1704,9 +1704,7 @@ export default function Details() {
             )}
 
             {seasonLoading ? (
-              <div className='flex h-40 items-center justify-center'>
-                <div className='h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent' />
-              </div>
+              <SeasonEpisodesSkeleton count={6} />
             ) : seasonData?.episodes?.length ? (
               <div className='grid gap-3.5 sm:grid-cols-2'>
                 {seasonData.episodes.map((rawEp, idx) => {
@@ -1786,7 +1784,9 @@ export default function Details() {
             </div>
 
             <div className='studio-scroll mb-4 max-h-80 space-y-2.5 overflow-y-auto pr-1'>
-              {chatMessages.length === 0 ? (
+              {chatLoading ? (
+                <CommunityMessagesSkeleton count={4} />
+              ) : chatMessages.length === 0 ? (
                 <p className='py-10 text-center text-xs text-zinc-500'>
                   No messages in this movie room yet — start the conversation
                   below!

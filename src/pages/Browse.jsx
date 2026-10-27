@@ -31,6 +31,7 @@ import MovieCard from '../components/MovieCard';
 import CustomSelect from '../components/ui/CustomSelect';
 import InfoPatch from '../components/ui/InfoPatch';
 import SafeImage from '../components/ui/SafeImage';
+import { BrowseGridSkeleton, BrowsePageSkeleton } from '../components/ui/Skeletons';
 import { getPersonPath, isUpcomingRelease } from '../utils/formatters';
 import { notifyPatch } from '../utils/notify';
 import { sanitizeText } from '../utils/security';
@@ -96,6 +97,7 @@ export default function Browse() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [fetchError, setFetchError] = useState('');
 
   const q = sanitizeText(params.get('q') || '', 120);
@@ -235,6 +237,7 @@ export default function Browse() {
             : d?.total_results || d?.total || list.length,
         );
         setLoading(false);
+        setHasLoadedOnce(true);
 
         if (page === 1 && q) {
           if (list.length === 0) {
@@ -264,6 +267,7 @@ export default function Browse() {
             'Unable to load catalog titles right now.',
         );
         setLoading(false);
+        setHasLoadedOnce(true);
       });
 
     return () => {
@@ -353,6 +357,10 @@ export default function Browse() {
                 : mediaType === 'tv'
                   ? 'TV Shows Catalog'
                   : 'Movies Catalog';
+
+  if (loading && !hasLoadedOnce) {
+    return <BrowsePageSkeleton />;
+  }
 
   return (
     <div className='mx-auto max-w-7xl px-4 py-8 sm:px-6'>
@@ -659,9 +667,7 @@ export default function Browse() {
 
       {/* Results Grid or Rich Not Found Information Patch */}
       {loading ? (
-        <div className='flex h-60 items-center justify-center'>
-          <div className='h-9 w-9 animate-spin rounded-full border-2 border-brand border-t-transparent' />
-        </div>
+        <BrowseGridSkeleton count={18} />
       ) : items.length === 0 ? (
         <InfoPatch
           type='not-found'

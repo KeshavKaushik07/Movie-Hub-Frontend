@@ -22,6 +22,17 @@ import CatalogSection from '../components/admin/CatalogSection';
 import CrawlerSection from '../components/admin/CrawlerSection';
 import ApiKeysSection from '../components/admin/ApiKeysSection';
 import {
+  AdminOverviewSkeleton,
+  AdminFeaturedSkeleton,
+  AdminBlogsSkeleton,
+  AdminCommunitySkeleton,
+  AdminReviewsSkeleton,
+  AdminUsersSkeleton,
+  AdminCatalogSkeleton,
+  AdminCrawlerSkeleton,
+  AdminApiKeysSkeleton,
+} from '../components/ui/Skeletons';
+import {
   ReviewDetailEditModal,
   ChangePasswordModal,
   DeleteUserConfirmModal,
@@ -43,6 +54,7 @@ export default function Admin() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const [sectionTransitioning, setSectionTransitioning] = useState(false);
 
   const notify = (msg, patchType = 'info') => {
     setToast(msg);
@@ -165,16 +177,26 @@ export default function Admin() {
 
   // Track which real lists have loaded so sidebar badges always reflect real section counts
   const [loadedFlags, setLoadedFlags] = useState({
+    overview: false,
     featured: false,
     blogs: false,
     community: false,
     moderation: false,
     users: false,
+    catalog: false,
+    crawler: false,
     keys: false,
   });
 
   // ==================== DATA LOADERS ====================
-  const loadOverview = () => reviewService.admin.stats().then(setStats).catch(() => {});
+  const loadOverview = () =>
+    reviewService.admin
+      .stats()
+      .then((s) => {
+        setStats(s);
+        setLoadedFlags((p) => ({ ...p, overview: true }));
+      })
+      .catch(() => setLoadedFlags((p) => ({ ...p, overview: true })));
   const loadFeatured = () =>
     featuredApi
       .listAdminFull()
@@ -186,7 +208,7 @@ export default function Admin() {
         }
         setLoadedFlags((p) => ({ ...p, featured: true }));
       })
-      .catch(() => {});
+      .catch(() => setLoadedFlags((p) => ({ ...p, featured: true })));
   const loadBlogs = () =>
     blogApi
       .list({ status: 'all', limit: 100 })
@@ -194,7 +216,7 @@ export default function Admin() {
         setBlogs(r.items || []);
         setLoadedFlags((p) => ({ ...p, blogs: true }));
       })
-      .catch(() => {});
+      .catch(() => setLoadedFlags((p) => ({ ...p, blogs: true })));
   const loadCommunity = () =>
     communityApi
       .listRooms()
@@ -202,7 +224,7 @@ export default function Admin() {
         setCommRooms(Array.isArray(list) ? list : []);
         setLoadedFlags((p) => ({ ...p, community: true }));
       })
-      .catch(() => {});
+      .catch(() => setLoadedFlags((p) => ({ ...p, community: true })));
   const loadModeration = () => {
     reviewService.admin
       .reviews()
@@ -210,7 +232,7 @@ export default function Admin() {
         setAllReviews(d.reviews || []);
         setLoadedFlags((p) => ({ ...p, moderation: true }));
       })
-      .catch(() => {});
+      .catch(() => setLoadedFlags((p) => ({ ...p, moderation: true })));
     reviewService.admin
       .comments()
       .then((d) => setAllComments(d.comments || []))
@@ -221,11 +243,9 @@ export default function Admin() {
       .users({ q: userSearch })
       .then((list) => {
         setUsers(Array.isArray(list) ? list : []);
-        if (!userSearch.trim()) {
-          setLoadedFlags((p) => ({ ...p, users: true }));
-        }
+        setLoadedFlags((p) => ({ ...p, users: true }));
       })
-      .catch(() => {});
+      .catch(() => setLoadedFlags((p) => ({ ...p, users: true })));
   const loadCatalog = () => {
     if (!isSuper) return;
     reviewService.superadmin
@@ -235,8 +255,9 @@ export default function Admin() {
         if (!titleQuery.trim() && !titleTypeFilter && Number.isFinite(d?.total)) {
           setDbTitlesTotal(d.total);
         }
+        setLoadedFlags((p) => ({ ...p, catalog: true }));
       })
-      .catch(() => {});
+      .catch(() => setLoadedFlags((p) => ({ ...p, catalog: true })));
     loadFeatured();
   };
   const loadCrawler = () => {
@@ -267,7 +288,7 @@ export default function Admin() {
         setKeys(Array.isArray(list) ? list : []);
         setLoadedFlags((p) => ({ ...p, keys: true }));
       })
-      .catch(() => {});
+      .catch(() => setLoadedFlags((p) => ({ ...p, keys: true })));
   };
 
   // Preload all real section lists on mount so Sidebar numbers always match real content
@@ -285,7 +306,11 @@ export default function Admin() {
     }
   }, [isSuper]); // eslint-disable-line
 
-  const refreshActiveSection = () => {
+  const refreshActiveSection = (showSkeleton = false) => {
+    if (showSkeleton) {
+      setSectionTransitioning(true);
+      setTimeout(() => setSectionTransitioning(false), 320);
+    }
     loadOverview();
     if (activeSection === 'featured') loadFeatured();
     if (activeSection === 'blogs') loadBlogs();
@@ -299,7 +324,10 @@ export default function Admin() {
 
   useEffect(() => {
     setSidebarOpen(false);
-    refreshActiveSection();
+    setSectionTransitioning(true);
+    refreshActiveSection(false);
+    const t = setTimeout(() => setSectionTransitioning(false), 260);
+    return () => clearTimeout(t);
   }, [activeSection]); // eslint-disable-line
 
   useEffect(() => {
@@ -538,16 +566,22 @@ export default function Admin() {
           toast={toast}
           onOpenSidebar={() => setSidebarOpen(true)}
           onToggleTheme={() => dispatch(toggleTheme())}
-          onRefreshActiveSection={refreshActiveSection}
+          onRefreshActiveSection={() => refreshActiveSection(true)}
         />
 
         <main className="flex-1 p-4 sm:p-6">
-          {activeSection === 'overview' && (
-            <OverviewSection stats={stats} isSuper={isSuper} />
-          )}
+          {activeSection === 'overview' &&
+            (sectionTransitioning || (!stats && !loadedFlags.overview) ? (
+              <AdminOverviewSkeleton />
+            ) : (
+              <OverviewSection stats={stats} isSuper={isSuper} />
+            ))}
 
-          {activeSection === 'featured' && (
-            <FeaturedSection
+          {activeSection === 'featured' &&
+            (sectionTransitioning || !loadedFlags.featured ? (
+              <AdminFeaturedSkeleton />
+            ) : (
+              <FeaturedSection
               featuredItems={featuredItems}
               heroLimit={heroLimit}
               onUpdateHeroLimit={handleUpdateHeroLimit}
@@ -571,11 +605,14 @@ export default function Admin() {
                   notify('Removed slide from Featured Carousel');
                 })
               }
-            />
-          )}
+              />
+            ))}
 
-          {activeSection === 'blogs' && (
-            <BlogStudioSection
+          {activeSection === 'blogs' &&
+            (sectionTransitioning || !loadedFlags.blogs ? (
+              <AdminBlogsSkeleton />
+            ) : (
+              <BlogStudioSection
               blogs={blogs}
               editingBlogId={editingBlogId}
               editorMode={editorMode}
@@ -601,11 +638,14 @@ export default function Admin() {
                   notify('Deleted blog article');
                 })
               }
-            />
-          )}
+              />
+            ))}
 
-          {activeSection === 'community' && (
-            <CommunitySection
+          {activeSection === 'community' &&
+            (sectionTransitioning || !loadedFlags.community ? (
+              <AdminCommunitySkeleton />
+            ) : (
+              <CommunitySection
               commRooms={commRooms}
               newRoomForm={newRoomForm}
               setNewRoomForm={setNewRoomForm}
@@ -629,11 +669,14 @@ export default function Admin() {
                 })
               }
               onRequestDeleteRoom={(r) => setRoomToDelete(r)}
-            />
-          )}
+              />
+            ))}
 
-          {activeSection === 'reviews' && (
-            <ReviewsModerationSection
+          {activeSection === 'reviews' &&
+            (sectionTransitioning || !loadedFlags.moderation ? (
+              <AdminReviewsSkeleton />
+            ) : (
+              <ReviewsModerationSection
               allReviews={allReviews}
               allComments={allComments}
               onSelectReviewForModal={(r) => setSelectedReviewForModal(r)}
@@ -670,11 +713,14 @@ export default function Admin() {
                   notify('Comment deleted');
                 })
               }
-            />
-          )}
+              />
+            ))}
 
-          {activeSection === 'users' && (
-            <UsersSection
+          {activeSection === 'users' &&
+            (sectionTransitioning || !loadedFlags.users ? (
+              <AdminUsersSkeleton />
+            ) : (
+              <UsersSection
               users={users}
               currentUser={user}
               isSuper={isSuper}
@@ -710,11 +756,15 @@ export default function Admin() {
                 setShowNewPassword(false);
               }}
               onRequestDeleteUser={(u) => setUserToDelete(u)}
-            />
-          )}
+              />
+            ))}
 
-          {activeSection === 'catalog' && isSuper && (
-            <CatalogSection
+          {activeSection === 'catalog' &&
+            isSuper &&
+            (sectionTransitioning || !loadedFlags.catalog ? (
+              <AdminCatalogSkeleton />
+            ) : (
+              <CatalogSection
               dbTitles={dbTitles}
               featuredItems={featuredItems}
               region={region}
@@ -741,11 +791,15 @@ export default function Admin() {
                 })
               }
               onQuickAddToFeatured={handleQuickAddToFeatured}
-            />
-          )}
+              />
+            ))}
 
-          {activeSection === 'crawler' && isSuper && (
-            <CrawlerSection
+          {activeSection === 'crawler' &&
+            isSuper &&
+            (sectionTransitioning || !crawler ? (
+              <AdminCrawlerSkeleton />
+            ) : (
+              <CrawlerSection
               crawler={crawler}
               quotaForm={quotaForm}
               setQuotaForm={setQuotaForm}
@@ -767,11 +821,15 @@ export default function Admin() {
                   notify('Crawler quotas updated!');
                 })
               }
-            />
-          )}
+              />
+            ))}
 
-          {activeSection === 'api-keys' && isSuper && (
-            <ApiKeysSection
+          {activeSection === 'api-keys' &&
+            isSuper &&
+            (sectionTransitioning || !loadedFlags.keys ? (
+              <AdminApiKeysSkeleton />
+            ) : (
+              <ApiKeysSection
               keys={keys}
               newKey={newKey}
               setNewKey={setNewKey}
@@ -795,7 +853,7 @@ export default function Admin() {
                 })
               }
             />
-          )}
+            ))}
         </main>
       </div>
 

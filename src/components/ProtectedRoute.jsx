@@ -1,11 +1,17 @@
 import { useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { ROUTES } from '../config/constants';
 import { notifyPatch } from '../utils/notify';
+import {
+  AdminShellSkeleton,
+  SitemapSkeleton,
+  ProfileSkeleton,
+} from './ui/Skeletons';
 
 export default function ProtectedRoute({ children, roles }) {
   const { user, initializing } = useSelector((s) => s.auth);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     if (initializing) return;
@@ -25,11 +31,9 @@ export default function ProtectedRoute({ children, roles }) {
   }, [initializing, user, roles]);
 
   if (initializing) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-9 w-9 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-      </div>
-    );
+    if (pathname.startsWith('/admin')) return <AdminShellSkeleton />;
+    if (pathname.startsWith('/sitemap')) return <SitemapSkeleton />;
+    return <ProfileSkeleton />;
   }
 
   if (!user) return <Navigate to={ROUTES.LOGIN} replace />;

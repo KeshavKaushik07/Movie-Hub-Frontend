@@ -19,6 +19,7 @@ import { blogApi } from '../services/api';
 import { getTitlePath } from '../utils/formatters';
 import { ROLES, ROUTES } from '../config/constants';
 import SafeImage from '../components/ui/SafeImage';
+import { BlogDetailSkeleton } from '../components/ui/Skeletons';
 
 /**
  * Rich formatted blog body renderer:
@@ -166,11 +167,7 @@ export default function BlogDetail() {
   };
 
   if (loading) {
-    return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-      </div>
-    );
+    return <BlogDetailSkeleton />;
   }
   if (!blog) return <p className="p-12 text-center text-zinc-400">Blog article not found.</p>;
 

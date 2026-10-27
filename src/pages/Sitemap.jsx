@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { buildCompleteDynamicSitemap } from '../utils/sitemapGenerator';
 import { sitemapApi } from '../services/api';
+import { SitemapSkeleton } from '../components/ui/Skeletons';
 
 export default function Sitemap({ xmlMode = false }) {
   const [searchParams] = useSearchParams();
@@ -74,14 +75,7 @@ export default function Sitemap({ xmlMode = false }) {
   };
 
   if (loading && !data) {
-    return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-        <p className="text-xs font-semibold text-zinc-400">
-          Scanning React Router routes & live database URLs for Google Crawler...
-        </p>
-      </div>
-    );
+    return <SitemapSkeleton />;
   }
 
   if (!data) return null;

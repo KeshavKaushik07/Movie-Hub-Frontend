@@ -20,6 +20,11 @@ import { getTitlePath } from '../utils/formatters';
 import { getInMemoryAccessToken } from '../services/backendApi';
 import { BACKEND, ROLES, ROUTES } from '../config/constants';
 import SafeImage from '../components/ui/SafeImage';
+import {
+  CommunityRoomsListSkeleton,
+  CommunityMessagesSkeleton,
+  CommunityChatPaneSkeleton,
+} from '../components/ui/Skeletons';
 
 export default function Community() {
   const user = useSelector((s) => s.auth.user);
@@ -28,6 +33,8 @@ export default function Community() {
   const [mode, setMode] = useState('public');
   const [rooms, setRooms] = useState([]);
   const [dms, setDms] = useState([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
 
@@ -59,8 +66,10 @@ export default function Community() {
   // Load Public/Movie rooms + User's 1-on-1 DMs
   const loadRooms = useCallback(
     async (silent = false) => {
+      if (!silent) setRoomsLoading(true);
       const pub = await communityApi.listRooms({ _t: Date.now() }).catch(() => []);
       setRooms(pub);
+      if (!silent) setRoomsLoading(false);
       setActiveRoom((prev) => {
         if (prev) {
           const updated = pub.find((r) => r.id === prev.id);
@@ -137,7 +146,10 @@ export default function Community() {
     if (!roomId) return;
 
     lastMessageSigRef.current = '';
-    fetchRoomMessages(roomId, { forceScroll: true, showSpinner: true });
+    setMessagesLoading(true);
+    fetchRoomMessages(roomId, { forceScroll: true, showSpinner: true }).finally(() =>
+      setMessagesLoading(false),
+    );
 
     // Live polling every 1.5s guarantees instant updates even without WebSockets
     const pollTimer = setInterval(() => {
@@ -385,7 +397,9 @@ export default function Community() {
           )}
 
           <div className="studio-scroll min-w-0 w-full flex-1 space-y-1.5 overflow-x-hidden overflow-y-auto p-2.5">
-            {displayedRooms.length === 0 ? (
+            {roomsLoading && displayedRooms.length === 0 ? (
+              <CommunityRoomsListSkeleton count={6} />
+            ) : displayedRooms.length === 0 ? (
               <div className="flex h-40 flex-col items-center justify-center px-4 text-center text-xs text-zinc-500">
                 <p>
                   {mode === 'dm'
@@ -484,7 +498,9 @@ export default function Community() {
               </div>
 
               <div className="studio-scroll min-w-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto p-3.5 sm:p-5">
-                {messages.length === 0 ? (
+                {messagesLoading && messages.length === 0 ? (
+                  <CommunityMessagesSkeleton count={5} />
+                ) : messages.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center text-center text-xs text-zinc-500">
                     <MessageSquare size={28} className="mb-2 text-zinc-600" />
                     <p>No messages in {activeRoom.name} yet.</p>
@@ -666,6 +682,8 @@ export default function Community() {
                 )}
               </div>
             </>
+          ) : roomsLoading ? (
+            <CommunityChatPaneSkeleton />
           ) : null}
         </section>
       </div>

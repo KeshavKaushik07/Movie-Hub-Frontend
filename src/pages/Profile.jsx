@@ -19,6 +19,7 @@ import { reviewService } from '../services/reviewService';
 import { MOVIE_GENRES, ROLES } from '../config/constants';
 import { getTitlePath } from '../utils/formatters';
 import SafeImage from '../components/ui/SafeImage';
+import { WatchlistGridSkeleton, ProfileReviewsSkeleton } from '../components/ui/Skeletons';
 
 export default function Profile({ defaultTab = 'overview' }) {
   const user = useSelector((s) => s.auth.user);
@@ -42,6 +43,7 @@ export default function Profile({ defaultTab = 'overview' }) {
 
   const [reviews, setReviews] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
   const [watchFilter, setWatchFilter] = useState('');
 
   useEffect(() => {
@@ -50,8 +52,11 @@ export default function Profile({ defaultTab = 'overview' }) {
 
   useEffect(() => {
     if (!user) return;
-    reviewService.byUser().then(setReviews).catch(() => {});
-    reviewService.watchlist.list().then(setWatchlist).catch(() => {});
+    setLoadingData(true);
+    Promise.all([
+      reviewService.byUser().then(setReviews).catch(() => {}),
+      reviewService.watchlist.list().then(setWatchlist).catch(() => {}),
+    ]).finally(() => setLoadingData(false));
   }, [user]);
 
   const toggleGenre = (g) => {
@@ -244,7 +249,9 @@ export default function Profile({ defaultTab = 'overview' }) {
             ))}
           </div>
 
-          {filteredWatchlist.length === 0 ? (
+          {loadingData ? (
+            <WatchlistGridSkeleton count={10} />
+          ) : filteredWatchlist.length === 0 ? (
             <p className="rounded-3xl border border-white/10 bg-[#0e131f] p-10 text-center text-xs text-zinc-500">
               Your watchlist is empty for this filter.
             </p>
@@ -295,7 +302,9 @@ export default function Profile({ defaultTab = 'overview' }) {
 
       {tab === 'reviews' && (
         <div className="space-y-3">
-          {reviews.length === 0 ? (
+          {loadingData ? (
+            <ProfileReviewsSkeleton count={4} />
+          ) : reviews.length === 0 ? (
             <p className="rounded-3xl border border-white/10 bg-[#0e131f] p-10 text-center text-xs text-zinc-500">
               You haven’t posted any reviews yet.
             </p>
