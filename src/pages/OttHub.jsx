@@ -162,20 +162,27 @@ export default function OttHub() {
             ? resolveGenreId(selectedGenre, 'webseries')
             : undefined;
 
-          const [moviesRes, seriesRes] = await Promise.all([
+          const [moviesRes, seriesRes, tvRes] = await Promise.all([
             tmdb.discover('movie', {
               ott: ottParam,
               genre: movieGenreId,
               sort: sortBy,
               page,
-              limit: 18,
+              limit: 14,
             }),
             tmdb.discover('webseries', {
               ott: ottParam,
               genre: seriesGenreId,
               sort: sortBy,
               page,
-              limit: 18,
+              limit: 14,
+            }),
+            tmdb.discover('tv', {
+              ott: ottParam,
+              genre: seriesGenreId,
+              sort: sortBy,
+              page,
+              limit: 10,
             }),
           ]);
 
@@ -197,7 +204,15 @@ export default function OttHub() {
           // Deduplicate combined list by type:id
           const seen = new Set();
           const combined = [];
-          for (const item of [...mList, ...sList]) {
+          const tvList = (tvRes?.items || tvRes?.results || []).map(
+            (x) => ({
+              ...x,
+              type: 'tv',
+              subType: 'tv',
+              isWebSeries: false,
+            }),
+          );
+          for (const item of [...mList, ...sList, ...tvList]) {
             const k = `${item.type}:${item.id}`;
             if (!seen.has(k)) {
               seen.add(k);
@@ -557,7 +572,7 @@ export default function OttHub() {
                   setSelectedOtt('all');
                   setSelectedGenre('');
                   setMediaFilter('all');
-                  nav('/ott');
+                  nav('/otts');
                   notifyPatch({
                     type: 'info',
                     title: 'OTT Filter Reset',

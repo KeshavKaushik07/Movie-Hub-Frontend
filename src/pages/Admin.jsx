@@ -647,6 +647,7 @@ export default function Admin() {
             ) : (
               <CommunitySection
               commRooms={commRooms}
+              currentUser={user}
               newRoomForm={newRoomForm}
               setNewRoomForm={setNewRoomForm}
               onCreateRoom={async (e) => {
@@ -665,10 +666,12 @@ export default function Admin() {
               onToggleRoomLock={(r) =>
                 communityApi.updateRoom(r.id, { isLocked: !r.isLocked }).then(() => {
                   loadCommunity();
-                  notify(`Room "${r.name}" ${!r.isLocked ? 'locked' : 'unlocked'}`);
+                  notify(`Community "${r.name}" ${!r.isLocked ? 'blocked' : 'unblocked'}`);
                 })
               }
               onRequestDeleteRoom={(r) => setRoomToDelete(r)}
+              onRefreshCommunity={loadCommunity}
+              notify={notify}
               />
             ))}
 

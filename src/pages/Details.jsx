@@ -458,7 +458,7 @@ export default function Details() {
             },
             {
               label: 'Explore Master OTT Hub',
-              onClick: () => nav('/ott'),
+              onClick: () => nav('/otts'),
             },
             {
               label: 'Back to Home',
@@ -890,7 +890,7 @@ export default function Details() {
                       </p>
                     </div>
                     <Link
-                      to='/ott'
+                      to='/otts'
                       className='inline-flex items-center gap-1 rounded-full bg-brand/15 px-3 py-1.5 text-xs font-extrabold text-brand hover:bg-brand hover:text-black'
                     >
                       Master OTT Hub <ExternalLink size={12} />
@@ -934,7 +934,7 @@ export default function Details() {
                             {flatrate.map((p) => (
                               <Link
                                 key={p.providerId || p.id || p.name}
-                                to='/ott'
+                                to='/otts'
                                 className='flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold hover:border-brand'
                               >
                                 {(p.logoUrl || p.logoPath) && (
@@ -1016,7 +1016,7 @@ export default function Details() {
                         announced yet for this title.
                       </span>
                       <Link
-                        to='/ott'
+                        to='/otts'
                         className='font-bold text-brand hover:underline'
                       >
                         Browse All OTT Titles →

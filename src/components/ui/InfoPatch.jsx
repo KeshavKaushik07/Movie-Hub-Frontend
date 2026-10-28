@@ -242,7 +242,19 @@ export function GlobalStatusPatch() {
   const isLight = theme === 'light';
 
   useEffect(() => {
-    return subscribeInfoPatches((item) => {
+    return subscribeInfoPatches((rawItem) => {
+      const safeMessage =
+        typeof rawItem?.message === 'string'
+          ? rawItem.message
+          : typeof rawItem?.message?.text === 'string'
+            ? rawItem.message.text
+            : '';
+      if (!safeMessage) return;
+      const item = {
+        ...rawItem,
+        title: typeof rawItem?.title === 'string' ? rawItem.title : 'Notice',
+        message: safeMessage,
+      };
       setPatches((prev) => {
         // Deduplicate identical messages within 1.5s
         const duplicate = prev.some(

@@ -1,4 +1,4 @@
-import { backend } from './backendApi';
+import { backend, readSavedUser } from './backendApi';
 import {
   resolveImage,
   resolveSlugMapping,
@@ -419,10 +419,46 @@ export const tmdb = {
     const key = `list:${type}:${normalized}:${stableParamsKey(params)}`;
     return requestBackendWithCache(
       key,
-      () =>
-        backend
-          .get(`/discover/lists/${normalized}`, { params: { type, ...params } })
-          .then((r) => r.data),
+      async () => {
+        const r = await backend.get(`/discover/lists/${normalized}`, {
+          params: { type, ...params },
+        });
+        const data = r.data || {};
+        const items = data.items || data.results || [];
+        if (type === 'tv' && items.length < 8) {
+          try {
+            const fallbackRes = await backend.get(`/discover/lists/${normalized}`, {
+              params: { type: 'webseries', ...params },
+            });
+            const extra = (fallbackRes.data?.items || fallbackRes.data?.results || []).map((x) => ({
+              ...x,
+              type: 'tv',
+              subType: 'tv',
+              isWebSeries: false,
+            }));
+            const seen = new Set(items.map((i) => i.id));
+            const merged = [
+              ...items.map((x) => ({ ...x, type: 'tv', subType: 'tv', isWebSeries: false })),
+              ...extra.filter((x) => !seen.has(x.id)),
+            ];
+            return {
+              ...data,
+              items: merged,
+              results: merged,
+              total: Math.max(data.total || 0, fallbackRes.data?.total || merged.length),
+              total_results: Math.max(
+                data.total_results || 0,
+                fallbackRes.data?.total_results || merged.length,
+              ),
+              totalPages: Math.max(data.totalPages || 1, fallbackRes.data?.totalPages || 1),
+              total_pages: Math.max(data.total_pages || 1, fallbackRes.data?.total_pages || 1),
+            };
+          } catch {
+            /* ignore fallback error */
+          }
+        }
+        return data;
+      },
       () => filterOfflineTitles(type, params),
     );
   },
@@ -431,10 +467,44 @@ export const tmdb = {
     const key = `discover:${type}:${stableParamsKey(params)}`;
     return requestBackendWithCache(
       key,
-      () =>
-        backend
-          .get('/discover', { params: { type, ...params } })
-          .then((r) => r.data),
+      async () => {
+        const r = await backend.get('/discover', { params: { type, ...params } });
+        const data = r.data || {};
+        const items = data.items || data.results || [];
+        if (type === 'tv' && items.length < 8) {
+          try {
+            const fallbackRes = await backend.get('/discover', {
+              params: { type: 'webseries', ...params },
+            });
+            const extra = (fallbackRes.data?.items || fallbackRes.data?.results || []).map((x) => ({
+              ...x,
+              type: 'tv',
+              subType: 'tv',
+              isWebSeries: false,
+            }));
+            const seen = new Set(items.map((i) => i.id));
+            const merged = [
+              ...items.map((x) => ({ ...x, type: 'tv', subType: 'tv', isWebSeries: false })),
+              ...extra.filter((x) => !seen.has(x.id)),
+            ];
+            return {
+              ...data,
+              items: merged,
+              results: merged,
+              total: Math.max(data.total || 0, fallbackRes.data?.total || merged.length),
+              total_results: Math.max(
+                data.total_results || 0,
+                fallbackRes.data?.total_results || merged.length,
+              ),
+              totalPages: Math.max(data.totalPages || 1, fallbackRes.data?.totalPages || 1),
+              total_pages: Math.max(data.total_pages || 1, fallbackRes.data?.total_pages || 1),
+            };
+          } catch {
+            /* ignore fallback error */
+          }
+        }
+        return data;
+      },
       () => filterOfflineTitles(type, params),
     );
   },
@@ -605,48 +675,221 @@ export const blogApi = {
     backend.delete(`/blogs/comments/${commentId}`).then((r) => r.data),
 };
 
-// Community & Live User Chat API (Public Lounges, Movie Chat Rooms, 1-on-1 DMs, SSE)
+export const GROUP_SYMBOLS = [
+  '🎬',
+  '🍿',
+  '🎥',
+  '🎞️',
+  '📽️',
+  '🎭',
+  '📺',
+  '🔥',
+  '⭐',
+  '🌟',
+  '💎',
+  '🏆',
+  '👑',
+  '🚀',
+  '💬',
+  '🗣️',
+  '📢',
+  '🎧',
+  '🎵',
+  '🎸',
+  '🕹️',
+  '👾',
+  '🦸',
+  '🦹',
+  '🕵️',
+  '👻',
+  '👽',
+  '🤖',
+  '🐉',
+  '⚔️',
+  '🛡️',
+  '🇮🇳',
+  '🌍',
+  '🌸',
+  '⛩️',
+  '💰',
+  '📈',
+  '❤️',
+  '⚡',
+  '🌙',
+];
+
+export const COMMUNITY_TOPICS = [
+  { value: 'general', label: 'General Cinema' },
+  { value: 'bollywood', label: 'Bollywood & Indian' },
+  { value: 'hollywood', label: 'Hollywood & Global' },
+  { value: 'tollywood', label: 'Pan-India & South' },
+  { value: 'webseries', label: 'Web Series & OTT' },
+  { value: 'boxoffice', label: 'Box Office & Trade' },
+  { value: 'anime', label: 'Anime & K-Drama' },
+  { value: 'spoilers', label: 'Spoilers & Theories' },
+  { value: 'fanclub', label: 'Fan Club' },
+];
+
+const LEFT_ROOMS_STORAGE_PREFIX = 'movieshub_left_rooms_v1:';
+
+const getLeftRoomSet = (userId) => {
+  if (!userId) return new Set();
+  try {
+    const raw = localStorage.getItem(`${LEFT_ROOMS_STORAGE_PREFIX}${userId}`);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+};
+
+const markRoomLeft = (userId, roomId, left = true) => {
+  if (!userId || !roomId) return;
+  try {
+    const set = getLeftRoomSet(userId);
+    if (left) set.add(String(roomId));
+    else set.delete(String(roomId));
+    localStorage.setItem(`${LEFT_ROOMS_STORAGE_PREFIX}${userId}`, JSON.stringify(Array.from(set)));
+  } catch {
+    /* ignore */
+  }
+};
+
+// Community Chat Groups API (User & Admin Communities, Join/Leave, Multiple/Transferable Admins, Moderation)
 export const communityApi = {
-  listRooms: (params = {}) =>
-    backend.get('/community/rooms', { params }).then((r) => r.data.rooms || []),
+  getSymbols: () =>
+    backend
+      .get('/community/symbols')
+      .then((r) => r.data?.symbols || GROUP_SYMBOLS)
+      .catch(() => GROUP_SYMBOLS),
+  listRooms: async (params = {}) => {
+    const r = await backend.get('/community/rooms', { params });
+    const rawRooms = Array.isArray(r.data?.rooms) ? r.data.rooms : [];
+    const currentUser = readSavedUser();
+    const uid = currentUser?.id ? String(currentUser.id) : null;
+    const isStaff = currentUser && ['admin', 'superadmin'].includes(currentUser.role);
+    const leftSet = getLeftRoomSet(uid);
+
+    // If an Admin/SuperAdmin is logged in and any official/admin-created room in DB has 0 members
+    // (e.g. seeded lounges before an admin was linked), automatically assign the creator/admin in DB!
+    if (uid && isStaff) {
+      const unseededRooms = rawRooms.filter(
+        (rm) =>
+          (!rm.memberCount || rm.memberCount === 0 || !rm.admins?.length) &&
+          !leftSet.has(String(rm.id)) &&
+          (rm.isOfficial || !rm.createdBy || String(rm.createdBy?.id) === uid),
+      );
+      if (unseededRooms.length > 0) {
+        await Promise.all(
+          unseededRooms.map(async (rm) => {
+            const targetAdminId = rm.createdBy?.id || uid;
+            try {
+              const updated = await backend
+                .post(
+                  `/community/rooms/${rm.id}/admins`,
+                  { userId: targetAdminId, transfer: false },
+                  { silentPatch: true },
+                )
+                .then((res) => res.data?.room);
+              if (updated) {
+                Object.assign(rm, updated);
+              }
+            } catch {
+              /* ignore */
+            }
+          }),
+        );
+      }
+    }
+
+    return rawRooms.map((rm) => {
+      if (uid && leftSet.has(String(rm.id))) {
+        const filteredMembers = Array.isArray(rm.memberIds)
+          ? rm.memberIds.filter((id) => String(id) !== uid)
+          : [];
+        return {
+          ...rm,
+          memberIds: filteredMembers,
+          isMember: false,
+          isRoomAdmin: false,
+        };
+      }
+      return rm;
+    });
+  },
   getOrCreateMovieRoom: (type, tmdbId) =>
     backend
-      .post(`/community/rooms/movie/${type}/${tmdbId}`)
+      .post(`/community/rooms/movie/${type}/${tmdbId}`, {}, { silentPatch: true })
       .then((r) => r.data.room),
   createRoom: (payload) =>
-    backend.post('/community/rooms', payload).then((r) => r.data.room),
+    backend.post('/community/rooms', payload).then((r) => {
+      const currentUser = readSavedUser();
+      if (currentUser?.id && r.data?.room?.id) {
+        markRoomLeft(currentUser.id, r.data.room.id, false);
+      }
+      return r.data.room;
+    }),
   updateRoom: (roomId, payload) =>
     backend
       .patch(`/community/rooms/${roomId}`, payload)
       .then((r) => r.data.room),
   deleteRoom: (roomId) =>
     backend.delete(`/community/rooms/${roomId}`).then((r) => r.data),
+  joinRoom: (roomId) => {
+    const currentUser = readSavedUser();
+    if (currentUser?.id) markRoomLeft(currentUser.id, roomId, false);
+    return backend
+      .post(`/community/rooms/${roomId}/join`, {}, { silentPatch: true })
+      .then((r) => r.data.room);
+  },
+  leaveRoom: (roomId) => {
+    const currentUser = readSavedUser();
+    if (currentUser?.id) markRoomLeft(currentUser.id, roomId, true);
+    return backend
+      .post(`/community/rooms/${roomId}/leave`, {}, { silentPatch: true })
+      .then((r) => r.data.room);
+  },
+  getRoomMembers: (roomId) =>
+    backend.get(`/community/rooms/${roomId}/members`).then((r) => r.data),
+  promoteOrTransferAdmin: (roomId, payload) =>
+    backend
+      .post(`/community/rooms/${roomId}/admins`, payload, { silentPatch: true })
+      .then((r) => r.data.room),
+  removeAdmin: (roomId, targetUserId) =>
+    backend
+      .delete(`/community/rooms/${roomId}/admins/${targetUserId}`, { silentPatch: true })
+      .then((r) => r.data.room),
+  blockUser: (roomId, userId) =>
+    backend
+      .post(`/community/rooms/${roomId}/block-user`, { userId }, { silentPatch: true })
+      .then((r) => r.data),
+  unblockUser: (roomId, userId) =>
+    backend
+      .post(`/community/rooms/${roomId}/unblock-user`, { userId }, { silentPatch: true })
+      .then((r) => r.data),
   listMessages: (roomId, params = {}) =>
     backend
       .get(`/community/rooms/${roomId}/messages`, { params })
       .then((r) => r.data),
   sendMessage: (roomId, payload) =>
     backend
-      .post(`/community/rooms/${roomId}/messages`, payload)
-      .then((r) => r.data.message),
+      .post(`/community/rooms/${roomId}/messages`, payload, { silentPatch: true })
+      .then((r) => r.data?.chatMessage || r.data?.message),
   toggleLike: (messageId) =>
-    backend.post(`/community/messages/${messageId}/like`).then((r) => r.data),
+    backend
+      .post(`/community/messages/${messageId}/like`, {}, { silentPatch: true })
+      .then((r) => r.data),
   updateMessage: (messageId, payload) =>
     backend
-      .patch(`/community/messages/${messageId}`, payload)
-      .then((r) => r.data.message),
+      .patch(`/community/messages/${messageId}`, payload, { silentPatch: true })
+      .then((r) => r.data?.chatMessage || r.data?.message),
   deleteMessage: (messageId) =>
-    backend.delete(`/community/messages/${messageId}`).then((r) => r.data),
+    backend
+      .delete(`/community/messages/${messageId}`, { silentPatch: true })
+      .then((r) => r.data),
   searchUsers: (q = '') =>
     backend
       .get('/community/users', { params: { q } })
       .then((r) => r.data.users || []),
-  listDms: (params = {}) =>
-    backend
-      .get('/community/dms', { params })
-      .then((r) => r.data.conversations || []),
-  startDm: (targetUserId) =>
-    backend.post(`/community/dms/${targetUserId}`).then((r) => r.data.room),
 };
 
 export const img = (

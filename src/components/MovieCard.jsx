@@ -10,15 +10,24 @@ import {
 
 export default function MovieCard({ item, type }) {
   const { region } = useSelector((s) => s.preferences);
-  const isWebSeries = Boolean(
-    item.isWebSeries ||
-      item.subType === 'webseries' ||
-      type === 'webseries' ||
-      type === 'web-series',
-  );
+  const explicitTvShow =
+    type === 'tv' ||
+    type === 'tv-show' ||
+    type === 'tv-shows' ||
+    type === 'tv-series';
+  const explicitWebSeries =
+    type === 'webseries' || type === 'web-series';
+
+  const isWebSeries = explicitTvShow
+    ? false
+    : Boolean(
+        explicitWebSeries ||
+          item.isWebSeries ||
+          item.subType === 'webseries',
+      );
   const mediaType = isWebSeries
     ? 'webseries'
-    : type === 'tv-show' || type === 'tv-shows' || type === 'tv-series'
+    : explicitTvShow
       ? 'tv'
       : type ||
         item.type ||

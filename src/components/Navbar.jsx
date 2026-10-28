@@ -92,9 +92,10 @@ export default function Navbar() {
     return best;
   };
 
-  const activeOttSlug = loc.pathname.startsWith('/ott/')
-    ? loc.pathname.replace(/^\/ott\/+/, '').split('/')[0]
-    : currentParams.get('provider') || '';
+  const activeOttSlug =
+    loc.pathname.startsWith('/ott/') && loc.pathname !== '/otts'
+      ? loc.pathname.replace(/^\/ott\/+/, '').split('/')[0]
+      : currentParams.get('provider') || '';
   const activeOttKey = activeOttSlug ? resolveOttKey(activeOttSlug) : null;
 
   return (
@@ -109,7 +110,7 @@ export default function Navbar() {
         {/* Brand Logo (Never wraps) */}
         <Link
           to={ROUTES.HOME}
-          className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight sm:mr-8 sm:shrink-0'
+          className='flex min-w-0 shrink items-center gap-2 whitespace-nowrap font-extrabold tracking-tight sm:mr-6 sm:shrink-0'
         >
           <span className='flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-amber-500 shadow-md shadow-brand/20 sm:h-9 sm:w-9 overflow-hidden'>
             <img src='/movie-icon.png' alt='' className='object-cover' />
@@ -122,14 +123,26 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop Navigation — Movies, Web Series & TV Shows, OTT (with All OTT uppermost), Blogs & Community */}
+        {/* Desktop Navigation — Movies, Web Series, TV Shows, OTT (/otts), Blogs & Community */}
         <nav className='hidden items-center gap-0.5 lg:flex'>
           {NAV_MENU.map((m) => {
             const isOttMenu = m.key === 'ott' || m.label === 'OTT';
             const activeItemTo = isOttMenu ? null : getActiveItemTo(m.items);
+            const isDetailOrCatalogMatch =
+              (m.key === 'movies' &&
+                (loc.pathname.startsWith('/movie/') ||
+                  loc.pathname === '/movies' ||
+                  loc.pathname.startsWith('/browse/movies'))) ||
+              (m.key === 'webseries' &&
+                (loc.pathname.startsWith('/web-series') ||
+                  loc.pathname.startsWith('/browse/web-series'))) ||
+              (m.key === 'tvshows' &&
+                (loc.pathname.startsWith('/tv-show') ||
+                  loc.pathname.startsWith('/tv-series') ||
+                  loc.pathname.startsWith('/browse/tv-show')));
             const isMenuActive = isOttMenu
-              ? loc.pathname.startsWith('/ott')
-              : Boolean(activeItemTo);
+              ? loc.pathname === '/otts' || loc.pathname.startsWith('/ott')
+              : Boolean(activeItemTo || isDetailOrCatalogMatch);
             return (
               <div
                 key={m.key || m.label}
@@ -141,7 +154,7 @@ export default function Navbar() {
                   type='button'
                   onClick={() => {
                     if (isOttMenu) {
-                      nav('/ott');
+                      nav('/otts');
                       setOpenMenu(null);
                     } else {
                       setOpenMenu(openMenu === m.label ? null : m.label);
@@ -181,9 +194,9 @@ export default function Navbar() {
                     >
                       {isOttMenu ? (
                         <div className='space-y-1'>
-                          {/* Uppermost Item: All OTT Master Page */}
+                          {/* Uppermost Item: All OTT Master Page (/otts) */}
                           <Link
-                            to='/ott'
+                            to='/otts'
                             onClick={() => setOpenMenu(null)}
                             className='flex items-center justify-between rounded-xl bg-brand px-3 py-2 text-xs font-extrabold text-black shadow-sm transition hover:brightness-105'
                           >
@@ -288,7 +301,7 @@ export default function Navbar() {
         {/* Fixed-Width Desktop Search Bar */}
         <form
           onSubmit={onSearch}
-          className='relative hidden w-[220px] shrink-0 grow-0 lg:block xl:w-[260px]'
+          className='relative hidden w-[200px] shrink-0 grow-0 lg:block xl:w-[240px]'
         >
           <Search
             size={14}
@@ -442,7 +455,7 @@ export default function Navbar() {
                     <Bookmark size={14} /> My Watchlist
                   </Link>
                   <Link
-                    to='/ott'
+                    to='/otts'
                     className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold ${
                       isLight ? 'hover:bg-slate-100' : 'hover:bg-white/10'
                     }`}

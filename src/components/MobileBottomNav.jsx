@@ -30,7 +30,7 @@ export default function MobileBottomNav() {
         pathname === '/web-series' ||
         pathname === '/tv-shows',
     },
-    { to: '/ott', label: 'OTT', icon: Tv, active: pathname.startsWith('/ott') },
+    { to: '/otts', label: 'OTT', icon: Tv, active: pathname.startsWith('/ott') },
     { to: '/community', label: 'Chat', icon: MessageSquare, active: pathname.startsWith('/community') },
     { to: '/blogs', label: 'Blogs', icon: BookOpen, active: pathname.startsWith('/blogs') },
     ...(isStaff

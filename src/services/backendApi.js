@@ -559,11 +559,11 @@ backend.interceptors.response.use(
       !isSilentAuth
     ) {
       const serverMsg = res.data?.message;
-      if (serverMsg) {
+      if (typeof serverMsg === 'string' && serverMsg.trim()) {
         notifyPatch({
           type: 'success',
           title: 'Action Completed',
-          message: serverMsg,
+          message: serverMsg.trim(),
         });
       }
     }

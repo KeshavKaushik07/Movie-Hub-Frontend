@@ -18,12 +18,16 @@ export const ROUTES = {
   SIGNUP: '/signup',
   PROFILE: '/profile',
   WATCHLIST: '/watchlist',
-  OTT_HUB: '/ott',
+  OTT_HUB: '/otts',
+  OTT_HUB_LEGACY: '/ott',
   OTT_PROVIDER: '/ott/:providerKey',
+  MOVIES_CATALOG: '/movies',
+  TV_SHOWS_CATALOG: '/tv-shows',
+  TV_SERIES_CATALOG: '/tv-series',
+  WEB_SERIES_CATALOG: '/web-series',
   MOVIES: '/movies',
   TV_SHOWS: '/tv-shows',
   TV_SERIES: '/tv-series',
-  WEB_SERIES_CATALOG: '/web-series',
   BROWSE: '/browse/:type',
   BROWSE_ROOT: '/browse',
   MOVIE_DETAIL: '/movie/:id',
@@ -237,12 +241,13 @@ export const resolveOttKey = (slugOrKey = '') => {
 };
 
 /**
- * Builds the clean bot-friendly OTT URL: `/ott` or `/ott/prime-video`, `/ott/jiohotstar`, `/ott/netflix`
- * (never uses `?provider=prime`).
+ * Builds the clean bot-friendly OTT URL:
+ * - Master All-OTT Page (plural): `/otts`
+ * - Specific OTT Platform (singular): `/ott/prime-video`, `/ott/jiohotstar`, `/ott/netflix`
  */
 export const getOttPath = (keyOrSlug = '', extraQuery = {}) => {
   const slug = getOttSlug(keyOrSlug);
-  const basePath = slug ? `/ott/${slug}` : '/ott';
+  const basePath = slug ? `/ott/${slug}` : '/otts';
   const qs = new URLSearchParams();
   Object.entries(extraQuery || {}).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '' && k !== 'provider') {
@@ -303,7 +308,7 @@ const genreLinks = (typeSlug, map) =>
       to: `/browse/${typeSlug}?genre=${toGenreSlug(label)}`,
     }));
 
-// Desktop Navbar clearly differentiates Movies (/browse/movies), Web Series (/browse/web-series), TV Shows (/browse/tv-shows), and OTT (/ott/:slug)
+// Desktop Navbar with dedicated separate tabs for Movies, Web Series, TV Shows, and OTT (/otts)
 export const NAV_MENU = [
   {
     key: 'movies',
@@ -321,17 +326,29 @@ export const NAV_MENU = [
     label: 'Web Series',
     items: [
       { label: '🔥 All Web Series (OTT)', to: '/browse/web-series' },
+      { label: '📅 Upcoming Web Series', to: '/browse/web-series?list=upcoming' },
       { label: '⚡ Trending Web Series', to: '/browse/web-series?list=trending' },
-      { label: '📺 All TV Shows', to: '/browse/tv-shows' },
-      { label: '📡 Trending TV Shows', to: '/browse/tv-shows?list=trending' },
+      { label: '🏆 Top Rated Web Series', to: '/browse/web-series?list=top-rated' },
       ...genreLinks('web-series', TV_GENRES),
+    ],
+  },
+  {
+    key: 'tvshows',
+    label: 'TV Shows',
+    items: [
+      { label: '📺 All TV Shows', to: '/browse/tv-shows' },
+      { label: '📅 Upcoming TV Shows', to: '/browse/tv-shows?list=upcoming' },
+      { label: '📡 Trending TV Shows', to: '/browse/tv-shows?list=trending' },
+      { label: '🌟 Popular TV Shows', to: '/browse/tv-shows?list=popular' },
+      { label: '🏆 Top Rated TV Shows', to: '/browse/tv-shows?list=top-rated' },
+      ...genreLinks('tv-shows', TV_GENRES),
     ],
   },
   {
     key: 'ott',
     label: 'OTT',
     items: [
-      { label: '✨ All OTT', to: '/ott', isMaster: true },
+      { label: '✨ All OTT', to: '/otts', isMaster: true },
       ...OTT_LIST.map((o) => ({
         label: `${o.emoji || '📺'} ${o.label}`,
         to: `/ott/${o.slug}`,

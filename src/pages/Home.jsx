@@ -267,7 +267,7 @@ export default function Home() {
             <h3 className="text-xs font-extrabold tracking-wider text-zinc-400 uppercase">
               Stream by OTT Platform
             </h3>
-            <Link to="/ott" className="text-xs font-extrabold text-brand hover:underline">
+            <Link to="/otts" className="text-xs font-extrabold text-brand hover:underline">
               ✨ Open Master OTT Page →
             </Link>
           </div>

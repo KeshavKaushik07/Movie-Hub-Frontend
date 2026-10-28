@@ -690,7 +690,7 @@ export default function Browse() {
             },
             {
               label: 'Open Master OTT Hub',
-              onClick: () => nav('/ott'),
+              onClick: () => nav('/otts'),
             },
           ]}
         />

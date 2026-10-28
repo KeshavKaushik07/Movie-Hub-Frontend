@@ -33,6 +33,7 @@ const userRoutesTree = (
   <>
     <Route path={ROUTES.HOME} element={<Home />} />
     <Route path={ROUTES.OTT_HUB} element={<OttHub />} />
+    <Route path={ROUTES.OTT_HUB_LEGACY} element={<OttHub />} />
     <Route path={ROUTES.OTT_PROVIDER} element={<OttHub />} />
     <Route path={ROUTES.BROWSE_ROOT} element={<Browse />} />
     <Route path={ROUTES.BROWSE} element={<Browse />} />
@@ -116,7 +117,7 @@ export default function App() {
 
   if (isAdminStudioRoute) {
     return (
-      <div className='min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#070a10] text-white'>
+      <div className='min-h-screen w-full max-w-[100vw] overflow-x-clip bg-[#070a10] text-white'>
         <GlobalStatusPatch />
         <LogoutConfirmModal />
         <AppErrorBoundary>
@@ -136,7 +137,7 @@ export default function App() {
   }
 
   return (
-    <div className='flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-hidden bg-[#070a10] pb-16 text-white lg:pb-0'>
+    <div className='flex min-h-screen w-full max-w-[100vw] flex-col overflow-x-clip bg-[#070a10] pb-16 text-white lg:pb-0'>
       <Navbar />
       <PreferenceModal />
       <GlobalStatusPatch />
