@@ -12,17 +12,16 @@ import {
   UserCheck,
   UserX,
   MapPin,
-  Ban,
-  CheckCircle2,
   X,
+  Save,
 } from 'lucide-react';
 import { ROLES } from '../../config/constants';
 import CustomSelect from '../ui/CustomSelect';
-import { formatAdminDate, formatShortId } from './adminHelpers';
+import { formatAdminDateTime } from './adminHelpers';
 
 export default function UsersSection({
   mode = 'users', // 'users' (Regular Users ONLY) | 'staff' (Staff: Admin & Super Admins)
-  users,
+  users = [],
   currentUser,
   isSuper,
   userSearch,
@@ -64,7 +63,11 @@ export default function UsersSection({
       if (newStaff.role !== targetRole) {
         setNewStaff((prev) => ({ ...prev, role: targetRole }));
       }
-    } else if (!isStaffMode && subTab === 'create' && newStaff.role !== ROLES.USER) {
+    } else if (
+      !isStaffMode &&
+      subTab === 'create' &&
+      newStaff.role !== ROLES.USER
+    ) {
       setNewStaff((prev) => ({ ...prev, role: ROLES.USER }));
     }
   }, [isStaffMode, subTab]); // eslint-disable-line
@@ -74,172 +77,197 @@ export default function UsersSection({
     setSearchParams({ tab: nextTab });
   };
 
-  // Separate Regular Users, Admin Staff, and Super Admins
   const regularUsers = (users || []).filter((u) => u.role === ROLES.USER);
   const adminAccounts = (users || []).filter((u) => u.role === ROLES.ADMIN);
   const superAdminAccounts = (users || []).filter(
     (u) => u.role === ROLES.SUPERADMIN,
   );
+  const staffAccounts = (users || []).filter((u) =>
+    [ROLES.ADMIN, ROLES.SUPERADMIN].includes(u.role),
+  );
 
-  const activeRegularCount = regularUsers.filter((u) => u.isActive !== false).length;
-  const suspendedRegularCount = regularUsers.filter((u) => u.isActive === false).length;
-
-  const basePool = isStaffMode
-    ? subTab === 'superadmin'
-      ? superAdminAccounts
-      : adminAccounts
-    : regularUsers;
-
-  const visibleAccounts = basePool.filter((u) => {
-    if (!isStaffMode) {
-      if (subTab === 'active' && u.isActive === false) return false;
-      if (subTab === 'suspended' && u.isActive !== false) return false;
+  let visibleAccounts = [];
+  if (!isStaffMode) {
+    if (subTab === 'active') {
+      visibleAccounts = regularUsers.filter((u) => u.isActive !== false);
+    } else if (subTab === 'suspended') {
+      visibleAccounts = regularUsers.filter((u) => u.isActive === false);
+    } else {
+      visibleAccounts = regularUsers;
     }
-    if (userSearch.trim()) {
-      const q = userSearch.toLowerCase().trim();
-      const matchName = (u.name || '').toLowerCase().includes(q);
-      const matchEmail = (u.email || '').toLowerCase().includes(q);
-      const matchId = String(u.id || '').toLowerCase().includes(q);
-      return matchName || matchEmail || matchId;
+  } else {
+    if (subTab === 'superadmin') {
+      visibleAccounts = superAdminAccounts;
+    } else {
+      visibleAccounts = adminAccounts;
     }
-    return true;
-  });
+  }
 
   const resolveUserLocation = (u) => {
-    if (u.location && u.location.trim()) return u.location;
-    const reg = u.preferences?.region || 'IN';
-    return reg === 'IN' ? 'India (IN)' : 'Global';
+    const prefReg = String(
+      u.preferredRegion || u.region || u.country || '',
+    ).toUpperCase();
+    if (prefReg.includes('IN') || prefReg.includes('INDIA'))
+      return 'India (IN)';
+    if (prefReg.includes('US')) return 'United States (US)';
+    if (prefReg.includes('GB') || prefReg.includes('UK'))
+      return 'United Kingdom (GB)';
+    if (prefReg) return prefReg;
+    return 'India (IN)';
   };
 
-  const viewMeta = isStaffMode
-    ? subTab === 'superadmin'
-      ? {
-          title: `Super Admins (${superAdminAccounts.length})`,
-          subtitle: 'Root system owners and highest-privilege accounts',
-          icon: Crown,
-        }
-      : {
-          title: `Admin Staff (${adminAccounts.length})`,
-          subtitle: 'Platform moderators & content studio administrators',
-          icon: Shield,
-        }
-    : subTab === 'active'
-      ? {
-          title: `Active Regular Users (${activeRegularCount})`,
-          subtitle: 'Verified active member accounts with community & review access',
-          icon: UserCheck,
-        }
-      : subTab === 'suspended'
-        ? {
-            title: `Suspended Users (${suspendedRegularCount})`,
-            subtitle: 'Blocked or deactivated member accounts',
-            icon: UserX,
-          }
-        : {
-            title: `All Regular Users (${regularUsers.length})`,
-            subtitle: `Total ${regularUsers.length} registered members (${activeRegularCount} active, ${suspendedRegularCount} suspended)`,
-            icon: Users,
-          };
-
-  const HeaderIcon = viewMeta.icon;
-
   return (
-    <div className="space-y-5">
-      {/* Frozen Inner Contextual Header & Search Bar */}
-      <div className="admin-sticky-bar">
-        {subTab !== 'create' ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 shadow-lg">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/15 text-brand">
-                <HeaderIcon size={18} />
-              </span>
-              <div>
-                <h3 className="text-sm font-extrabold text-white">{viewMeta.title}</h3>
-                <p className="text-[11px] text-zinc-400">{viewMeta.subtitle}</p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  onSearchUsers();
-                }}
-                className="flex items-center gap-2"
-              >
-                <div className="relative w-56 sm:w-64">
-                  <Search
-                    size={14}
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-400"
-                  />
-                  <input
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                    placeholder={
-                      isStaffMode
-                        ? 'Search staff name or email...'
-                        : 'Search user name or email...'
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-[#070a10] py-2 pr-8 pl-8 text-xs text-white focus:border-brand focus:outline-none"
-                  />
-                  {userSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setUserSearch('')}
-                      className="absolute top-1/2 right-2.5 -translate-y-1/2 text-zinc-400 hover:text-white"
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
-                <button type="submit" className="admin-btn admin-btn-secondary">
-                  Search
-                </button>
-              </form>
-
-              {isStaffMode && (
+    <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
+      {/* ==================== PINNED TOOLBAR ==================== */}
+      <div className='shrink-0 mb-3 space-y-2'>
+        <div className='flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-2.5 shadow-xs'>
+          {/* Inner Filter Tabs */}
+          <div className='flex flex-wrap items-center gap-1 rounded-lg border border-[#d5d9e0] dark:border-white/10 bg-slate-100 dark:bg-[#070a10] p-1'>
+            {!isStaffMode ? (
+              <>
                 <button
-                  type="button"
-                  onClick={() => setShowCreateStaffDrawer((v) => !v)}
-                  className="admin-btn admin-btn-primary"
+                  type='button'
+                  onClick={() => handleSwitchTab('all')}
+                  className={`admin-btn admin-btn-sm ${
+                    subTab === 'all'
+                      ? 'admin-btn-primary font-bold'
+                      : 'admin-btn-secondary border-transparent shadow-none'
+                  }`}
                 >
-                  <UserPlus size={13} />
-                  {showCreateStaffDrawer
-                    ? 'Close Form'
-                    : subTab === 'superadmin'
-                      ? '+ Add Super Admin'
-                      : '+ Add Admin'}
+                  <Users size={13} />
+                  All Users ({regularUsers.length})
                 </button>
-              )}
-            </div>
+                <button
+                  type='button'
+                  onClick={() => handleSwitchTab('active')}
+                  className={`admin-btn admin-btn-sm ${
+                    subTab === 'active'
+                      ? 'admin-btn-primary font-bold'
+                      : 'admin-btn-secondary border-transparent shadow-none'
+                  }`}
+                >
+                  <UserCheck size={13} />
+                  Active (
+                  {regularUsers.filter((u) => u.isActive !== false).length})
+                </button>
+                <button
+                  type='button'
+                  onClick={() => handleSwitchTab('suspended')}
+                  className={`admin-btn admin-btn-sm ${
+                    subTab === 'suspended'
+                      ? 'admin-btn-primary font-bold'
+                      : 'admin-btn-secondary border-transparent shadow-none'
+                  }`}
+                >
+                  <UserX size={13} />
+                  Suspended (
+                  {regularUsers.filter((u) => u.isActive === false).length})
+                </button>
+                <button
+                  type='button'
+                  onClick={() => handleSwitchTab('create')}
+                  className={`admin-btn admin-btn-sm ${
+                    subTab === 'create'
+                      ? 'admin-btn-primary font-bold'
+                      : 'admin-btn-secondary border-transparent shadow-none'
+                  }`}
+                >
+                  <UserPlus size={13} />+ Create User
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type='button'
+                  onClick={() => handleSwitchTab('admin')}
+                  className={`admin-btn admin-btn-sm ${
+                    subTab === 'admin'
+                      ? 'admin-btn-primary font-bold'
+                      : 'admin-btn-secondary border-transparent shadow-none'
+                  }`}
+                >
+                  <Shield size={13} />
+                  Admins ({adminAccounts.length})
+                </button>
+                {isSuper && (
+                  <button
+                    type='button'
+                    onClick={() => handleSwitchTab('superadmin')}
+                    className={`admin-btn admin-btn-sm ${
+                      subTab === 'superadmin'
+                        ? 'admin-btn-primary font-bold'
+                        : 'admin-btn-secondary border-transparent shadow-none'
+                    }`}
+                  >
+                    <Crown size={13} />
+                    Super Admins ({superAdminAccounts.length})
+                  </button>
+                )}
+              </>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand/30 bg-[#0e131f] p-3.5 shadow-lg">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/15 text-brand">
-                <UserPlus size={18} />
-              </span>
-              <div>
-                <h3 className="text-sm font-extrabold text-white">
-                  Create New Regular User Account
-                </h3>
-                <p className="text-[11px] text-zinc-400">
-                  Register a standard user account with instant community and watchlist access
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleSwitchTab('all')}
-              className="admin-btn admin-btn-secondary"
+
+          {/* Search + Action Buttons */}
+          <div className='flex flex-1 flex-wrap items-center justify-end gap-2'>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                onSearchUsers(userSearch);
+              }}
+              className='flex min-w-44 flex-1 items-center gap-1.5 sm:max-w-xs'
             >
-              Back to Users List ({regularUsers.length})
-            </button>
+              <div className='relative flex-1'>
+                <Search
+                  size={13}
+                  className='absolute top-1/2 left-2.5 -translate-y-1/2 text-zinc-400'
+                />
+                <input
+                  type='text'
+                  placeholder='Search name, email...'
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className='w-full h-8 pl-8 pr-7 rounded-lg border border-[#d5d9e0] dark:border-white/15 bg-white dark:bg-[#151c2c] text-xs text-[#1b2230] dark:text-white'
+                />
+                {userSearch && (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setUserSearch('');
+                      onSearchUsers('');
+                    }}
+                    className='absolute top-1/2 right-2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600'
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+              <button
+                type='submit'
+                className='admin-btn admin-btn-secondary admin-btn-sm'
+              >
+                Search
+              </button>
+            </form>
+
+            {isStaffMode && isSuper && (
+              <button
+                type='button'
+                onClick={() => setShowCreateStaffDrawer((v) => !v)}
+                className='admin-btn admin-btn-primary admin-btn-sm'
+              >
+                <UserPlus size={13} />
+                {showCreateStaffDrawer
+                  ? 'Close Form'
+                  : subTab === 'superadmin'
+                    ? '+ Add Super Admin'
+                    : '+ Add Admin'}
+              </button>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* ==================== CREATE ACCOUNT VIEW ==================== */}
+      {/* ==================== CREATE ACCOUNT DRAWER / VIEW ==================== */}
       {(subTab === 'create' || (isStaffMode && showCreateStaffDrawer)) && (
         <form
           onSubmit={async (e) => {
@@ -249,305 +277,314 @@ export default function UsersSection({
               handleSwitchTab('all');
             }
           }}
-          className="rounded-2xl border border-brand/30 bg-[#0e131f] p-6 shadow-xl"
+          className='shrink-0 mb-3 rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-4 shadow-xs'
         >
-          {isStaffMode && (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand/15 text-brand">
-                  <ShieldAlert size={20} />
-                </span>
-                <div>
-                  <h3 className="text-base font-extrabold text-white">
-                    {subTab === 'superadmin'
-                      ? 'Provision New Super Admin Account'
-                      : 'Provision New Admin Account'}
-                  </h3>
-                  <p className="text-xs text-zinc-400">
-                    Onboard new Admin moderators or Super Admins with full console access.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCreateStaffDrawer(false)}
-                className="admin-btn admin-btn-secondary"
-              >
-                Hide Form
-              </button>
-            </div>
-          )}
+          <div className='mb-3 flex items-center justify-between border-b border-[#d5d9e0] dark:border-white/10 pb-2.5'>
+            <h3 className='text-sm font-bold text-[#1b2230] dark:text-white'>
+              {isStaffMode
+                ? subTab === 'superadmin'
+                  ? 'Provision Super Admin Account'
+                  : 'Provision Admin Account'
+                : 'Create Regular User Account'}
+            </h3>
+            <button
+              type='button'
+              onClick={() => {
+                if (isStaffMode) setShowCreateStaffDrawer(false);
+                else handleSwitchTab('all');
+              }}
+              className='text-zinc-400 hover:text-zinc-600 text-xs'
+            >
+              ✕ Cancel
+            </button>
+          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-zinc-300">
+              <label className='block text-xs font-semibold mb-1 text-zinc-600 dark:text-zinc-400'>
                 Full Name *
               </label>
               <input
                 required
-                placeholder="e.g. Aryan Sharma"
+                placeholder='e.g. Aryan Sharma'
                 value={newStaff.name}
-                onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs text-white focus:border-brand focus:outline-none"
+                onChange={(e) =>
+                  setNewStaff({ ...newStaff, name: e.target.value })
+                }
+                className='w-full h-9 px-3 rounded-lg border border-[#d5d9e0] dark:border-white/15 bg-white dark:bg-[#151c2c] text-xs text-[#1b2230] dark:text-white'
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-zinc-300">
+              <label className='block text-xs font-semibold mb-1 text-zinc-600 dark:text-zinc-400'>
                 Email Address *
               </label>
               <input
                 required
-                type="email"
-                placeholder="e.g. staff@movieshub.in"
+                type='email'
+                placeholder='e.g. aryan@example.com'
                 value={newStaff.email}
-                onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs text-white focus:border-brand focus:outline-none"
+                onChange={(e) =>
+                  setNewStaff({ ...newStaff, email: e.target.value })
+                }
+                className='w-full h-9 px-3 rounded-lg border border-[#d5d9e0] dark:border-white/15 bg-white dark:bg-[#151c2c] text-xs text-[#1b2230] dark:text-white'
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-bold text-zinc-300">
-                Password (min 6 chars) *
+              <label className='block text-xs font-semibold mb-1 text-zinc-600 dark:text-zinc-400'>
+                Initial Password *
               </label>
               <input
                 required
-                type="password"
+                type='password'
                 minLength={6}
-                placeholder="••••••••"
+                placeholder='Min 6 characters'
                 value={newStaff.password}
-                onChange={(e) => setNewStaff({ ...newStaff, password: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs text-white focus:border-brand focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-zinc-300">
-                Account Role
-              </label>
-              <CustomSelect
-                value={newStaff.role}
-                onChange={(val) => setNewStaff({ ...newStaff, role: val })}
-                options={
-                  isStaffMode
-                    ? [
-                        { value: ROLES.ADMIN, label: '🛡️ Admin' },
-                        { value: ROLES.SUPERADMIN, label: '👑 Super Admin' },
-                      ]
-                    : [
-                        { value: ROLES.USER, label: '👤 Regular User' },
-                        { value: ROLES.ADMIN, label: '🛡️ Admin Staff' },
-                      ]
+                onChange={(e) =>
+                  setNewStaff({ ...newStaff, password: e.target.value })
                 }
+                className='w-full h-9 px-3 rounded-lg border border-[#d5d9e0] dark:border-white/15 bg-white dark:bg-[#151c2c] text-xs text-[#1b2230] dark:text-white'
               />
             </div>
           </div>
 
-          <div className="mt-5 flex justify-end border-t border-white/10 pt-4">
-            <button type="submit" className="admin-btn admin-btn-primary px-6 py-2.5">
-              <UserPlus size={14} />{' '}
-              {isStaffMode
-                ? newStaff.role === ROLES.SUPERADMIN
-                  ? 'Create Super Admin Account'
-                  : 'Create Admin Account'
-                : 'Create User Account'}
+          <div className='mt-3 flex justify-end gap-2'>
+            <button
+              type='submit'
+              className='admin-btn admin-btn-primary admin-btn-sm'
+            >
+              <Save size={13} /> Create Account
             </button>
           </div>
         </form>
       )}
 
-      {/* ==================== SEPARATED DIRECTORY TABLE ==================== */}
+      {/* ==================== DIRECTORY TABLE CARD ==================== */}
       {subTab !== 'create' && (
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>{isStaffMode ? 'Staff Account' : 'User'}</th>
-                <th>Created</th>
-                <th>Location</th>
-                <th>Role & Status</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleAccounts.length === 0 ? (
+        <div className='flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] shadow-xs'>
+          <div className='flex-1 min-h-0 overflow-x-auto overflow-y-auto studio-scroll'>
+            <table className='admin-table w-full text-left'>
+              <thead className='sticky top-0 z-10 bg-slate-50 dark:bg-[#0e131f] border-b border-[#d5d9e0] dark:border-white/10 shadow-xs'>
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-xs text-zinc-400">
-                    {isStaffMode ? (
-                      <>
-                        <Shield size={20} className="mx-auto mb-2 text-brand" />
-                        No {subTab === 'superadmin' ? 'Super Admin' : 'Admin'} accounts match this filter.
-                      </>
-                    ) : (
-                      <>
-                        <Users size={20} className="mx-auto mb-2 text-brand" />
-                        No regular user accounts match this filter.
-                      </>
-                    )}
-                  </td>
+                  <th className='w-12'>id</th>
+                  <th>{isStaffMode ? 'Staff Account' : 'User'}</th>
+                  <th>Created &amp; Updated</th>
+                  <th>Location</th>
+                  <th>Role &amp; Status</th>
+                  <th className='text-right'>Actions</th>
                 </tr>
-              ) : (
-                visibleAccounts.map((u) => {
-                  const canManageUser =
-                    u.id !== currentUser?.id &&
-                    u.role !== ROLES.SUPERADMIN &&
-                    (isSuper || u.role === ROLES.USER);
-                  const canChangePassword =
-                    isSuper || u.role === ROLES.USER || u.id === currentUser?.id;
-                  const locLabel = resolveUserLocation(u);
-                  const isIndia = locLabel.toLowerCase().includes('in');
+              </thead>
+              <tbody>
+                {visibleAccounts.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className='py-12 text-center text-xs text-zinc-400'
+                    >
+                      {isStaffMode ? (
+                        <>
+                          <Shield
+                            size={22}
+                            className='mx-auto mb-2 text-[#2350d8] dark:text-brand'
+                          />
+                          No {subTab === 'superadmin' ? 'Super Admin' : 'Admin'}{' '}
+                          accounts match this filter.
+                        </>
+                      ) : (
+                        <>
+                          <Users
+                            size={22}
+                            className='mx-auto mb-2 text-[#2350d8] dark:text-brand'
+                          />
+                          No regular user accounts match this filter.
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                  visibleAccounts.map((u, idx) => {
+                    const canManageUser =
+                      u.id !== currentUser?.id &&
+                      u.role !== ROLES.SUPERADMIN &&
+                      (isSuper || u.role === ROLES.USER);
+                    const canChangePassword =
+                      isSuper ||
+                      u.role === ROLES.USER ||
+                      u.id === currentUser?.id;
+                    const locLabel = resolveUserLocation(u);
+                    const isIndia = locLabel.toLowerCase().includes('in');
 
-                  return (
-                    <tr key={u.id}>
-                      <td className="whitespace-nowrap">
-                        <span
-                          title={`Full ID: ${u.id}`}
-                          className="rounded-md border border-white/10 bg-white/5 px-2 py-1 font-mono text-[11px] font-bold text-zinc-300"
-                        >
-                          {formatShortId(u.id)}
-                        </span>
-                      </td>
+                    return (
+                      <tr key={u.id}>
+                        {/* 1. Normal Row ID */}
+                        <td className='whitespace-nowrap font-mono text-[11px] font-bold text-zinc-500'>
+                          #{idx + 1}
+                        </td>
 
-                      <td className="max-w-60 overflow-hidden">
-                        <div className="flex min-w-0 items-start gap-2.5 overflow-hidden">
-                          <span
-                            style={{ backgroundColor: u.avatarColor || '#f5b942' }}
-                            className="keep-white mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black text-white shadow"
-                          >
-                            {(u.name || 'U')[0].toUpperCase()}
-                          </span>
-                          <div className="min-w-0 flex-1 overflow-hidden">
-                            <div className="flex items-center gap-1.5 overflow-hidden">
-                              <p className="truncate text-xs font-extrabold text-white">
-                                {u.name}
-                              </p>
-                              <span
-                                className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                                  u.isActive !== false ? 'bg-emerald-400' : 'bg-rose-500'
-                                }`}
-                                title={
-                                  u.isActive !== false
-                                    ? 'Active Account'
-                                    : 'Suspended Account'
-                                }
-                              />
-                            </div>
-                            <p className="mt-0.5 truncate text-[11px] text-zinc-400">
-                              {u.email}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="whitespace-nowrap text-zinc-300">
-                        {formatAdminDate(u.createdAt)}
-                      </td>
-
-                      <td className="whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-zinc-200">
-                          <MapPin size={11} className="text-brand" />
-                          {isIndia ? '🇮🇳' : '🌍'} {locLabel}
-                        </span>
-                      </td>
-
-                      <td className="whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          {isSuper &&
-                          u.role !== ROLES.SUPERADMIN &&
-                          u.id !== currentUser?.id ? (
-                            <div className="w-40">
-                              <CustomSelect
-                                value={u.role}
-                                onChange={(val) => onChangeRole(u.id, val)}
-                                options={[
-                                  { value: ROLES.USER, label: '👤 Regular User' },
-                                  { value: ROLES.ADMIN, label: '🛡️ Admin' },
-                                  { value: ROLES.SUPERADMIN, label: '👑 Super Admin' },
-                                ]}
-                              />
-                            </div>
-                          ) : (
+                        {/* 2. User Info */}
+                        <td className='max-w-xs overflow-hidden'>
+                          <div className='flex min-w-0 items-start gap-2.5 overflow-hidden'>
                             <span
-                              className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[10px] font-extrabold uppercase ${
-                                u.role === ROLES.SUPERADMIN
-                                  ? 'bg-brand text-black'
-                                  : u.role === ROLES.ADMIN
-                                    ? 'bg-sky-500/20 text-sky-300'
-                                    : 'bg-white/10 text-zinc-300'
-                              }`}
+                              style={{
+                                backgroundColor: u.avatarColor || '#2350d8',
+                              }}
+                              className='keep-white mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-xs'
                             >
-                              {u.role === ROLES.SUPERADMIN ? (
-                                <>
-                                  <Crown size={10} /> Super Admin
-                                </>
-                              ) : (
-                                u.role
-                              )}
+                              {(u.name || 'U')[0].toUpperCase()}
                             </span>
-                          )}
-                          <span
-                            className={`admin-status-badge ${
-                              u.isActive !== false
-                                ? 'admin-status-emerald'
-                                : 'admin-status-rose'
-                            }`}
-                          >
-                            {u.isActive !== false ? 'Active' : 'Suspended'}
-                          </span>
-                        </div>
-                      </td>
+                            <div className='min-w-0 flex-1 overflow-hidden'>
+                              <div className='flex items-center gap-1.5 overflow-hidden'>
+                                <p className='truncate text-xs font-bold text-[#1b2230] dark:text-white'>
+                                  {u.name}
+                                </p>
+                                <span
+                                  className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                                    u.isActive !== false
+                                      ? 'bg-emerald-500'
+                                      : 'bg-rose-500'
+                                  }`}
+                                  title={
+                                    u.isActive !== false
+                                      ? 'Active'
+                                      : 'Suspended'
+                                  }
+                                />
+                              </div>
+                              <p className='mt-0.5 truncate text-[11px] text-zinc-500 dark:text-zinc-400'>
+                                {u.email}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
 
-                      <td className="whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {canChangePassword && (
-                            <button
-                              type="button"
-                              onClick={() => onOpenPasswordModal(u)}
-                              className="admin-btn admin-btn-amber admin-btn-sm"
-                            >
-                              <KeyRound size={12} /> Password
-                            </button>
-                          )}
-                          {canManageUser && (
-                            <button
-                              type="button"
-                              onClick={() => onToggleActive(u)}
-                              className={`admin-btn admin-btn-sm ${
-                                u.isActive === false
-                                  ? 'admin-btn-emerald'
-                                  : 'admin-btn-secondary'
+                        {/* 3. Created & Updated */}
+                        <td className='whitespace-nowrap text-[11px] leading-tight'>
+                          <div className='text-zinc-800 dark:text-zinc-200 font-medium'>
+                            <span className='text-zinc-400 text-[10px]'>
+                              Cre:{' '}
+                            </span>
+                            {formatAdminDateTime(u.createdAt)}
+                          </div>
+                          <div className='text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5'>
+                            <span className='text-zinc-400 text-[9px]'>
+                              Upd:{' '}
+                            </span>
+                            {formatAdminDateTime(
+                              u.updatedAt || u.lastLoginAt || u.createdAt,
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 4. Location */}
+                        <td className='whitespace-nowrap'>
+                          <span className='inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium bg-slate-100 dark:bg-white/5 text-zinc-700 dark:text-zinc-300'>
+                            <MapPin
+                              size={11}
+                              className='text-[#2350d8] dark:text-brand'
+                            />
+                            {isIndia ? '🇮🇳' : '🌍'} {locLabel}
+                          </span>
+                        </td>
+
+                        {/* 5. Role & Status */}
+                        <td className='whitespace-nowrap'>
+                          <div className='flex items-center gap-2'>
+                            {isSuper &&
+                            u.role !== ROLES.SUPERADMIN &&
+                            u.id !== currentUser?.id ? (
+                              <div className='w-36'>
+                                <CustomSelect
+                                  value={u.role}
+                                  onChange={(val) => onChangeRole(u.id, val)}
+                                  options={[
+                                    { value: ROLES.USER, label: '👤 User' },
+                                    { value: ROLES.ADMIN, label: '🛡️ Admin' },
+                                    {
+                                      value: ROLES.SUPERADMIN,
+                                      label: '👑 Super Admin',
+                                    },
+                                  ]}
+                                />
+                              </div>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                                  u.role === ROLES.SUPERADMIN
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-brand dark:text-black'
+                                    : u.role === ROLES.ADMIN
+                                      ? 'bg-blue-100 text-blue-800 dark:bg-sky-500/20 dark:text-sky-300'
+                                      : 'bg-slate-100 dark:bg-white/10 text-zinc-700 dark:text-zinc-300'
+                                }`}
+                              >
+                                {u.role === ROLES.SUPERADMIN ? (
+                                  <Crown size={10} />
+                                ) : null}
+                                {u.role}
+                              </span>
+                            )}
+                            <span
+                              className={`admin-status-badge ${
+                                u.isActive !== false
+                                  ? 'admin-status-emerald'
+                                  : 'admin-status-rose'
                               }`}
                             >
-                              {u.isActive === false ? (
-                                <>
-                                  <CheckCircle2 size={12} /> Activate
-                                </>
-                              ) : (
-                                <>
-                                  <Ban size={12} /> Suspend
-                                </>
-                              )}
-                            </button>
-                          )}
-                          {canManageUser && (
-                            <button
-                              type="button"
-                              onClick={() => onRequestDeleteUser(u)}
-                              title="Delete Account"
-                              className="admin-btn admin-btn-danger admin-btn-sm px-2"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                              {u.isActive !== false ? 'Active' : 'Suspended'}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 6. Actions */}
+                        <td className='whitespace-nowrap text-right'>
+                          <div className='flex items-center justify-end gap-1'>
+                            {canChangePassword && (
+                              <button
+                                type='button'
+                                onClick={() => onOpenPasswordModal(u)}
+                                className='admin-btn admin-btn-amber admin-btn-sm'
+                                title='Change Password'
+                              >
+                                <KeyRound size={12} /> Password
+                              </button>
+                            )}
+                            {canManageUser && (
+                              <button
+                                type='button'
+                                onClick={() => onToggleActive(u)}
+                                className={`admin-btn admin-btn-sm ${
+                                  u.isActive === false
+                                    ? 'admin-btn-emerald'
+                                    : 'admin-btn-secondary'
+                                }`}
+                              >
+                                {u.isActive === false ? 'Activate' : 'Suspend'}
+                              </button>
+                            )}
+                            {isSuper && u.id !== currentUser?.id && (
+                              <button
+                                type='button'
+                                onClick={() => onRequestDeleteUser(u)}
+                                className='admin-btn admin-btn-danger admin-btn-sm px-2'
+                                title='Delete User Account'
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className='shrink-0 border-t border-[#d5d9e0] dark:border-white/10 px-4 py-2.5 bg-slate-50 dark:bg-white/[0.02] text-xs text-zinc-500 flex justify-between items-center'>
+            <span>Showing {visibleAccounts.length} accounts</span>
+            <span>Total registered: {users.length}</span>
+          </div>
         </div>
       )}
     </div>

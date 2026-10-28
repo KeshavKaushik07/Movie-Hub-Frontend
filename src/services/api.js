@@ -756,6 +756,11 @@ const markRoomLeft = (userId, roomId, left = true) => {
 
 // Community Chat Groups API (User & Admin Communities, Join/Leave, Multiple/Transferable Admins, Moderation)
 export const communityApi = {
+  getTopics: () =>
+    backend
+      .get('/community/topics')
+      .then((r) => r.data?.topics || [])
+      .catch(() => []),
   getSymbols: () =>
     backend
       .get('/community/symbols')

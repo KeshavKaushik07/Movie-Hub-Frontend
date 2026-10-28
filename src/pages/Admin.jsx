@@ -245,7 +245,11 @@ export default function Admin() {
     featuredApi
       .listAdminFull()
       .then((res) => {
-        const list = Array.isArray(res?.items) ? res.items : Array.isArray(res) ? res : [];
+        const list = Array.isArray(res?.items)
+          ? res.items
+          : Array.isArray(res)
+            ? res
+            : [];
         setFeaturedItems(list);
         if (Number.isFinite(Number(res?.heroLimit))) {
           setHeroLimit(Number(res.heroLimit));
@@ -298,8 +302,7 @@ export default function Admin() {
   const loadCatalog = useCallback(
     (targetPage = catalogPage, overrides = {}) => {
       const nextPage = Math.max(1, Number(targetPage) || 1);
-      const effectiveQ =
-        overrides.q !== undefined ? overrides.q : titleQuery;
+      const effectiveQ = overrides.q !== undefined ? overrides.q : titleQuery;
       const effectiveType =
         overrides.type !== undefined ? overrides.type : titleTypeFilter;
       const effectiveSort =
@@ -342,7 +345,11 @@ export default function Admin() {
           setCatalogFilteredTotal(total);
           setCatalogTotalPages(totalPages);
 
-          if (!effectiveQ?.trim() && !effectiveType && Number.isFinite(d?.total)) {
+          if (
+            !effectiveQ?.trim() &&
+            !effectiveType &&
+            Number.isFinite(d?.total)
+          ) {
             setDbTitlesTotal(d.total);
           }
           setLoadedFlags((p) => ({ ...p, catalog: true }));
@@ -443,7 +450,10 @@ export default function Admin() {
       setCreatingNewTitle(true);
     }
 
-    if (['', 'movie', 'webseries', 'tv'].includes(urlType) && urlType !== titleTypeFilter) {
+    if (
+      ['', 'movie', 'webseries', 'tv'].includes(urlType) &&
+      urlType !== titleTypeFilter
+    ) {
       setTitleTypeFilter(urlType);
       setCatalogPage(1);
       loadCatalog(1, { type: urlType });
@@ -494,7 +504,8 @@ export default function Admin() {
       );
     } catch (err) {
       notify(
-        err.response?.data?.message || 'Could not fetch movie images for that ID',
+        err.response?.data?.message ||
+          'Could not fetch movie images for that ID',
         'error',
       );
     } finally {
@@ -510,7 +521,10 @@ export default function Admin() {
     const hits = (res.items || res.results || []).slice(0, 6);
     setBlogMovieHits(hits);
     if (hits.length === 0) {
-      notify(`No movies or web series found matching "${blogMovieSearchQ.trim()}"`, 'not-found');
+      notify(
+        `No movies or web series found matching "${blogMovieSearchQ.trim()}"`,
+        'not-found',
+      );
     }
   };
 
@@ -597,7 +611,10 @@ export default function Admin() {
     const hits = (res.items || res.results || []).slice(0, 6);
     setFeatSearchResults(hits);
     if (hits.length === 0) {
-      notify(`No catalog titles found matching "${featSearchQ.trim()}"`, 'not-found');
+      notify(
+        `No catalog titles found matching "${featSearchQ.trim()}"`,
+        'not-found',
+      );
     }
   };
 
@@ -621,7 +638,10 @@ export default function Admin() {
       loadFeatured();
       notify('Added to Home Featured Hero Carousel!');
     } catch (err) {
-      notify(err.response?.data?.message || 'Failed to add featured item', 'error');
+      notify(
+        err.response?.data?.message || 'Failed to add featured item',
+        'error',
+      );
     }
   };
 
@@ -633,7 +653,8 @@ export default function Admin() {
       notify(`Home Hero Carousel slide count updated to ${savedLimit}!`);
     } catch (err) {
       notify(
-        err.response?.data?.message || 'Failed to update Hero Carousel slide count',
+        err.response?.data?.message ||
+          'Failed to update Hero Carousel slide count',
         'error',
       );
     }
@@ -654,13 +675,19 @@ export default function Admin() {
     try {
       await featuredApi.add({
         tmdbId: Number(titleItem.id || titleItem.tmdbId),
-        type: titleItem.subType === 'webseries' ? 'webseries' : titleItem.type || 'movie',
+        type:
+          titleItem.subType === 'webseries'
+            ? 'webseries'
+            : titleItem.type || 'movie',
         badgeText: 'Featured on Movies Hub',
       });
       notify(`Added "${titleItem.title}" to Home Featured Hero Carousel!`);
       loadFeatured();
     } catch (err) {
-      notify(err.response?.data?.message || 'Could not add to Featured Carousel', 'error');
+      notify(
+        err.response?.data?.message || 'Could not add to Featured Carousel',
+        'error',
+      );
     }
   };
 
@@ -681,7 +708,7 @@ export default function Admin() {
   ).length;
 
   return (
-    <div className="flex h-screen max-h-screen overflow-hidden bg-[#070a10] text-white">
+    <div className='flex h-screen max-h-screen overflow-hidden bg-slate-50 dark:bg-[#070a10] text-[#1b2230] dark:text-white'>
       <AdminSidebar
         user={user}
         isSuper={isSuper}
@@ -695,11 +722,17 @@ export default function Admin() {
           blogs: loadedFlags.blogs ? blogs.length : undefined,
           community: loadedFlags.community ? commRooms.length : undefined,
           reviews: loadedFlags.moderation ? allReviews.length : undefined,
-          criticReviews: loadedFlags.moderation ? criticReviewsCount : undefined,
-          audienceReviews: loadedFlags.moderation ? audienceReviewsCount : undefined,
+          criticReviews: loadedFlags.moderation
+            ? criticReviewsCount
+            : undefined,
+          audienceReviews: loadedFlags.moderation
+            ? audienceReviewsCount
+            : undefined,
           comments: loadedFlags.moderation ? allComments.length : undefined,
           regularUsers:
-            loadedFlags.users && !userSearch.trim() ? regularUsersList.length : undefined,
+            loadedFlags.users && !userSearch.trim()
+              ? regularUsersList.length
+              : undefined,
           activeRegularUsers:
             loadedFlags.users && !userSearch.trim()
               ? regularUsersList.filter((u) => u.isActive !== false).length
@@ -709,9 +742,13 @@ export default function Admin() {
               ? regularUsersList.filter((u) => u.isActive === false).length
               : undefined,
           staffUsers:
-            loadedFlags.users && !userSearch.trim() ? staffUsersList.length : undefined,
+            loadedFlags.users && !userSearch.trim()
+              ? staffUsersList.length
+              : undefined,
           adminUsers:
-            loadedFlags.users && !userSearch.trim() ? adminUsersList.length : undefined,
+            loadedFlags.users && !userSearch.trim()
+              ? adminUsersList.length
+              : undefined,
           superAdminUsers:
             loadedFlags.users && !userSearch.trim()
               ? superAdminUsersList.length
@@ -721,7 +758,7 @@ export default function Admin() {
         }}
       />
 
-      <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
+      <div className='flex h-screen min-w-0 flex-1 flex-col overflow-hidden'>
         <AdminTopbar
           activeSection={activeSection}
           user={user}
@@ -734,12 +771,12 @@ export default function Admin() {
         />
 
         <main
-          id="admin-main-scroll"
-          className="studio-scroll flex-1 overflow-y-auto px-4 pb-6 pt-0 sm:px-6"
+          id='admin-main-scroll'
+          className='flex-1 min-h-0 flex flex-col overflow-hidden px-4 pb-4 pt-2.5 sm:px-6'
         >
           {activeSection === 'overview' &&
             (sectionTransitioning || (!stats && !loadedFlags.overview) ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminOverviewSkeleton />
               </div>
             ) : (
@@ -748,7 +785,7 @@ export default function Admin() {
 
           {activeSection === 'featured' &&
             (sectionTransitioning || !loadedFlags.featured ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminFeaturedSkeleton />
               </div>
             ) : (
@@ -783,7 +820,7 @@ export default function Admin() {
 
           {activeSection === 'blogs' &&
             (sectionTransitioning || !loadedFlags.blogs ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminBlogsSkeleton />
               </div>
             ) : (
@@ -818,7 +855,7 @@ export default function Admin() {
 
           {activeSection === 'community' &&
             (sectionTransitioning || !loadedFlags.community ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminCommunitySkeleton />
               </div>
             ) : (
@@ -841,12 +878,14 @@ export default function Admin() {
                   notify('Official Community Lounge created!');
                 }}
                 onToggleRoomLock={(r) =>
-                  communityApi.updateRoom(r.id, { isLocked: !r.isLocked }).then(() => {
-                    loadCommunity();
-                    notify(
-                      `Community "${r.name}" ${!r.isLocked ? 'blocked' : 'unblocked'}`,
-                    );
-                  })
+                  communityApi
+                    .updateRoom(r.id, { isLocked: !r.isLocked })
+                    .then(() => {
+                      loadCommunity();
+                      notify(
+                        `Community "${r.name}" ${!r.isLocked ? 'blocked' : 'unblocked'}`,
+                      );
+                    })
                 }
                 onRequestDeleteRoom={(r) => setRoomToDelete(r)}
                 onRefreshCommunity={loadCommunity}
@@ -856,7 +895,7 @@ export default function Admin() {
 
           {activeSection === 'reviews' &&
             (sectionTransitioning || !loadedFlags.moderation ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminReviewsSkeleton />
               </div>
             ) : (
@@ -869,7 +908,9 @@ export default function Admin() {
                     .moderateReview(r._id || r.id, { isHidden: !r.isHidden })
                     .then(() => {
                       loadModeration();
-                      notify(`Review ${!r.isHidden ? 'hidden' : 'made visible'}`);
+                      notify(
+                        `Review ${!r.isHidden ? 'hidden' : 'made visible'}`,
+                      );
                     })
                 }
                 onDeleteReview={(id) =>
@@ -903,12 +944,12 @@ export default function Admin() {
           {/* User Management (Regular Users) */}
           {activeSection === 'users' &&
             (sectionTransitioning || !loadedFlags.users ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminUsersSkeleton />
               </div>
             ) : (
               <UsersSection
-                mode="users"
+                mode='users'
                 users={users}
                 currentUser={user}
                 isSuper={isSuper}
@@ -941,7 +982,9 @@ export default function Admin() {
                 onToggleActive={(u) =>
                   authService.setActive(u.id, u.isActive === false).then(() => {
                     loadUsers();
-                    notify(`${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`);
+                    notify(
+                      `${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`,
+                    );
                   })
                 }
                 onOpenPasswordModal={(u) => {
@@ -958,12 +1001,12 @@ export default function Admin() {
           {/* Staff (Admin & Super Admins) */}
           {activeSection === 'staff' &&
             (sectionTransitioning || !loadedFlags.users ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminUsersSkeleton />
               </div>
             ) : (
               <UsersSection
-                mode="staff"
+                mode='staff'
                 users={users}
                 currentUser={user}
                 isSuper={isSuper}
@@ -996,7 +1039,9 @@ export default function Admin() {
                 onToggleActive={(u) =>
                   authService.setActive(u.id, u.isActive === false).then(() => {
                     loadUsers();
-                    notify(`${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`);
+                    notify(
+                      `${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`,
+                    );
                   })
                 }
                 onOpenPasswordModal={(u) => {
@@ -1013,7 +1058,7 @@ export default function Admin() {
           {/* Media & Box Office DB */}
           {activeSection === 'catalog' &&
             (sectionTransitioning || !loadedFlags.catalog ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminCatalogSkeleton />
               </div>
             ) : (
@@ -1059,7 +1104,11 @@ export default function Admin() {
                 onEditTitle={(t) => setModalTitle(t)}
                 onSyncTitle={async (t) => {
                   try {
-                    await reviewService.superadmin.syncTitle(t.type, t.id, true);
+                    await reviewService.superadmin.syncTitle(
+                      t.type,
+                      t.id,
+                      true,
+                    );
                     notify(`Synced "${t.title}" with official TMDB data!`);
                     loadCatalog(catalogPage);
                   } catch (err) {
@@ -1070,10 +1119,12 @@ export default function Admin() {
                   }
                 }}
                 onDeleteTitle={(t) =>
-                  reviewService.superadmin.deleteTitle(t.type, t.id).then(() => {
-                    loadCatalog(catalogPage);
-                    notify(`Deleted "${t.title}" from database`);
-                  })
+                  reviewService.superadmin
+                    .deleteTitle(t.type, t.id)
+                    .then(() => {
+                      loadCatalog(catalogPage);
+                      notify(`Deleted "${t.title}" from database`);
+                    })
                 }
                 onQuickAddToFeatured={handleQuickAddToFeatured}
               />
@@ -1081,7 +1132,7 @@ export default function Admin() {
 
           {activeSection === 'crawler' &&
             (sectionTransitioning || !crawler ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminCrawlerSkeleton />
               </div>
             ) : (
@@ -1090,10 +1141,12 @@ export default function Admin() {
                 quotaForm={quotaForm}
                 setQuotaForm={setQuotaForm}
                 onStartCrawler={() =>
-                  reviewService.superadmin.crawlerStart({ restart: false }).then(() => {
-                    loadCrawler();
-                    notify('Crawler started / resumed');
-                  })
+                  reviewService.superadmin
+                    .crawlerStart({ restart: false })
+                    .then(() => {
+                      loadCrawler();
+                      notify('Crawler started / resumed');
+                    })
                 }
                 onStopCrawler={() =>
                   reviewService.superadmin.crawlerStop().then(() => {
@@ -1102,17 +1155,32 @@ export default function Admin() {
                   })
                 }
                 onSaveQuotas={() =>
-                  reviewService.superadmin.crawlerUpdateCap(quotaForm).then(() => {
-                    loadCrawler();
-                    notify('Crawler quotas updated!');
-                  })
+                  reviewService.superadmin
+                    .crawlerUpdateCap(quotaForm)
+                    .then(() => {
+                      loadCrawler();
+                      notify('Crawler quotas updated!');
+                    })
                 }
               />
             ))}
 
           {activeSection === 'api-keys' &&
-            (sectionTransitioning || !loadedFlags.keys ? (
-              <div className="pt-4">
+            (!isSuper ? (
+              <div className='flex flex-col items-center justify-center p-12 text-center'>
+                <div className='rounded-2xl bg-amber-100 p-4 text-amber-800 dark:bg-amber-950/40 dark:text-brand mb-3 shadow-xs'>
+                  <ShieldAlert size={36} />
+                </div>
+                <h2 className='text-base font-bold text-[#1b2230] dark:text-white'>
+                  Super Admin Exclusive Console
+                </h2>
+                <p className='mt-1 text-xs text-zinc-500 dark:text-zinc-400 max-w-md'>
+                  TMDB API key pool, rate limits, and encryption controls are
+                  restricted strictly to Super Administrator accounts.
+                </p>
+              </div>
+            ) : sectionTransitioning || !loadedFlags.keys ? (
+              <div className='pt-4'>
                 <AdminApiKeysSkeleton />
               </div>
             ) : (
@@ -1148,7 +1216,7 @@ export default function Admin() {
 
           {activeSection === 'settings' &&
             (sectionTransitioning ? (
-              <div className="pt-4">
+              <div className='pt-4'>
                 <AdminOverviewSkeleton />
               </div>
             ) : (
@@ -1167,10 +1235,12 @@ export default function Admin() {
                 quotaForm={quotaForm}
                 setQuotaForm={setQuotaForm}
                 onStartCrawler={() =>
-                  reviewService.superadmin.crawlerStart({ restart: false }).then(() => {
-                    loadCrawler();
-                    notify('Crawler started / resumed');
-                  })
+                  reviewService.superadmin
+                    .crawlerStart({ restart: false })
+                    .then(() => {
+                      loadCrawler();
+                      notify('Crawler started / resumed');
+                    })
                 }
                 onStopCrawler={() =>
                   reviewService.superadmin.crawlerStop().then(() => {
@@ -1179,10 +1249,12 @@ export default function Admin() {
                   })
                 }
                 onSaveQuotas={() =>
-                  reviewService.superadmin.crawlerUpdateCap(quotaForm).then(() => {
-                    loadCrawler();
-                    notify('Crawler quotas updated!');
-                  })
+                  reviewService.superadmin
+                    .crawlerUpdateCap(quotaForm)
+                    .then(() => {
+                      loadCrawler();
+                      notify('Crawler quotas updated!');
+                    })
                 }
                 featuredItems={featuredItems}
                 blogs={blogs}
@@ -1198,7 +1270,9 @@ export default function Admin() {
                 onToggleActive={(u) =>
                   authService.setActive(u.id, u.isActive === false).then(() => {
                     loadUsers();
-                    notify(`${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`);
+                    notify(
+                      `${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`,
+                    );
                   })
                 }
                 onRefreshAll={loadAllAdminData}
@@ -1276,7 +1350,9 @@ export default function Admin() {
             notify(`Password updated for ${passwordModalUser.name}!`);
             setPasswordModalUser(null);
           } catch (err) {
-            setPasswordError(err.response?.data?.message || 'Failed to update password.');
+            setPasswordError(
+              err.response?.data?.message || 'Failed to update password.',
+            );
           } finally {
             setPasswordSaving(false);
           }
@@ -1294,7 +1370,10 @@ export default function Admin() {
             setUserToDelete(null);
             loadUsers();
           } catch (err) {
-            notify(err.response?.data?.message || 'Failed to delete user', 'error');
+            notify(
+              err.response?.data?.message || 'Failed to delete user',
+              'error',
+            );
             setUserToDelete(null);
           }
         }}

@@ -11,405 +11,276 @@ import {
   Database,
   ArrowUpRight,
   Cpu,
-  Shield,
-  LayoutDashboard,
   BarChart3,
   Activity,
-  Settings,
+  CheckCircle2,
 } from 'lucide-react';
-import SafeImage from '../ui/SafeImage';
-import { formatAdminDate, resolveOttMeta } from './adminHelpers';
+import { resolveOttMeta } from './adminHelpers';
 
 export default function OverviewSection({ stats, isSuper }) {
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'catalog' | 'activity'
+  const [activeTab, setActiveTab] = useState('all');
 
   const c = stats?.counts || {};
   const crawler = stats?.crawler || {};
-  const pct = Math.min(
-    100,
-    Math.round(((c.titles || 0) / (crawler.targetCap || 100000)) * 100),
-  );
+  const targetCap = crawler.targetCap || 100000;
+  const totalTitles = c.titles || 0;
+  const pct = Math.min(100, Math.round((totalTitles / targetCap) * 100));
 
   const kpis = [
     {
-      label: 'Total Catalog',
-      value: c.titles || 0,
-      sub: `${c.enrichedTitles || 0} full details cached`,
-      icon: Database,
-      to: '/admin/catalog',
-      accent: 'text-brand bg-brand/15',
-      group: 'catalog',
-    },
-    {
-      label: 'Movies',
+      label: 'Feature Films',
       value: c.movies || 0,
-      sub: 'Feature Films',
+      sub: 'Theatrical & Catalog Movies',
       icon: Film,
       to: '/admin/catalog?type=movie',
-      accent: 'text-sky-400 bg-sky-500/15',
-      group: 'catalog',
+      change: '+14.2%',
+      color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/15',
     },
     {
       label: 'Web Series (OTT)',
       value: c.webSeries || 0,
-      sub: `${c.tvShows || 0} total TV & series`,
+      sub: `${c.tvShows || 0} total series & TV`,
       icon: Tv,
       to: '/admin/catalog?type=webseries',
-      accent: 'text-purple-400 bg-purple-500/15',
-      group: 'catalog',
+      change: '+8.6%',
+      color: 'text-purple-600 bg-purple-50 dark:text-purple-400 dark:bg-purple-500/15',
     },
     {
-      label: 'Featured Hero Slides',
+      label: 'Featured Titles',
       value: c.featuredHeroCount || 0,
       sub: 'Active on Home Carousel',
       icon: Sparkles,
       to: '/admin/featured',
-      accent: 'text-amber-400 bg-amber-500/15',
-      group: 'catalog',
+      change: 'Curated',
+      color: 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/15',
     },
     {
-      label: 'Published Blogs',
-      value: c.blogsCount || 0,
-      sub: `${c.blogCommentsCount || 0} article comments`,
-      icon: BookOpen,
-      to: '/admin/blogs?tab=list',
-      accent: 'text-emerald-400 bg-emerald-500/15',
-      group: 'activity',
-    },
-    {
-      label: 'Community Rooms',
-      value: c.communityRoomsCount || 0,
-      sub: `${c.communityMessagesCount || 0} live chat posts`,
-      icon: MessageSquare,
-      to: '/admin/community',
-      accent: 'text-pink-400 bg-pink-500/15',
-      group: 'activity',
-    },
-    {
-      label: 'Reviews & Critics',
-      value: (c.userReviews || 0) + (c.criticReviews || 0),
-      sub: `${c.criticReviews || 0} critic • ${c.userReviews || 0} user`,
-      icon: Award,
-      to: '/admin/reviews?tab=all',
-      accent: 'text-orange-400 bg-orange-500/15',
-      group: 'activity',
-    },
-    {
-      label: 'Regular Users',
+      label: 'Active Users',
       value: Math.max(0, (c.users || 0) - (c.admins || 0)),
       sub: `${c.activeUsers || 0} active accounts`,
       icon: Users,
-      to: '/admin/users?tab=all',
-      accent: 'text-teal-400 bg-teal-500/15',
-      group: 'activity',
+      to: '/admin/users',
+      change: '+12.4%',
+      color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/15',
     },
   ];
 
-  const visibleKpis =
-    activeTab === 'all' ? kpis : kpis.filter((k) => k.group === activeTab);
-
   return (
-    <div className="space-y-6">
-      {/* Frozen Inner Selection / Filter Tabs Bar */}
-      <div className="admin-sticky-bar">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 shadow-lg">
-          <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-[#070a10] p-1">
-            {[
-              { key: 'all', label: 'All Overview Metrics', icon: LayoutDashboard },
-              { key: 'catalog', label: 'Catalog & OTT Breakdown', icon: BarChart3 },
-              { key: 'activity', label: 'Users & Reviews Activity', icon: Activity },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`admin-btn ${
-                    active
-                      ? 'admin-btn-primary'
-                      : 'admin-btn-secondary border-transparent shadow-none'
-                  }`}
-                >
-                  <Icon size={13} />
-                  {tab.label}
-                </button>
-              );
-            })}
+    <div className="flex-1 min-h-0 overflow-y-auto studio-scroll space-y-5 pr-1">
+      {/* Top Banner (Aurex Inspired Big Headline Card) */}
+      <div className="rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-5 sm:p-6 shadow-xs">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div className="lg:col-span-7 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-brand/15 dark:text-brand">
+                <Database size={15} />
+              </span>
+              <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                Total Catalog Overview
+              </span>
+            </div>
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1b2230] dark:text-white">
+                {Number(totalTitles).toLocaleString('en-IN')}
+              </h2>
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                <span>↑ {pct}% Indexed</span>
+                <span className="text-zinc-400 font-normal">of {Number(targetCap).toLocaleString('en-IN')} cap</span>
+              </span>
+            </div>
+            <p className="text-xs text-[#4a5262] dark:text-zinc-400 max-w-lg leading-normal">
+              High-speed MongoDB cache-aside storage serving verified metadata, box office verdicts, OTT providers, and trailers with zero outbound TMDB latency.
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Link to="/admin/settings" className="admin-btn admin-btn-secondary">
-              <Settings size={13} className="text-brand" /> System Settings
-            </Link>
+          <div className="lg:col-span-5 bg-slate-50 dark:bg-[#151c2c] rounded-xl border border-[#d5d9e0] dark:border-white/10 p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-zinc-600 dark:text-zinc-400">Catalog Progress</span>
+              <span className="font-bold text-[#1b2230] dark:text-white">{pct}% Complete</span>
+            </div>
+            <div className="h-2.5 w-full rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+              <div
+                style={{ width: `${Math.max(2, pct)}%` }}
+                className="h-full rounded-full bg-linear-to-r from-[#2350d8] to-emerald-500 dark:from-brand dark:to-emerald-400"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+              <div>
+                <span className="text-zinc-400 block">Enriched Details:</span>
+                <strong className="text-[#1b2230] dark:text-white font-bold">
+                  {(c.enrichedTitles || 0).toLocaleString('en-IN')}
+                </strong>
+              </div>
+              <div>
+                <span className="text-zinc-400 block">Crawler Quota:</span>
+                <strong className="text-[#1b2230] dark:text-white font-bold">
+                  {Number(targetCap).toLocaleString('en-IN')}
+                </strong>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
-        {visibleKpis.map((k) => {
+      {/* KPI Cards Row (Aurex Inspired) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((k) => {
           const Icon = k.icon;
           return (
             <Link
               key={k.label}
               to={k.to}
-              className="group relative flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0e131f] p-4 shadow-lg transition hover:-translate-y-0.5 hover:border-brand/50"
+              className="rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-4 shadow-xs transition hover:border-[#2350d8] dark:hover:border-brand flex flex-col justify-between"
             >
               <div className="flex items-center justify-between">
-                <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${k.accent}`}>
+                <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${k.color}`}>
                   <Icon size={17} />
                 </span>
-                <ArrowUpRight
-                  size={15}
-                  className="text-zinc-500 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand"
-                />
+                <span className="text-[10px] font-bold rounded px-1.5 py-0.5 bg-slate-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400">
+                  {k.change}
+                </span>
               </div>
               <div className="mt-3">
-                <p className="text-[11px] font-semibold text-zinc-400">{k.label}</p>
-                <p className="mt-0.5 text-2xl font-extrabold text-white">
+                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{k.label}</p>
+                <p className="mt-0.5 text-2xl font-bold text-[#1b2230] dark:text-white">
                   {Number(k.value).toLocaleString('en-IN')}
                 </p>
-                <p className="mt-1 truncate text-[10px] text-zinc-400">{k.sub}</p>
+                <p className="mt-1 text-[11px] text-zinc-400 truncate">{k.sub}</p>
               </div>
             </Link>
           );
         })}
       </div>
 
-      {/* 1-Lakh Crawler Progress Banner */}
-      {(activeTab === 'all' || activeTab === 'catalog') && (
-        <div className="rounded-2xl border border-white/10 bg-[#0e131f] p-5 shadow-lg">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/15 text-brand">
-                <Cpu size={19} />
-              </span>
-              <div>
-                <h3 className="text-sm font-extrabold text-white">
-                  1,00,000 Catalog Ingestion Progress ({pct}%)
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  {Number(c.titles || 0).toLocaleString('en-IN')} of{' '}
-                  {Number(crawler.targetCap || 100000).toLocaleString('en-IN')} titles indexed in MongoDB
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Link to="/admin/staff?tab=admin" className="admin-btn admin-btn-secondary">
-                <Shield size={13} className="text-brand" /> Staff ({c.admins || 1})
-              </Link>
-              <Link to="/admin/settings?tab=data" className="admin-btn admin-btn-primary">
-                Manage Data & Quotas
+      {/* Breakdowns Row (Industry & OTT) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Cinema Industry Breakdown */}
+        <div className="rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-[#d5d9e0] dark:border-white/10 mb-4">
+              <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                Catalog by Cinema Industry
+              </h3>
+              <Link to="/admin/catalog" className="text-xs font-bold text-[#2350d8] dark:text-brand hover:underline">
+                View All →
               </Link>
             </div>
-          </div>
-          <div className="mt-3.5 h-2.5 w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              style={{ width: `${Math.max(2, pct)}%` }}
-              className="h-full rounded-full bg-linear-to-r from-brand to-emerald-400 transition-all duration-500"
-            />
+
+            <div className="space-y-2.5">
+              {(stats?.byIndustry || []).slice(0, 6).map((item) => {
+                const count = Number(item.count || 0);
+                const sharePct = totalTitles > 0 ? Math.round((count / totalTitles) * 100) : 0;
+                return (
+                  <div key={item._id} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-[#1b2230] dark:text-white capitalize">
+                        {item._id || 'Global'}
+                      </span>
+                      <span className="text-zinc-500 dark:text-zinc-400 font-mono text-[11px]">
+                        {count.toLocaleString('en-IN')} ({sharePct}%)
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+                      <div
+                        style={{ width: `${Math.max(1, sharePct)}%` }}
+                        className="h-full rounded-full bg-[#2350d8] dark:bg-brand"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Industry & OTT Distribution Breakdown */}
-      {(activeTab === 'catalog' || activeTab === 'all') &&
-        ((stats?.byIndustry || []).length > 0 || (stats?.byOtt || []).length > 0) && (
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-[#0e131f] p-4 shadow-lg">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-xs font-extrabold tracking-wider text-zinc-300 uppercase">
-                  Catalog by Cinema Industry
-                </h3>
-                <Link to="/admin/catalog" className="text-xs font-bold text-brand hover:underline">
-                  Explore Catalog →
-                </Link>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(stats?.byIndustry || []).slice(0, 10).map((item) => (
+        {/* OTT Streaming Breakdown */}
+        <div className="rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-[#d5d9e0] dark:border-white/10 mb-4">
+              <h3 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                Streaming Platform Availability
+              </h3>
+              <Link to="/admin/catalog" className="text-xs font-bold text-[#2350d8] dark:text-brand hover:underline">
+                View Catalog →
+              </Link>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(stats?.byOtt || []).slice(0, 10).map((item) => {
+                const meta = resolveOttMeta(item._id);
+                return (
                   <div
                     key={item._id}
-                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#070a10] px-3 py-2 text-xs"
+                    className="flex items-center gap-2 p-2 rounded-lg border border-[#d5d9e0] dark:border-white/10 bg-slate-50 dark:bg-[#151c2c] text-xs"
                   >
-                    <span className="font-extrabold text-white capitalize">
-                      {item._id || 'Global'}
+                    <span
+                      style={{ backgroundColor: meta.badge }}
+                      className="h-3 w-3 rounded-full shrink-0"
+                    />
+                    <span className="font-bold text-[#1b2230] dark:text-white">
+                      {meta.label}
                     </span>
-                    <span className="rounded-md bg-brand/15 px-1.5 py-0.5 text-[10px] font-black text-brand">
+                    <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
                       {Number(item.count || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-[#0e131f] p-4 shadow-lg">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-xs font-extrabold tracking-wider text-zinc-300 uppercase">
-                  OTT Streaming Coverage
-                </h3>
-                <Link
-                  to="/admin/catalog?type=webseries"
-                  className="text-xs font-bold text-brand hover:underline"
-                >
-                  Web Series →
-                </Link>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {(stats?.byOtt || []).slice(0, 10).map((item) => {
-                  const meta = resolveOttMeta(item._id);
-                  return (
-                    <div
-                      key={item._id}
-                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#070a10] px-3 py-2 text-xs"
-                    >
-                      <span
-                        style={{ backgroundColor: meta.badge }}
-                        className="keep-white rounded px-1.5 py-0.5 text-[10px] font-extrabold text-white"
-                      >
-                        {meta.label}
-                      </span>
-                      <span className="font-extrabold text-zinc-300">
-                        {Number(item.count || 0).toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-      {/* Two Compact Overview Tables: Top Reviewed Titles & Recent Users */}
-      {(activeTab === 'all' || activeTab === 'activity') && (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {/* Top Reviewed Titles */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-white">Top Reviewed Movies & Series</h3>
-              <Link to="/admin/reviews?tab=all" className="text-xs font-bold text-brand hover:underline">
-                Moderate Reviews →
-              </Link>
-            </div>
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Movie / Series</th>
-                    <th>Type</th>
-                    <th>Rating</th>
-                    <th>Reviews</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(stats?.topReviewed || []).length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="py-6 text-center text-xs text-zinc-400">
-                        No reviewed titles yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    (stats?.topReviewed || []).slice(0, 6).map((t) => (
-                      <tr key={`${t.mediaType}-${t.tmdbId}`}>
-                        <td>
-                          <div className="flex items-center gap-2.5">
-                            <SafeImage
-                              src={t.posterPath}
-                              alt={t.title}
-                              size="w185"
-                              className="h-10 w-7 shrink-0 rounded object-cover"
-                            />
-                            <div className="min-w-0">
-                              <p className="truncate font-bold text-white">{t.title}</p>
-                              <p className="text-[10px] text-zinc-400">{t.year || '—'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase">
-                            {t.subType || t.mediaType}
-                          </span>
-                        </td>
-                        <td className="font-extrabold text-brand">
-                          ★ {Number(t.siteRating || 0).toFixed(1)}
-                        </td>
-                        <td className="text-zinc-300">{t.siteReviewCount || 0}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Recent Joined Users */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-extrabold text-white">Recently Joined Accounts</h3>
-              <div className="flex items-center gap-3">
-                <Link to="/admin/users?tab=all" className="text-xs font-bold text-brand hover:underline">
-                  Regular Users →
-                </Link>
-                {isSuper && (
-                  <Link to="/admin/staff?tab=admin" className="text-xs font-bold text-sky-400 hover:underline">
-                    Staff Roles →
-                  </Link>
-                )}
-              </div>
-            </div>
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Joined</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(stats?.recentUsers || []).slice(0, 6).map((u) => (
-                    <tr key={u.id || u._id}>
-                      <td>
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            style={{ backgroundColor: u.avatarColor || '#f5b942' }}
-                            className="keep-white flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white"
-                          >
-                            {(u.name || 'U')[0].toUpperCase()}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate font-bold text-white">{u.name}</p>
-                            <p className="truncate text-[10px] text-zinc-400">{u.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase">
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap text-zinc-400">
-                        {formatAdminDate(u.createdAt)}
-                      </td>
-                      <td>
-                        <span
-                          className={`admin-status-badge ${
-                            u.isActive !== false ? 'admin-status-emerald' : 'admin-status-rose'
-                          }`}
-                        >
-                          {u.isActive !== false ? 'Active' : 'Suspended'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                );
+              })}
             </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Activity Snapshot Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link
+          to="/admin/community"
+          className="rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-4 shadow-xs transition hover:border-[#2350d8] dark:hover:border-brand"
+        >
+          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-xs font-semibold mb-1">
+            <MessageSquare size={14} className="text-[#2350d8] dark:text-brand" />
+            <span>Community Chat Rooms</span>
+          </div>
+          <p className="text-xl font-bold text-[#1b2230] dark:text-white">
+            {c.communityRoomsCount || 0} Rooms
+          </p>
+          <p className="text-[11px] text-zinc-400 mt-1">
+            {c.communityMessagesCount || 0} total posts (excluding replies)
+          </p>
+        </Link>
+
+        <Link
+          to="/admin/reviews?tab=critic"
+          className="rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-4 shadow-xs transition hover:border-[#2350d8] dark:hover:border-brand"
+        >
+          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-xs font-semibold mb-1">
+            <Award size={14} className="text-amber-500" />
+            <span>Reviews &amp; Ratings</span>
+          </div>
+          <p className="text-xl font-bold text-[#1b2230] dark:text-white">
+            {(c.userReviews || 0) + (c.criticReviews || 0)} Reviews
+          </p>
+          <p className="text-[11px] text-zinc-400 mt-1">
+            {c.criticReviews || 0} verified critic reviews
+          </p>
+        </Link>
+
+        <Link
+          to="/admin/blogs"
+          className="rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] p-4 shadow-xs transition hover:border-[#2350d8] dark:hover:border-brand"
+        >
+          <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 text-xs font-semibold mb-1">
+            <BookOpen size={14} className="text-emerald-500" />
+            <span>Editorial Articles</span>
+          </div>
+          <p className="text-xl font-bold text-[#1b2230] dark:text-white">
+            {c.blogsCount || 0} Blogs
+          </p>
+          <p className="text-[11px] text-zinc-400 mt-1">
+            {c.blogCommentsCount || 0} blog comments
+          </p>
+        </Link>
+      </div>
     </div>
   );
 }

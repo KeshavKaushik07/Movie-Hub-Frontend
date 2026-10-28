@@ -18,7 +18,7 @@ import {
   Edit3,
   PlusCircle,
 } from 'lucide-react';
-import { formatAdminDate } from './adminHelpers';
+import { formatAdminDate, formatAdminDateTime } from './adminHelpers';
 import {
   communityApi,
   GROUP_SYMBOLS,
@@ -44,6 +44,41 @@ export default function CommunitySection({
   const [topicFilter, setTopicFilter] = useState('');
   const [roomStatusFilter, setRoomStatusFilter] = useState('all'); // 'all' | 'active' | 'blocked'
   const [symbolPickerOpen, setSymbolPickerOpen] = useState(true);
+  const [dynamicTopics, setDynamicTopics] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    communityApi
+      .getTopics()
+      .then((topics) => {
+        if (active && Array.isArray(topics) && topics.length > 0) {
+          setDynamicTopics(topics);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Compute live list of all distinct topics from backend + commRooms
+  const availableTopics = Array.from(
+    new Set([
+      'general',
+      'bollywood',
+      'hollywood',
+      'tollywood',
+      'webseries',
+      'boxoffice',
+      'anime',
+      'spoilers',
+      'fanclub',
+      ...dynamicTopics,
+      ...(commRooms || [])
+        .map((r) => (r.topic || '').toLowerCase())
+        .filter(Boolean),
+    ]),
+  ).filter(Boolean);
 
   useEffect(() => {
     setSubTab(searchParams.get('tab') || 'manage');
@@ -96,7 +131,9 @@ export default function CommunitySection({
           totalMembers: data?.totalMembers || membersList.length,
           admins: Array.isArray(data?.admins) ? data.admins : [],
           members: membersList,
-          blockedUsers: Array.isArray(data?.blockedUsers) ? data.blockedUsers : [],
+          blockedUsers: Array.isArray(data?.blockedUsers)
+            ? data.blockedUsers
+            : [],
         });
         if (data?.room) {
           setManagingRoom((prev) =>
@@ -115,7 +152,9 @@ export default function CommunitySection({
   const handleChangeRoomSymbol = async (room, newSymbol) => {
     if (!room || !newSymbol) return;
     try {
-      const updated = await communityApi.updateRoom(room.id, { icon: newSymbol });
+      const updated = await communityApi.updateRoom(room.id, {
+        icon: newSymbol,
+      });
       if (updated) {
         setManagingRoom((prev) =>
           prev && prev.id === room.id ? { ...prev, ...updated } : prev,
@@ -125,7 +164,10 @@ export default function CommunitySection({
       if (notify) notify(`Updated symbol for "${room.name}" to ${newSymbol}`);
     } catch (err) {
       if (notify) {
-        notify(err.response?.data?.message || 'Failed to update community symbol', 'error');
+        notify(
+          err.response?.data?.message || 'Failed to update community symbol',
+          'error',
+        );
       }
     }
   };
@@ -161,7 +203,10 @@ export default function CommunitySection({
   const handleUnblockUser = async (blockedUser) => {
     if (!managingRoom || !blockedUser) return;
     try {
-      const res = await communityApi.unblockUser(managingRoom.id, blockedUser.id);
+      const res = await communityApi.unblockUser(
+        managingRoom.id,
+        blockedUser.id,
+      );
       await openManageRoomModal(res?.room || managingRoom);
       if (onRefreshCommunity) onRefreshCommunity();
       if (notify) {
@@ -169,7 +214,10 @@ export default function CommunitySection({
       }
     } catch (err) {
       if (notify) {
-        notify(err.response?.data?.message || 'Failed to unblock user', 'error');
+        notify(
+          err.response?.data?.message || 'Failed to unblock user',
+          'error',
+        );
       }
     }
   };
@@ -191,7 +239,10 @@ export default function CommunitySection({
       if (onRefreshCommunity) onRefreshCommunity();
     } catch (err) {
       if (notify) {
-        notify(err.response?.data?.message || 'Could not update Room Admin role', 'error');
+        notify(
+          err.response?.data?.message || 'Could not update Room Admin role',
+          'error',
+        );
       }
     }
   };
@@ -230,16 +281,16 @@ export default function CommunitySection({
   });
 
   return (
-    <div className="space-y-5">
+    <div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
       {/* Frozen Inner Selection & Filter Tabs Bar */}
-      <div className="admin-sticky-bar">
-        <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 shadow-lg">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className='admin-sticky-bar'>
+        <div className='space-y-3 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 shadow-lg'>
+          <div className='flex flex-wrap items-center justify-between gap-3'>
             {/* Primary View Selection Tabs */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-[#070a10] p-1">
+            <div className='flex flex-wrap items-center gap-2'>
+              <div className='flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-[#070a10] p-1'>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => handleSwitchTab('manage')}
                   className={`admin-btn ${
                     subTab === 'manage'
@@ -247,10 +298,11 @@ export default function CommunitySection({
                       : 'admin-btn-secondary border-transparent shadow-none'
                   }`}
                 >
-                  <MessageSquare size={13} /> Manage Communities ({commRooms.length})
+                  <MessageSquare size={13} /> Manage Communities (
+                  {commRooms.length})
                 </button>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => handleSwitchTab('create')}
                   className={`admin-btn ${
                     subTab === 'create'
@@ -263,7 +315,7 @@ export default function CommunitySection({
               </div>
 
               {subTab === 'manage' && (
-                <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-[#070a10] p-1">
+                <div className='flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-[#070a10] p-1'>
                   {[
                     { key: 'all', label: `All (${commRooms.length})` },
                     { key: 'active', label: `Active (${activeRoomsCount})` },
@@ -271,7 +323,7 @@ export default function CommunitySection({
                   ].map((f) => (
                     <button
                       key={f.key}
-                      type="button"
+                      type='button'
                       onClick={() => setRoomStatusFilter(f.key)}
                       className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
                         roomStatusFilter === f.key
@@ -287,22 +339,22 @@ export default function CommunitySection({
             </div>
 
             {subTab === 'manage' && (
-              <div className="relative w-full sm:w-72">
+              <div className='relative w-full sm:w-72'>
                 <Search
                   size={14}
-                  className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400"
+                  className='pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400'
                 />
                 <input
                   value={searchQ}
                   onChange={(e) => setSearchQ(e.target.value)}
-                  placeholder="Search communities by name or creator..."
-                  className="w-full rounded-xl border border-white/10 bg-[#070a10] py-2 pr-8 pl-9 text-xs text-white focus:border-brand focus:outline-none"
+                  placeholder='Search communities by name or creator...'
+                  className='w-full rounded-xl border border-white/10 bg-[#070a10] py-2 pr-8 pl-9 text-xs text-white focus:border-brand focus:outline-none'
                 />
                 {searchQ && (
                   <button
-                    type="button"
+                    type='button'
                     onClick={() => setSearchQ('')}
-                    className="absolute top-1/2 right-2.5 -translate-y-1/2 text-zinc-400 hover:text-white"
+                    className='absolute top-1/2 right-2.5 -translate-y-1/2 text-zinc-400 hover:text-white'
                   >
                     <X size={13} />
                   </button>
@@ -311,29 +363,45 @@ export default function CommunitySection({
             )}
           </div>
 
-          {/* Topic Filter Tabs */}
+          {/* Dynamic Topic Filter Tabs (Fetched from Backend + DB) */}
           {subTab === 'manage' && (
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2.5">
-              <span className="mr-1 text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase">
+            <div className='flex flex-wrap items-center gap-1.5 border-t border-[#d5d9e0] dark:border-white/10 pt-2.5'>
+              <span className='mr-1 text-[10px] font-extrabold tracking-wider text-zinc-500 dark:text-zinc-400 uppercase'>
                 Topic Filter:
               </span>
-              {[
-                { value: '', label: 'All Topics' },
-                ...COMMUNITY_TOPICS.map((t) => ({ value: t.value, label: t.label })),
-              ].map((t) => {
-                const active = topicFilter === t.value;
+              <button
+                type='button'
+                onClick={() => setTopicFilter('')}
+                className={`admin-btn admin-btn-sm ${
+                  !topicFilter
+                    ? 'admin-btn-primary font-bold shadow-xs'
+                    : 'admin-btn-secondary border-transparent shadow-none'
+                }`}
+              >
+                All Topics ({commRooms.length})
+              </button>
+              {availableTopics.map((topVal) => {
+                const active = topicFilter === topVal;
+                const matchCount = (commRooms || []).filter(
+                  (r) =>
+                    (r.topic || 'general').toLowerCase() ===
+                    topVal.toLowerCase(),
+                ).length;
+                const formattedLabel =
+                  COMMUNITY_TOPICS.find((t) => t.value === topVal)?.label ||
+                  topVal.charAt(0).toUpperCase() + topVal.slice(1);
                 return (
                   <button
-                    key={t.value || 'all'}
-                    type="button"
-                    onClick={() => setTopicFilter(t.value)}
-                    className={`rounded-xl px-2.5 py-1 text-[11px] font-bold transition ${
+                    key={topVal}
+                    type='button'
+                    onClick={() => setTopicFilter(topVal)}
+                    className={`admin-btn admin-btn-sm ${
                       active
-                        ? 'bg-brand font-extrabold text-black shadow-sm shadow-brand/20'
-                        : 'border border-white/10 bg-[#070a10] text-zinc-300 hover:border-brand/40 hover:text-white'
+                        ? 'admin-btn-primary font-bold shadow-xs'
+                        : 'admin-btn-secondary border-transparent shadow-none'
                     }`}
                   >
-                    {t.label}
+                    {formattedLabel} {matchCount > 0 ? `(${matchCount})` : ''}
                   </button>
                 );
               })}
@@ -349,128 +417,158 @@ export default function CommunitySection({
             await onCreateRoom(e);
             handleSwitchTab('manage');
           }}
-          className="rounded-2xl border border-brand/30 bg-[#0e131f] p-5 shadow-xl sm:p-6"
+          className='rounded-2xl border border-brand/30 bg-[#0e131f] p-5 shadow-xl sm:p-6'
         >
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div className='mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4'>
             <div>
-              <h3 className="flex items-center gap-2 text-base font-extrabold text-white">
-                <Sparkles size={16} className="text-brand" />
+              <h3 className='flex items-center gap-2 text-base font-extrabold text-white'>
+                <Sparkles size={16} className='text-brand' />
                 Create Official Community Chat Room
               </h3>
-              <p className="mt-0.5 text-xs text-zinc-400">
-                Choose a custom group symbol, name, topic, and rules. You will automatically be assigned as the Room Admin and first member.
+              <p className='mt-0.5 text-xs text-zinc-400'>
+                Choose a custom group symbol, name, topic, and rules. You will
+                automatically be assigned as the Room Admin and first member.
               </p>
             </div>
             <button
-              type="button"
+              type='button'
               onClick={() => handleSwitchTab('manage')}
-              className="admin-btn admin-btn-secondary"
+              className='admin-btn admin-btn-secondary'
             >
               View All {commRooms.length} Communities
             </button>
           </div>
 
-          <div className="mb-5 flex items-center gap-3.5 rounded-2xl border border-white/10 bg-[#070a10] p-4">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-brand/40 bg-brand/15 text-3xl shadow-md">
+          <div className='mb-5 flex items-center gap-3.5 rounded-2xl border border-white/10 bg-[#070a10] p-4'>
+            <span className='flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-brand/40 bg-brand/15 text-3xl shadow-md'>
               {newRoomForm.icon || '🎬'}
             </span>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate text-sm font-extrabold text-white">
+            <div className='min-w-0 flex-1'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <p className='truncate text-sm font-extrabold text-white'>
                   {newRoomForm.name.trim() || 'Your New Community Name'}
                 </p>
-                <span className="rounded bg-brand/20 px-2 py-0.5 text-[10px] font-extrabold text-brand uppercase">
+                <span className='rounded bg-brand/20 px-2 py-0.5 text-[10px] font-extrabold text-brand uppercase'>
                   {newRoomForm.topic || 'general'}
                 </span>
               </div>
-              <p className="mt-1 truncate text-xs text-zinc-400">
+              <p className='mt-1 truncate text-xs text-zinc-400'>
                 {newRoomForm.description.trim() ||
                   'Community description and guidelines will appear here...'}
               </p>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-12">
-            <div className="sm:col-span-3">
-              <label className="mb-1.5 block text-xs font-bold text-zinc-300">
+          <div className='grid gap-4 sm:grid-cols-12'>
+            <div className='sm:col-span-3'>
+              <label className='mb-1.5 block text-xs font-bold text-zinc-300'>
                 Group Symbol
               </label>
               <button
-                type="button"
+                type='button'
                 onClick={() => setSymbolPickerOpen((v) => !v)}
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-bold text-white transition hover:border-brand"
+                className='flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 text-sm font-bold text-white transition hover:border-brand'
               >
-                <span className="text-lg">{newRoomForm.icon || '🎬'}</span>
-                <span className="text-xs text-zinc-300">
+                <span className='text-lg'>{newRoomForm.icon || '🎬'}</span>
+                <span className='text-xs text-zinc-300'>
                   {symbolPickerOpen ? 'Hide Symbols' : 'Change Symbol'}
                 </span>
               </button>
             </div>
 
-            <div className="sm:col-span-5">
-              <label className="mb-1.5 block text-xs font-bold text-zinc-300">
+            <div className='sm:col-span-5'>
+              <label className='mb-1.5 block text-xs font-bold text-zinc-300'>
                 Community Name *
               </label>
               <input
                 required
-                placeholder="e.g. Tollywood & Pan-India Club"
+                placeholder='e.g. Tollywood & Pan-India Club'
                 value={newRoomForm.name}
-                onChange={(e) => setNewRoomForm({ ...newRoomForm, name: e.target.value })}
-                className="h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 text-xs text-white focus:border-brand focus:outline-none"
+                onChange={(e) =>
+                  setNewRoomForm({ ...newRoomForm, name: e.target.value })
+                }
+                className='h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3.5 text-xs text-white focus:border-brand focus:outline-none'
               />
             </div>
 
-            <div className="sm:col-span-4">
-              <label className="mb-1.5 block text-xs font-bold text-zinc-300">
-                Community Topic
+            <div className='sm:col-span-12'>
+              <label className='mb-1.5 block text-xs font-bold text-zinc-700 dark:text-zinc-300'>
+                Community Topic (Select Suggested or Type Custom Topic) *
               </label>
-              <div className="flex flex-wrap gap-1.5">
-                {COMMUNITY_TOPICS.map((t) => (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => setNewRoomForm({ ...newRoomForm, topic: t.value })}
-                    className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition ${
-                      (newRoomForm.topic || 'general') === t.value
-                        ? 'bg-brand font-extrabold text-black'
-                        : 'border border-white/10 bg-[#070a10] text-zinc-300 hover:text-white'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
+              <div className='flex flex-wrap gap-1.5 mb-2'>
+                {availableTopics.map((topVal) => {
+                  const isSelected =
+                    (newRoomForm.topic || 'general').toLowerCase() ===
+                    topVal.toLowerCase();
+                  const formattedLabel =
+                    COMMUNITY_TOPICS.find((t) => t.value === topVal)?.label ||
+                    topVal.charAt(0).toUpperCase() + topVal.slice(1);
+                  return (
+                    <button
+                      key={topVal}
+                      type='button'
+                      onClick={() =>
+                        setNewRoomForm({ ...newRoomForm, topic: topVal })
+                      }
+                      className={`admin-btn admin-btn-sm ${
+                        isSelected
+                          ? 'admin-btn-primary font-bold shadow-xs'
+                          : 'admin-btn-secondary'
+                      }`}
+                    >
+                      {formattedLabel}
+                    </button>
+                  );
+                })}
               </div>
+              <input
+                type='text'
+                placeholder='Or type a custom topic (e.g. Malayalam Cinema, Marvel & DC, Anime Club)...'
+                value={newRoomForm.topic || ''}
+                onChange={(e) =>
+                  setNewRoomForm({
+                    ...newRoomForm,
+                    topic: e.target.value.toLowerCase().trim(),
+                  })
+                }
+                className='h-9 w-full rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#151c2c] px-3.5 text-xs text-[#1b2230] dark:text-white focus:border-blue-600 dark:focus:border-brand focus:outline-none'
+              />
             </div>
 
-            <div className="sm:col-span-12">
-              <label className="mb-1.5 block text-xs font-bold text-zinc-300">
+            <div className='sm:col-span-12'>
+              <label className='mb-1.5 block text-xs font-bold text-zinc-300'>
                 Community Description & Rules
               </label>
               <textarea
                 rows={2}
-                placeholder="Describe what members can discuss in this community lounge..."
+                placeholder='Describe what members can discuss in this community lounge...'
                 value={newRoomForm.description}
                 onChange={(e) =>
-                  setNewRoomForm({ ...newRoomForm, description: e.target.value })
+                  setNewRoomForm({
+                    ...newRoomForm,
+                    description: e.target.value,
+                  })
                 }
-                className="w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white focus:border-brand focus:outline-none"
+                className='w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white focus:border-brand focus:outline-none'
               />
             </div>
           </div>
 
           {symbolPickerOpen && (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-[#070a10] p-3.5">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[11px] font-extrabold tracking-wider text-zinc-400 uppercase">
+            <div className='mt-4 rounded-2xl border border-white/10 bg-[#070a10] p-3.5'>
+              <div className='mb-2 flex items-center justify-between'>
+                <span className='text-[11px] font-extrabold tracking-wider text-zinc-400 uppercase'>
                   Choose Group Symbol ({GROUP_SYMBOLS.length} symbols available)
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className='flex flex-wrap gap-1.5'>
                 {GROUP_SYMBOLS.map((sym) => (
                   <button
                     key={sym}
-                    type="button"
-                    onClick={() => setNewRoomForm({ ...newRoomForm, icon: sym })}
+                    type='button'
+                    onClick={() =>
+                      setNewRoomForm({ ...newRoomForm, icon: sym })
+                    }
                     className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${
                       newRoomForm.icon === sym
                         ? 'scale-110 border border-brand bg-brand/25 shadow-sm'
@@ -484,41 +582,43 @@ export default function CommunitySection({
             </div>
           )}
 
-          <div className="mt-5 flex justify-end border-t border-white/10 pt-4">
-            <button type="submit" className="admin-btn admin-btn-primary px-6 py-2.5">
+          <div className='mt-5 flex justify-end border-t border-white/10 pt-4'>
+            <button
+              type='submit'
+              className='admin-btn admin-btn-primary px-6 py-2.5'
+            >
               <Plus size={14} /> Create Official Community Room
             </button>
           </div>
         </form>
       ) : (
         /* ==================== OPTION 2: MANAGE COMMUNITIES TABLE VIEW ==================== */
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-            <p className="text-xs text-zinc-400">
-              Showing <b className="text-white">{filteredRooms.length}</b> of{' '}
-              <b className="text-white">{commRooms.length}</b> communities • Click{' '}
-              <b className="text-brand">Users & Block</b> on any row to inspect members, Room Admins, or block a user/admin.
-            </p>
-          </div>
-
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
+        <div className='flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] shadow-xs'>
+          <div className='flex-1 min-h-0 overflow-x-auto overflow-y-auto studio-scroll'>
+            <table className='admin-table w-full text-left'>
+              <thead className='sticky top-0 z-10 bg-slate-50 dark:bg-[#0e131f] border-b border-[#d5d9e0] dark:border-white/10 shadow-xs'>
                 <tr>
-                  <th>Community & Symbol</th>
-                  <th>Creator & Room Admins</th>
-                  <th>Created Date</th>
+                  <th className='w-12'>#</th>
+                  <th>Community &amp; Symbol</th>
+                  <th>Creator &amp; Room Admins</th>
+                  <th>Created &amp; Activity</th>
                   <th>Total Users</th>
                   <th>Posts (No Replies)</th>
                   <th>Status</th>
-                  <th className="text-right">Actions</th>
+                  <th className='text-right'>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRooms.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-xs text-zinc-400">
-                      <MessageSquare size={20} className="mx-auto mb-2 text-brand" />
+                    <td
+                      colSpan={7}
+                      className='py-10 text-center text-xs text-zinc-400'
+                    >
+                      <MessageSquare
+                        size={20}
+                        className='mx-auto mb-2 text-brand'
+                      />
                       No communities match your current filter.
                     </td>
                   </tr>
@@ -545,33 +645,39 @@ export default function CommunitySection({
 
                     return (
                       <tr key={r.id}>
-                        <td className="max-w-64 overflow-hidden">
-                          <div className="flex min-w-0 items-center gap-2.5 overflow-hidden">
+                        <td className='whitespace-nowrap font-mono text-[11px] font-bold text-zinc-500'>
+                          #{filteredRooms.indexOf(r) + 1}
+                        </td>
+                        <td className='max-w-64 overflow-hidden'>
+                          <div className='flex min-w-0 items-center gap-2.5 overflow-hidden'>
                             <button
-                              type="button"
+                              type='button'
                               onClick={() => {
                                 openManageRoomModal(r);
                                 setSymbolEditOpenForRoom(true);
                               }}
-                              title="Click to change Group Symbol"
-                              className="group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg transition hover:border-brand"
+                              title='Click to change Group Symbol'
+                              className='group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg transition hover:border-brand'
                             >
                               <span>{r.icon || '🎬'}</span>
-                              <span className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] text-black opacity-0 transition group-hover:opacity-100">
+                              <span className='absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] text-black opacity-0 transition group-hover:opacity-100'>
                                 <Edit3 size={9} />
                               </span>
                             </button>
-                            <div className="min-w-0 flex-1 overflow-hidden">
-                              <div className="flex items-center gap-1.5 overflow-hidden">
-                                <p className="truncate font-extrabold text-white" title={r.name}>
+                            <div className='min-w-0 flex-1 overflow-hidden'>
+                              <div className='flex items-center gap-1.5 overflow-hidden'>
+                                <p
+                                  className='truncate font-extrabold text-white'
+                                  title={r.name}
+                                >
                                   {r.name}
                                 </p>
-                                <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-brand uppercase">
+                                <span className='shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-brand uppercase'>
                                   {r.topic || 'general'}
                                 </span>
                               </div>
                               {r.description && (
-                                <p className="mt-0.5 truncate text-[11px] text-zinc-400">
+                                <p className='mt-0.5 truncate text-[11px] text-zinc-400'>
                                   {r.description}
                                 </p>
                               )}
@@ -579,89 +685,121 @@ export default function CommunitySection({
                           </div>
                         </td>
 
-                        <td className="whitespace-nowrap">
-                          <div className="leading-tight">
-                            <p className="font-bold text-white">{creatorName}</p>
+                        <td className='whitespace-nowrap'>
+                          <div className='leading-tight'>
+                            <p className='font-bold text-white'>
+                              {creatorName}
+                            </p>
                             <p
-                              className="max-w-44 truncate text-[10px] font-semibold text-brand"
+                              className='max-w-44 truncate text-[10px] font-semibold text-brand'
                               title={adminNames}
                             >
-                              <Crown size={10} className="mr-1 inline" />
-                              {adminCount} Admin{adminCount > 1 ? 's' : ''}: {adminNames}
+                              <Crown size={10} className='mr-1 inline' />
+                              {adminCount} Admin{adminCount > 1 ? 's' : ''}:{' '}
+                              {adminNames}
                             </p>
                           </div>
                         </td>
 
-                        <td className="whitespace-nowrap text-zinc-300">
-                          {formatAdminDate(r.createdAt)}
+                        <td className='whitespace-nowrap text-[11px] leading-tight'>
+                          <div className='text-zinc-800 dark:text-zinc-200 font-medium'>
+                            <span className='text-zinc-400 text-[10px]'>
+                              Cre:{' '}
+                            </span>
+                            {formatAdminDateTime(r.createdAt)}
+                          </div>
+                          <div className='text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5'>
+                            <span className='text-zinc-400 text-[9px]'>
+                              Act:{' '}
+                            </span>
+                            {formatAdminDateTime(
+                              r.lastMessageAt || r.updatedAt || r.createdAt,
+                            )}
+                          </div>
                         </td>
 
-                        <td className="whitespace-nowrap">
+                        <td className='whitespace-nowrap'>
                           <button
-                            type="button"
+                            type='button'
                             onClick={() => openManageRoomModal(r)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-brand/30 bg-brand/10 px-2.5 py-1 text-xs font-extrabold text-brand transition hover:bg-brand hover:text-black"
-                            title="View all users & admins in this chat room"
+                            className='inline-flex items-center gap-1.5 rounded-xl border border-brand/30 bg-brand/10 px-2.5 py-1 text-xs font-extrabold text-brand transition hover:bg-brand hover:text-black'
+                            title='View all users & admins in this chat room'
                           >
                             <Users size={12} />
                             {displayMemberCount.toLocaleString('en-IN')} users
                           </button>
                         </td>
 
-                        <td className="whitespace-nowrap">
-                          <div className="inline-flex flex-col">
-                            <span className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-extrabold text-white">
-                              <MessageSquare size={12} className="text-brand" />
-                              {Number(r.messageCount || 0).toLocaleString('en-IN')} posts
+                        <td className='whitespace-nowrap'>
+                          <div className='inline-flex flex-col'>
+                            <span className='inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-extrabold text-white'>
+                              <MessageSquare size={12} className='text-brand' />
+                              {Number(r.messageCount || 0).toLocaleString(
+                                'en-IN',
+                              )}{' '}
+                              posts
                             </span>
-                            <span className="mt-0.5 text-[9px] text-zinc-500">
+                            <span className='mt-0.5 text-[9px] text-zinc-500'>
                               Top-level only (no replies)
                             </span>
                           </div>
                         </td>
 
-                        <td className="whitespace-nowrap">
+                        <td className='whitespace-nowrap'>
                           <span
                             className={`admin-status-badge ${
-                              r.isLocked ? 'admin-status-amber' : 'admin-status-emerald'
+                              r.isLocked
+                                ? 'admin-status-amber'
+                                : 'admin-status-emerald'
                             }`}
                           >
-                            {r.isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                            {r.isLocked ? (
+                              <Lock size={12} />
+                            ) : (
+                              <Unlock size={12} />
+                            )}
                             {r.isLocked ? 'Blocked' : 'Active'}
                           </span>
                         </td>
 
-                        <td className="whitespace-nowrap text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className='whitespace-nowrap text-right'>
+                          <div className='flex items-center justify-end gap-1.5'>
                             <button
-                              type="button"
+                              type='button'
                               onClick={() => openManageRoomModal(r)}
-                              className="admin-btn admin-btn-secondary admin-btn-sm"
-                              title="Inspect total users, Room Admins, change symbol, or block users"
+                              className='admin-btn admin-btn-secondary admin-btn-sm'
+                              title='Inspect total users, Room Admins, change symbol, or block users'
                             >
-                              <Users size={12} className="text-brand" /> Users & Block
+                              <Users size={12} className='text-brand' /> Users &
+                              Block
                             </button>
                             <button
-                              type="button"
+                              type='button'
                               onClick={() => onToggleRoomLock(r)}
                               className={`admin-btn admin-btn-sm ${
-                                r.isLocked ? 'admin-btn-emerald' : 'admin-btn-amber'
+                                r.isLocked
+                                  ? 'admin-btn-emerald'
+                                  : 'admin-btn-amber'
                               }`}
                             >
-                              {r.isLocked ? <Unlock size={12} /> : <Lock size={12} />}
+                              {r.isLocked ? (
+                                <Unlock size={12} />
+                              ) : (
+                                <Lock size={12} />
+                              )}
                               {r.isLocked ? 'Unblock' : 'Block'}
                             </button>
                             <Link
                               to={`/community?room=${encodeURIComponent(r.slug || r.id)}`}
-                              className="admin-btn admin-btn-secondary admin-btn-sm"
-                              title="Open Community Chat"
+                              className='admin-btn admin-btn-secondary admin-btn-sm'
+                              title='Open Community Chat'
                             >
                               <ExternalLink size={12} /> Open
                             </Link>
                             <button
-                              type="button"
+                              type='button'
                               onClick={() => onRequestDeleteRoom(r)}
-                              className="admin-btn admin-btn-danger admin-btn-sm px-2"
+                              className='admin-btn admin-btn-danger admin-btn-sm px-2'
                             >
                               <Trash2 size={12} />
                             </button>
@@ -674,64 +812,77 @@ export default function CommunitySection({
               </tbody>
             </table>
           </div>
+          <div className='shrink-0 border-t border-[#d5d9e0] dark:border-white/10 px-4 py-2.5 bg-slate-50 dark:bg-white/[0.02] text-xs text-zinc-500 flex justify-between items-center'>
+            <span>
+              Showing {filteredRooms.length} of {commRooms.length} communities
+            </span>
+            <span className='text-[11px] text-zinc-400'>
+              💡 Click "Users &amp; Block" to view participants &amp; manage
+              admins
+            </span>
+          </div>
         </div>
       )}
 
       {/* ==================== COMMUNITY USERS, ROOM ADMINS & BLOCKING MODAL ==================== */}
       {managingRoom && (
-        <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/75 p-3 backdrop-blur-md sm:p-4">
-          <div className="studio-scroll relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/15 bg-[#0e131f] p-5 text-white shadow-2xl sm:p-6">
+        <div className='fixed inset-0 z-[220] flex items-center justify-center bg-black/75 p-3 backdrop-blur-md sm:p-4'>
+          <div className='studio-scroll relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/15 bg-[#0e131f] p-5 text-white shadow-2xl sm:p-6'>
             <button
-              type="button"
+              type='button'
               onClick={() => setManagingRoom(null)}
-              className="absolute top-4 right-4 rounded-full p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
+              className='absolute top-4 right-4 rounded-full p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white'
             >
               <X size={18} />
             </button>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4 pr-8">
-              <div className="flex items-center gap-3.5">
+            <div className='flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4 pr-8'>
+              <div className='flex items-center gap-3.5'>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => setSymbolEditOpenForRoom((v) => !v)}
-                  title="Click to change Group Symbol"
-                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-brand/40 bg-brand/15 text-3xl transition hover:scale-105"
+                  title='Click to change Group Symbol'
+                  className='flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-brand/40 bg-brand/15 text-3xl transition hover:scale-105'
                 >
                   {managingRoom.icon || '🎬'}
                 </button>
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className='flex flex-wrap items-center gap-2'>
                     <h3
                       style={{ fontFamily: 'var(--font-display)' }}
-                      className="text-lg font-extrabold text-white"
+                      className='text-lg font-extrabold text-white'
                     >
                       {managingRoom.name}
                     </h3>
                     <span
                       className={`admin-status-badge ${
-                        managingRoom.isLocked ? 'admin-status-amber' : 'admin-status-emerald'
+                        managingRoom.isLocked
+                          ? 'admin-status-amber'
+                          : 'admin-status-emerald'
                       }`}
                     >
-                      {managingRoom.isLocked ? 'Community Blocked' : 'Active Community'}
+                      {managingRoom.isLocked
+                        ? 'Community Blocked'
+                        : 'Active Community'}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-xs text-zinc-400">
+                  <p className='mt-0.5 text-xs text-zinc-400'>
                     {managingRoom.description ||
                       'Manage community members, Room Admins, symbol, and blocking.'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className='flex flex-wrap items-center gap-2'>
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => setSymbolEditOpenForRoom((v) => !v)}
-                  className="admin-btn admin-btn-secondary"
+                  className='admin-btn admin-btn-secondary'
                 >
                   <Edit3 size={12} /> Change Symbol
                 </button>
                 <button
-                  type="button"
+                  type='button'
                   onClick={async () => {
                     await onToggleRoomLock(managingRoom);
                     setManagingRoom((prev) =>
@@ -739,34 +890,42 @@ export default function CommunitySection({
                     );
                   }}
                   className={`admin-btn ${
-                    managingRoom.isLocked ? 'admin-btn-emerald' : 'admin-btn-amber'
+                    managingRoom.isLocked
+                      ? 'admin-btn-emerald'
+                      : 'admin-btn-amber'
                   }`}
                 >
-                  {managingRoom.isLocked ? <Unlock size={13} /> : <Lock size={13} />}
-                  {managingRoom.isLocked ? 'Unblock Community' : 'Block Community'}
+                  {managingRoom.isLocked ? (
+                    <Unlock size={13} />
+                  ) : (
+                    <Lock size={13} />
+                  )}
+                  {managingRoom.isLocked
+                    ? 'Unblock Community'
+                    : 'Block Community'}
                 </button>
               </div>
             </div>
 
             {symbolEditOpenForRoom && (
-              <div className="mt-4 rounded-2xl border border-brand/30 bg-[#070a10] p-3.5">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-extrabold text-brand">
+              <div className='mt-4 rounded-2xl border border-brand/30 bg-[#070a10] p-3.5'>
+                <div className='mb-2 flex items-center justify-between'>
+                  <span className='text-xs font-extrabold text-brand'>
                     Choose a New Group Symbol for {managingRoom.name}
                   </span>
                   <button
-                    type="button"
+                    type='button'
                     onClick={() => setSymbolEditOpenForRoom(false)}
-                    className="text-xs text-zinc-400 hover:text-white"
+                    className='text-xs text-zinc-400 hover:text-white'
                   >
                     Close
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className='flex flex-wrap gap-1.5'>
                   {GROUP_SYMBOLS.map((sym) => (
                     <button
                       key={sym}
-                      type="button"
+                      type='button'
                       onClick={() => handleChangeRoomSymbol(managingRoom, sym)}
                       className={`flex h-9 w-9 items-center justify-center rounded-xl text-lg transition ${
                         managingRoom.icon === sym
@@ -781,134 +940,141 @@ export default function CommunitySection({
               </div>
             )}
 
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-[#070a10] p-3">
-                <p className="text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase">
+            <div className='mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4'>
+              <div className='rounded-2xl border border-white/10 bg-[#070a10] p-3'>
+                <p className='text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase'>
                   Total Users in Room
                 </p>
-                <p className="mt-1 text-xl font-black text-white">
+                <p className='mt-1 text-xl font-black text-white'>
                   {roomMembersData.totalMembers}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-[#070a10] p-3">
-                <p className="text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase">
+              <div className='rounded-2xl border border-white/10 bg-[#070a10] p-3'>
+                <p className='text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase'>
                   Room Admins
                 </p>
-                <p className="mt-1 text-xl font-black text-brand">
+                <p className='mt-1 text-xl font-black text-brand'>
                   {roomMembersData.admins.length}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-[#070a10] p-3">
-                <p className="text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase">
+              <div className='rounded-2xl border border-white/10 bg-[#070a10] p-3'>
+                <p className='text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase'>
                   Top-Level Posts
                 </p>
-                <p className="mt-1 text-xl font-black text-emerald-400">
+                <p className='mt-1 text-xl font-black text-emerald-400'>
                   {managingRoom.messageCount || 0}
                 </p>
-                <p className="text-[9px] text-zinc-500">Replies excluded</p>
+                <p className='text-[9px] text-zinc-500'>Replies excluded</p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-[#070a10] p-3">
-                <p className="text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase">
+              <div className='rounded-2xl border border-white/10 bg-[#070a10] p-3'>
+                <p className='text-[10px] font-extrabold tracking-wider text-zinc-400 uppercase'>
                   Blocked Users
                 </p>
-                <p className="mt-1 text-xl font-black text-rose-400">
+                <p className='mt-1 text-xl font-black text-rose-400'>
                   {roomMembersData.blockedUsers.length}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 flex items-center gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-200">
-              <ShieldAlert size={16} className="shrink-0 text-brand" />
-              <span>
+            <div className='mt-4 flex items-center gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-200'>
+              <ShieldAlert size={16} className='shrink-0 text-brand' />
+              <span className='text-brand'>
                 Blocking any user or Room Admin removes them from{' '}
-                <b>{managingRoom.name}</b> and permanently deletes all of their posts and replies in this community.
+                <b>{managingRoom.name}</b> and permanently deletes all of their
+                posts and replies in this community.
               </span>
             </div>
 
-            <div className="mt-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-xs font-extrabold tracking-wider text-zinc-300 uppercase">
-                  Community Members & Room Admins ({filteredModalMembers.length})
+            <div className='mt-4 space-y-3'>
+              <div className='flex flex-wrap items-center justify-between gap-2'>
+                <h4 className='text-xs font-extrabold tracking-wider text-zinc-300 uppercase'>
+                  Community Members & Room Admins ({filteredModalMembers.length}
+                  )
                 </h4>
-                <div className="relative w-60">
+                <div className='relative w-60'>
                   <Search
                     size={13}
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-400"
+                    className='pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-400'
                   />
                   <input
                     value={memberFilterQ}
                     onChange={(e) => setMemberFilterQ(e.target.value)}
-                    placeholder="Filter room members..."
-                    className="w-full rounded-xl border border-white/10 bg-[#070a10] py-1.5 pr-3 pl-8 text-xs text-white focus:border-brand focus:outline-none"
+                    placeholder='Filter room members...'
+                    className='w-full rounded-xl border border-white/10 bg-[#070a10] py-1.5 pr-3 pl-8 text-xs text-white focus:border-brand focus:outline-none'
                   />
                 </div>
               </div>
 
               {roomMembersLoading ? (
-                <div className="py-8 text-center text-xs text-zinc-400">
+                <div className='py-8 text-center text-xs text-zinc-400'>
                   Loading community users & Room Admins...
                 </div>
               ) : filteredModalMembers.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-[#070a10] py-6 text-center text-xs text-zinc-400">
+                <div className='rounded-2xl border border-white/10 bg-[#070a10] py-6 text-center text-xs text-zinc-400'>
                   No members found in this community.
                 </div>
               ) : (
-                <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                <div className='max-h-64 space-y-2 overflow-y-auto pr-1'>
                   {filteredModalMembers.map((m) => (
                     <div
                       key={m.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#070a10] px-3.5 py-2.5"
+                      className='flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-[#070a10] px-3.5 py-2.5'
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className='flex items-center gap-2.5'>
                         <span
-                          style={{ backgroundColor: m.avatarColor || '#f5b942' }}
-                          className="keep-white flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+                          style={{
+                            backgroundColor: m.avatarColor || '#f5b942',
+                          }}
+                          className='keep-white flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black text-white'
                         >
                           {(m.name || 'U')[0].toUpperCase()}
                         </span>
                         <div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-xs font-extrabold text-white">
+                          <div className='flex flex-wrap items-center gap-1.5'>
+                            <span className='text-xs font-extrabold text-white'>
                               {m.name}
                             </span>
                             {m.isCreator && (
-                              <span className="rounded bg-brand px-1.5 py-0.5 text-[9px] font-black text-black uppercase">
+                              <span className='rounded bg-brand px-1.5 py-0.5 text-[9px] font-black text-black uppercase'>
                                 Creator
                               </span>
                             )}
                             {m.isRoomAdmin && (
-                              <span className="rounded bg-brand/20 px-1.5 py-0.5 text-[9px] font-extrabold text-brand uppercase">
-                                <Crown size={9} className="mr-0.5 inline" /> Room Admin
+                              <span className='rounded bg-brand/20 px-1.5 py-0.5 text-[9px] font-extrabold text-brand uppercase'>
+                                <Crown size={9} className='mr-0.5 inline' />{' '}
+                                Room Admin
                               </span>
                             )}
-                            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-zinc-300 uppercase">
+                            <span className='rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-zinc-300 uppercase'>
                               {m.role || 'user'}
                             </span>
                           </div>
-                          <p className="text-[10px] text-zinc-400">
+                          <p className='text-[10px] text-zinc-400'>
                             {m.email} • {m.postCount || 0} posts in room
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className='flex items-center gap-1.5'>
                         <button
-                          type="button"
+                          type='button'
                           onClick={() => handleToggleMemberAdminRole(m)}
-                          className="admin-btn admin-btn-secondary py-1 px-2.5 text-[11px]"
+                          className='admin-btn admin-btn-secondary py-1 px-2.5 text-[11px]'
                         >
-                          <Crown size={11} className="text-brand" />
+                          <Crown size={11} className='text-brand' />
                           {m.isRoomAdmin ? 'Remove Admin' : 'Make Room Admin'}
                         </button>
                         {m.id !== currentUser?.id && (
                           <button
-                            type="button"
+                            type='button'
                             disabled={blockingUserId === m.id}
                             onClick={() => handleBlockUserOrRoomAdmin(m)}
-                            className="admin-btn admin-btn-danger py-1 px-2.5 text-[11px]"
+                            className='admin-btn admin-btn-danger py-1 px-2.5 text-[11px]'
                           >
                             <Ban size={11} />
-                            {blockingUserId === m.id ? 'Blocking...' : 'Block & Purge Posts'}
+                            {blockingUserId === m.id
+                              ? 'Blocking...'
+                              : 'Block & Purge Posts'}
                           </button>
                         )}
                       </div>
@@ -919,23 +1085,24 @@ export default function CommunitySection({
             </div>
 
             {roomMembersData.blockedUsers.length > 0 && (
-              <div className="mt-5 space-y-2 border-t border-white/10 pt-4">
-                <h4 className="text-xs font-extrabold tracking-wider text-rose-400 uppercase">
-                  Blocked Users in {managingRoom.name} ({roomMembersData.blockedUsers.length})
+              <div className='mt-5 space-y-2 border-t border-white/10 pt-4'>
+                <h4 className='text-xs font-extrabold tracking-wider text-rose-400 uppercase'>
+                  Blocked Users in {managingRoom.name} (
+                  {roomMembersData.blockedUsers.length})
                 </h4>
-                <div className="flex flex-wrap gap-2">
+                <div className='flex flex-wrap gap-2'>
                   {roomMembersData.blockedUsers.map((bu) => (
                     <div
                       key={bu.id}
-                      className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs"
+                      className='flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs'
                     >
-                      <span className="font-bold text-white">{bu.name}</span>
+                      <span className='font-bold text-white'>{bu.name}</span>
                       <button
-                        type="button"
+                        type='button'
                         onClick={() => handleUnblockUser(bu)}
-                        className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-extrabold text-emerald-300 hover:bg-emerald-500/30"
+                        className='rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-extrabold text-emerald-300 hover:bg-emerald-500/30'
                       >
-                        <Check size={10} className="mr-0.5 inline" /> Unblock
+                        <Check size={10} className='mr-0.5 inline' /> Unblock
                       </button>
                     </div>
                   ))}

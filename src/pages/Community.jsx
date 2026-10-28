@@ -764,21 +764,43 @@ export default function Community() {
                 {/* Topic / Category */}
                 <div>
                   <label className="mb-1 block text-[11px] font-extrabold tracking-wider text-zinc-400 uppercase">
-                    Community Topic
+                    Community Topic (Suggested or Custom)
                   </label>
-                  <select
-                    value={newCommunityForm.topic}
-                    onChange={(e) =>
-                      setNewCommunityForm((p) => ({ ...p, topic: e.target.value }))
-                    }
-                    className="w-full rounded-xl border border-white/10 bg-[#0e131f] px-3.5 py-2.5 text-xs text-white focus:border-brand focus:outline-none"
-                  >
-                    {COMMUNITY_TOPICS.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      value={
+                        COMMUNITY_TOPICS.some((t) => t.value === newCommunityForm.topic)
+                          ? newCommunityForm.topic
+                          : 'custom'
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val !== 'custom') {
+                          setNewCommunityForm((p) => ({ ...p, topic: val }));
+                        }
+                      }}
+                      className="w-1/2 rounded-xl border border-white/10 bg-[#0e131f] px-3.5 py-2.5 text-xs text-white focus:border-brand focus:outline-none"
+                    >
+                      {COMMUNITY_TOPICS.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                      <option value="custom">✏️ Custom Topic...</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Custom topic..."
+                      value={newCommunityForm.topic || ''}
+                      onChange={(e) =>
+                        setNewCommunityForm((p) => ({
+                          ...p,
+                          topic: e.target.value.toLowerCase().trim(),
+                        }))
+                      }
+                      className="w-1/2 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs text-white focus:border-brand focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 {/* Description */}

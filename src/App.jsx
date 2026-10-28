@@ -44,6 +44,7 @@ const userRoutesTree = (
     <Route path={ROUTES.MOVIE_DETAIL} element={<Details />} />
     <Route path={ROUTES.WEB_SERIES_DETAIL} element={<Details />} />
     <Route path={ROUTES.TV_SHOW_DETAIL} element={<Details />} />
+    <Route path='/tv-shows/:id' element={<Details />} />
     <Route path={ROUTES.TV_SERIES_DETAIL} element={<Details />} />
     <Route path={ROUTES.DETAILS} element={<Details />} />
     <Route path={ROUTES.DETAILS_LEGACY} element={<Details />} />
@@ -111,13 +112,20 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
   }, [theme]);
 
   const isAdminStudioRoute = pathname.startsWith('/admin');
 
   if (isAdminStudioRoute) {
     return (
-      <div className='min-h-screen w-full max-w-[100vw] overflow-x-clip bg-[#070a10] text-white'>
+      <div className='min-h-screen w-full max-w-[100vw] overflow-x-clip bg-slate-50 dark:bg-[#070a10] text-[#1b2230] dark:text-white'>
         <GlobalStatusPatch />
         <LogoutConfirmModal />
         <AppErrorBoundary>

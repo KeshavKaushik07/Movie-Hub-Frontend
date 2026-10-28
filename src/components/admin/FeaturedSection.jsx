@@ -16,6 +16,7 @@ import {
 import SafeImage from '../ui/SafeImage';
 import CustomSelect from '../ui/CustomSelect';
 import InfoPatch from '../ui/InfoPatch';
+import { formatAdminDateTime } from './adminHelpers';
 
 export default function FeaturedSection({
   featuredItems,
@@ -75,7 +76,7 @@ export default function FeaturedSection({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Frozen Inner Selection & Slide Limit Bar */}
       <div className="admin-sticky-bar space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 shadow-lg">
@@ -318,20 +319,22 @@ export default function FeaturedSection({
         </div>
       ) : (
         /* ==================== MANAGE HERO SLIDES TABLE VIEW ==================== */
-        <div className="admin-table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Movie / Web Series</th>
-                <th>TMDB ID</th>
-                <th>Type</th>
-                <th>Year</th>
-                <th>Spotlight Badge</th>
-                <th>Status</th>
-                <th className="text-right">Actions</th>
-              </tr>
-            </thead>
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl border border-[#d5d9e0] dark:border-white/10 bg-white dark:bg-[#0e131f] shadow-xs">
+          <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto studio-scroll">
+            <table className="admin-table w-full text-left">
+              <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-[#0e131f] border-b border-[#d5d9e0] dark:border-white/10 shadow-xs">
+                <tr>
+                  <th className="w-12">#</th>
+                  <th>Movie / Web Series</th>
+                  <th>TMDB ID</th>
+                  <th>Type</th>
+                  <th>Year</th>
+                  <th>Spotlight Badge</th>
+                  <th>Created &amp; Updated</th>
+                  <th>Status</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
             <tbody>
               {visibleFeaturedItems.length === 0 ? (
                 <tr>
@@ -375,9 +378,19 @@ export default function FeaturedSection({
                       </td>
                       <td className="whitespace-nowrap text-zinc-300">{item.year || '—'}</td>
                       <td>
-                        <span className="rounded-md bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
+                        <span className="rounded px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-brand/15 dark:text-brand">
                           {item.badgeText || 'Featured'}
                         </span>
+                      </td>
+                      <td className="whitespace-nowrap text-[11px] leading-tight">
+                        <div className="text-zinc-800 dark:text-zinc-200 font-medium">
+                          <span className="text-zinc-400 text-[10px]">Cre: </span>
+                          {formatAdminDateTime(item.createdAt)}
+                        </div>
+                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                          <span className="text-zinc-400 text-[9px]">Upd: </span>
+                          {formatAdminDateTime(item.updatedAt || item.createdAt)}
+                        </div>
                       </td>
                       <td>
                         <span
@@ -431,7 +444,12 @@ export default function FeaturedSection({
                 })
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
+          <div className="shrink-0 border-t border-[#d5d9e0] dark:border-white/10 px-4 py-2.5 bg-slate-50 dark:bg-white/[0.02] text-xs text-zinc-500 flex justify-between items-center">
+            <span>Showing {visibleFeaturedItems.length} of {featuredItems.length} featured slides</span>
+            <span className="text-[11px] text-zinc-400">💡 Use arrows to rearrange carousel display order</span>
+          </div>
         </div>
       )}
     </div>

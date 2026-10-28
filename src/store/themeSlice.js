@@ -10,6 +10,13 @@ const getInitialTheme = () => {
 const applyThemeToDom = (mode) => {
   if (typeof document !== 'undefined') {
     document.documentElement.setAttribute('data-theme', mode);
+    if (mode === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
   }
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem('movieshub_theme', mode);

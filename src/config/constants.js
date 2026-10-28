@@ -33,6 +33,7 @@ export const ROUTES = {
   MOVIE_DETAIL: '/movie/:id',
   WEB_SERIES_DETAIL: '/web-series/:id',
   TV_SHOW_DETAIL: '/tv-show/:id',
+  TV_SHOWS_DETAIL: '/tv-shows/:id',
   TV_SERIES_DETAIL: '/tv-series/:id',
   DETAILS: '/detail/:type/:id',
   DETAILS_LEGACY: '/details/:type/:id',
