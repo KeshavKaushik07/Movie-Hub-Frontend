@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Film,
@@ -10,11 +11,18 @@ import {
   Database,
   ArrowUpRight,
   Cpu,
+  Shield,
+  LayoutDashboard,
+  BarChart3,
+  Activity,
+  Settings,
 } from 'lucide-react';
 import SafeImage from '../ui/SafeImage';
-import { formatAdminDate } from './adminHelpers';
+import { formatAdminDate, resolveOttMeta } from './adminHelpers';
 
 export default function OverviewSection({ stats, isSuper }) {
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'catalog' | 'activity'
+
   const c = stats?.counts || {};
   const crawler = stats?.crawler || {};
   const pct = Math.min(
@@ -28,24 +36,27 @@ export default function OverviewSection({ stats, isSuper }) {
       value: c.titles || 0,
       sub: `${c.enrichedTitles || 0} full details cached`,
       icon: Database,
-      to: isSuper ? '/admin/catalog' : '/browse/movies',
+      to: '/admin/catalog',
       accent: 'text-brand bg-brand/15',
+      group: 'catalog',
     },
     {
       label: 'Movies',
       value: c.movies || 0,
       sub: 'Feature Films',
       icon: Film,
-      to: isSuper ? '/admin/catalog' : '/browse/movies',
+      to: '/admin/catalog?type=movie',
       accent: 'text-sky-400 bg-sky-500/15',
+      group: 'catalog',
     },
     {
       label: 'Web Series (OTT)',
       value: c.webSeries || 0,
       sub: `${c.tvShows || 0} total TV & series`,
       icon: Tv,
-      to: '/browse/web-series',
+      to: '/admin/catalog?type=webseries',
       accent: 'text-purple-400 bg-purple-500/15',
+      group: 'catalog',
     },
     {
       label: 'Featured Hero Slides',
@@ -54,14 +65,16 @@ export default function OverviewSection({ stats, isSuper }) {
       icon: Sparkles,
       to: '/admin/featured',
       accent: 'text-amber-400 bg-amber-500/15',
+      group: 'catalog',
     },
     {
       label: 'Published Blogs',
       value: c.blogsCount || 0,
       sub: `${c.blogCommentsCount || 0} article comments`,
       icon: BookOpen,
-      to: '/admin/blogs',
+      to: '/admin/blogs?tab=list',
       accent: 'text-emerald-400 bg-emerald-500/15',
+      group: 'activity',
     },
     {
       label: 'Community Rooms',
@@ -70,30 +83,73 @@ export default function OverviewSection({ stats, isSuper }) {
       icon: MessageSquare,
       to: '/admin/community',
       accent: 'text-pink-400 bg-pink-500/15',
+      group: 'activity',
     },
     {
       label: 'Reviews & Critics',
       value: (c.userReviews || 0) + (c.criticReviews || 0),
       sub: `${c.criticReviews || 0} critic • ${c.userReviews || 0} user`,
       icon: Award,
-      to: '/admin/reviews',
+      to: '/admin/reviews?tab=all',
       accent: 'text-orange-400 bg-orange-500/15',
+      group: 'activity',
     },
     {
-      label: 'Registered Users',
-      value: c.users || 0,
-      sub: `${c.activeUsers || 0} active • ${c.admins || 0} staff`,
+      label: 'Regular Users',
+      value: Math.max(0, (c.users || 0) - (c.admins || 0)),
+      sub: `${c.activeUsers || 0} active accounts`,
       icon: Users,
-      to: '/admin/users',
+      to: '/admin/users?tab=all',
       accent: 'text-teal-400 bg-teal-500/15',
+      group: 'activity',
     },
   ];
 
+  const visibleKpis =
+    activeTab === 'all' ? kpis : kpis.filter((k) => k.group === activeTab);
+
   return (
     <div className="space-y-6">
+      {/* Frozen Inner Selection / Filter Tabs Bar */}
+      <div className="admin-sticky-bar">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 shadow-lg">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-[#070a10] p-1">
+            {[
+              { key: 'all', label: 'All Overview Metrics', icon: LayoutDashboard },
+              { key: 'catalog', label: 'Catalog & OTT Breakdown', icon: BarChart3 },
+              { key: 'activity', label: 'Users & Reviews Activity', icon: Activity },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`admin-btn ${
+                    active
+                      ? 'admin-btn-primary'
+                      : 'admin-btn-secondary border-transparent shadow-none'
+                  }`}
+                >
+                  <Icon size={13} />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/admin/settings" className="admin-btn admin-btn-secondary">
+              <Settings size={13} className="text-brand" /> System Settings
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* KPI Grid */}
       <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
-        {kpis.map((k) => {
+        {visibleKpis.map((k) => {
           const Icon = k.icon;
           return (
             <Link
@@ -123,156 +179,237 @@ export default function OverviewSection({ stats, isSuper }) {
       </div>
 
       {/* 1-Lakh Crawler Progress Banner */}
-      <div className="rounded-2xl border border-white/10 bg-[#0e131f] p-5 shadow-lg">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/15 text-brand">
-              <Cpu size={19} />
-            </span>
-            <div>
-              <h3 className="text-sm font-extrabold text-white">
-                1,00,000 Catalog Ingestion Progress ({pct}%)
-              </h3>
-              <p className="text-xs text-zinc-400">
-                {Number(c.titles || 0).toLocaleString('en-IN')} of{' '}
-                {Number(crawler.targetCap || 100000).toLocaleString('en-IN')} titles indexed in MongoDB
-              </p>
+      {(activeTab === 'all' || activeTab === 'catalog') && (
+        <div className="rounded-2xl border border-white/10 bg-[#0e131f] p-5 shadow-lg">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/15 text-brand">
+                <Cpu size={19} />
+              </span>
+              <div>
+                <h3 className="text-sm font-extrabold text-white">
+                  1,00,000 Catalog Ingestion Progress ({pct}%)
+                </h3>
+                <p className="text-xs text-zinc-400">
+                  {Number(c.titles || 0).toLocaleString('en-IN')} of{' '}
+                  {Number(crawler.targetCap || 100000).toLocaleString('en-IN')} titles indexed in MongoDB
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link to="/admin/staff?tab=admin" className="admin-btn admin-btn-secondary">
+                <Shield size={13} className="text-brand" /> Staff ({c.admins || 1})
+              </Link>
+              <Link to="/admin/settings?tab=data" className="admin-btn admin-btn-primary">
+                Manage Data & Quotas
+              </Link>
             </div>
           </div>
-          {isSuper && (
-            <Link to="/admin/crawler" className="admin-btn admin-btn-primary">
-              Manage Crawler Quotas
-            </Link>
-          )}
+          <div className="mt-3.5 h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              style={{ width: `${Math.max(2, pct)}%` }}
+              className="h-full rounded-full bg-linear-to-r from-brand to-emerald-400 transition-all duration-500"
+            />
+          </div>
         </div>
-        <div className="mt-3.5 h-2.5 w-full overflow-hidden rounded-full bg-white/10">
-          <div
-            style={{ width: `${Math.max(2, pct)}%` }}
-            className="h-full rounded-full bg-linear-to-r from-brand to-emerald-400 transition-all duration-500"
-          />
-        </div>
-      </div>
+      )}
+
+      {/* Industry & OTT Distribution Breakdown */}
+      {(activeTab === 'catalog' || activeTab === 'all') &&
+        ((stats?.byIndustry || []).length > 0 || (stats?.byOtt || []).length > 0) && (
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-[#0e131f] p-4 shadow-lg">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-xs font-extrabold tracking-wider text-zinc-300 uppercase">
+                  Catalog by Cinema Industry
+                </h3>
+                <Link to="/admin/catalog" className="text-xs font-bold text-brand hover:underline">
+                  Explore Catalog →
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(stats?.byIndustry || []).slice(0, 10).map((item) => (
+                  <div
+                    key={item._id}
+                    className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#070a10] px-3 py-2 text-xs"
+                  >
+                    <span className="font-extrabold text-white capitalize">
+                      {item._id || 'Global'}
+                    </span>
+                    <span className="rounded-md bg-brand/15 px-1.5 py-0.5 text-[10px] font-black text-brand">
+                      {Number(item.count || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-[#0e131f] p-4 shadow-lg">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-xs font-extrabold tracking-wider text-zinc-300 uppercase">
+                  OTT Streaming Coverage
+                </h3>
+                <Link
+                  to="/admin/catalog?type=webseries"
+                  className="text-xs font-bold text-brand hover:underline"
+                >
+                  Web Series →
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(stats?.byOtt || []).slice(0, 10).map((item) => {
+                  const meta = resolveOttMeta(item._id);
+                  return (
+                    <div
+                      key={item._id}
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#070a10] px-3 py-2 text-xs"
+                    >
+                      <span
+                        style={{ backgroundColor: meta.badge }}
+                        className="keep-white rounded px-1.5 py-0.5 text-[10px] font-extrabold text-white"
+                      >
+                        {meta.label}
+                      </span>
+                      <span className="font-extrabold text-zinc-300">
+                        {Number(item.count || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Two Compact Overview Tables: Top Reviewed Titles & Recent Users */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Top Reviewed Titles */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-white">Top Reviewed Movies & Series</h3>
-            <Link to="/admin/reviews" className="text-xs font-bold text-brand hover:underline">
-              Moderate Reviews →
-            </Link>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Movie / Series</th>
-                  <th>Type</th>
-                  <th>Rating</th>
-                  <th>Reviews</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(stats?.topReviewed || []).length === 0 ? (
+      {(activeTab === 'all' || activeTab === 'activity') && (
+        <div className="grid gap-5 lg:grid-cols-2">
+          {/* Top Reviewed Titles */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-white">Top Reviewed Movies & Series</h3>
+              <Link to="/admin/reviews?tab=all" className="text-xs font-bold text-brand hover:underline">
+                Moderate Reviews →
+              </Link>
+            </div>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-xs text-zinc-400">
-                      No reviewed titles yet.
-                    </td>
+                    <th>Movie / Series</th>
+                    <th>Type</th>
+                    <th>Rating</th>
+                    <th>Reviews</th>
                   </tr>
-                ) : (
-                  (stats?.topReviewed || []).slice(0, 6).map((t) => (
-                    <tr key={`${t.mediaType}-${t.tmdbId}`}>
+                </thead>
+                <tbody>
+                  {(stats?.topReviewed || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-center text-xs text-zinc-400">
+                        No reviewed titles yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    (stats?.topReviewed || []).slice(0, 6).map((t) => (
+                      <tr key={`${t.mediaType}-${t.tmdbId}`}>
+                        <td>
+                          <div className="flex items-center gap-2.5">
+                            <SafeImage
+                              src={t.posterPath}
+                              alt={t.title}
+                              size="w185"
+                              className="h-10 w-7 shrink-0 rounded object-cover"
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate font-bold text-white">{t.title}</p>
+                              <p className="text-[10px] text-zinc-400">{t.year || '—'}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase">
+                            {t.subType || t.mediaType}
+                          </span>
+                        </td>
+                        <td className="font-extrabold text-brand">
+                          ★ {Number(t.siteRating || 0).toFixed(1)}
+                        </td>
+                        <td className="text-zinc-300">{t.siteReviewCount || 0}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Recent Joined Users */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-white">Recently Joined Accounts</h3>
+              <div className="flex items-center gap-3">
+                <Link to="/admin/users?tab=all" className="text-xs font-bold text-brand hover:underline">
+                  Regular Users →
+                </Link>
+                {isSuper && (
+                  <Link to="/admin/staff?tab=admin" className="text-xs font-bold text-sky-400 hover:underline">
+                    Staff Roles →
+                  </Link>
+                )}
+              </div>
+            </div>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Joined</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(stats?.recentUsers || []).slice(0, 6).map((u) => (
+                    <tr key={u.id || u._id}>
                       <td>
                         <div className="flex items-center gap-2.5">
-                          <SafeImage
-                            src={t.posterPath}
-                            alt={t.title}
-                            size="w185"
-                            className="h-10 w-7 shrink-0 rounded object-cover"
-                          />
+                          <span
+                            style={{ backgroundColor: u.avatarColor || '#f5b942' }}
+                            className="keep-white flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white"
+                          >
+                            {(u.name || 'U')[0].toUpperCase()}
+                          </span>
                           <div className="min-w-0">
-                            <p className="truncate font-bold text-white">{t.title}</p>
-                            <p className="text-[10px] text-zinc-400">{t.year || '—'}</p>
+                            <p className="truncate font-bold text-white">{u.name}</p>
+                            <p className="truncate text-[10px] text-zinc-400">{u.email}</p>
                           </div>
                         </div>
                       </td>
                       <td>
                         <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase">
-                          {t.subType || t.mediaType}
+                          {u.role}
                         </span>
                       </td>
-                      <td className="font-extrabold text-brand">
-                        ★ {Number(t.siteRating || 0).toFixed(1)}
+                      <td className="whitespace-nowrap text-zinc-400">
+                        {formatAdminDate(u.createdAt)}
                       </td>
-                      <td className="text-zinc-300">{t.siteReviewCount || 0}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Recent Joined Users */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-extrabold text-white">Recently Joined Accounts</h3>
-            <Link to="/admin/users" className="text-xs font-bold text-brand hover:underline">
-              All Users & Staff →
-            </Link>
-          </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Joined</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(stats?.recentUsers || []).slice(0, 6).map((u) => (
-                  <tr key={u.id || u._id}>
-                    <td>
-                      <div className="flex items-center gap-2.5">
+                      <td>
                         <span
-                          style={{ backgroundColor: u.avatarColor || '#f5b942' }}
-                          className="keep-white flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white"
+                          className={`admin-status-badge ${
+                            u.isActive !== false ? 'admin-status-emerald' : 'admin-status-rose'
+                          }`}
                         >
-                          {(u.name || 'U')[0].toUpperCase()}
+                          {u.isActive !== false ? 'Active' : 'Suspended'}
                         </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-bold text-white">{u.name}</p>
-                          <p className="truncate text-[10px] text-zinc-400">{u.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase">
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap text-zinc-400">
-                      {formatAdminDate(u.createdAt)}
-                    </td>
-                    <td>
-                      <span
-                        className={`admin-status-badge ${
-                          u.isActive !== false ? 'admin-status-emerald' : 'admin-status-rose'
-                        }`}
-                      >
-                        {u.isActive !== false ? 'Active' : 'Suspended'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Eye,
   EyeOff,
@@ -8,7 +9,10 @@ import {
   Edit3,
   Plus,
   MessageSquare,
+  Users,
+  X,
 } from 'lucide-react';
+import { tmdb } from '../../services/api';
 import SafeImage from '../ui/SafeImage';
 import CustomSelect from '../ui/CustomSelect';
 import { formatAdminDate } from './adminHelpers';
@@ -23,9 +27,19 @@ export default function ReviewsModerationSection({
   onToggleHideComment,
   onDeleteComment,
 }) {
-  const [subTab, setSubTab] = useState('all'); // 'all' | 'critic' | 'user' | 'comments'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') || 'all'; // 'all' | 'critic' | 'user' | 'comments' | 'publish'
+
+  const [subTab, setSubTab] = useState(urlTab);
+  const [reviewTypeFilter, setReviewTypeFilter] = useState(
+    urlTab === 'critic' ? 'critic' : urlTab === 'user' ? 'user' : 'all',
+  );
   const [searchQ, setSearchQ] = useState('');
-  const [showAddCritic, setShowAddCritic] = useState(false);
+  const [visibilityFilter, setVisibilityFilter] = useState('all'); // 'all' | 'visible' | 'hidden'
+
+  // Quick movie search inside Publish Critic Review form
+  const [criticMovieQ, setCriticMovieQ] = useState('');
+  const [criticMovieHits, setCriticMovieHits] = useState([]);
 
   const [criticForm, setCriticForm] = useState({
     type: 'movie',
@@ -38,13 +52,37 @@ export default function ReviewsModerationSection({
     externalUrl: '',
   });
 
+  useEffect(() => {
+    const nextTab = searchParams.get('tab') || 'all';
+    setSubTab(nextTab);
+    if (nextTab === 'critic' || nextTab === 'user' || nextTab === 'all') {
+      setReviewTypeFilter(nextTab);
+    }
+  }, [searchParams]);
+
+  const handleSwitchTab = (nextTab) => {
+    setSubTab(nextTab);
+    setSearchParams({ tab: nextTab });
+  };
+
+  const criticReviewsCount = (allReviews || []).filter(
+    (r) => r.reviewType === 'critic',
+  ).length;
+  const audienceReviewsCount = (allReviews || []).filter(
+    (r) => r.reviewType !== 'critic',
+  ).length;
+
   const filteredReviews = (allReviews || []).filter((r) => {
-    if (subTab === 'critic' && r.reviewType !== 'critic') return false;
-    if (subTab === 'user' && r.reviewType === 'critic') return false;
+    if (reviewTypeFilter === 'critic' && r.reviewType !== 'critic') return false;
+    if (reviewTypeFilter === 'user' && r.reviewType === 'critic') return false;
+    if (visibilityFilter === 'visible' && r.isHidden) return false;
+    if (visibilityFilter === 'hidden' && !r.isHidden) return false;
     if (searchQ.trim()) {
       const q = searchQ.toLowerCase().trim();
       const movieMatch = (r.movieTitle || '').toLowerCase().includes(q);
-      const authorMatch = (r.criticName || r.user?.name || '').toLowerCase().includes(q);
+      const authorMatch = (r.criticName || r.user?.name || '')
+        .toLowerCase()
+        .includes(q);
       const textMatch = (r.headline || r.text || '').toLowerCase().includes(q);
       return movieMatch || authorMatch || textMatch;
     }
@@ -52,6 +90,8 @@ export default function ReviewsModerationSection({
   });
 
   const filteredComments = (allComments || []).filter((c) => {
+    if (visibilityFilter === 'visible' && c.isHidden) return false;
+    if (visibilityFilter === 'hidden' && !c.isHidden) return false;
     if (!searchQ.trim()) return true;
     const q = searchQ.toLowerCase().trim();
     return (
@@ -60,6 +100,17 @@ export default function ReviewsModerationSection({
       (c.body || '').toLowerCase().includes(q)
     );
   });
+
+  const searchMovieForCritic = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (!criticMovieQ.trim()) return;
+    try {
+      const res = await tmdb.search(criticMovieQ.trim());
+      setCriticMovieHits((res.items || res.results || []).slice(0, 6));
+    } catch {
+      setCriticMovieHits([]);
+    }
+  };
 
   const submitNewCritic = async (e) => {
     e.preventDefault();
@@ -79,149 +130,273 @@ export default function ReviewsModerationSection({
       text: '',
       externalUrl: '',
     });
-    setShowAddCritic(false);
+    handleSwitchTab('all');
+    setReviewTypeFilter('critic');
   };
 
   return (
     <div className="space-y-5">
-      {/* Top Bar: Tabs + Publish Critic Button + Search */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-[#0e131f] p-1">
-          {[
-            { key: 'all', label: `All Reviews (${allReviews.length})` },
-            {
-              key: 'critic',
-              label: `Verified Critics (${allReviews.filter((r) => r.reviewType === 'critic').length})`,
-            },
-            {
-              key: 'user',
-              label: `Audience Reviews (${allReviews.filter((r) => r.reviewType !== 'critic').length})`,
-            },
-            { key: 'comments', label: `Comments (${allComments.length})` },
-          ].map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setSubTab(t.key)}
-              className={`admin-btn ${
-                subTab === t.key
-                  ? 'admin-btn-primary'
-                  : 'admin-btn-secondary border-transparent shadow-none'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      {/* Frozen Contextual Filter & Search Bar */}
+      <div className="admin-sticky-bar">
+        {subTab !== 'publish' ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0e131f] p-3.5 shadow-lg">
+            {subTab !== 'comments' ? (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-[#070a10] p-1">
+                {[
+                  { key: 'all', label: `All Reviews (${allReviews.length})`, icon: Award },
+                  { key: 'critic', label: `Critics (${criticReviewsCount})`, icon: Award },
+                  { key: 'user', label: `Audience (${audienceReviewsCount})`, icon: Users },
+                ].map((t) => {
+                  const Icon = t.icon;
+                  const active = reviewTypeFilter === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setReviewTypeFilter(t.key)}
+                      className={`admin-btn ${
+                        active
+                          ? 'admin-btn-primary'
+                          : 'admin-btn-secondary border-transparent shadow-none'
+                      }`}
+                    >
+                      <Icon size={13} /> {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand/15 text-brand">
+                  <MessageSquare size={16} />
+                </span>
+                <div>
+                  <h3 className="text-sm font-extrabold text-white">
+                    Comments Moderation ({allComments.length})
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Inspect, hide, or permanently delete user comments across titles
+                  </p>
+                </div>
+              </div>
+            )}
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-56 sm:w-64">
-            <Search size={14} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-400" />
-            <input
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              placeholder="Search movie, critic, or text..."
-              className="w-full rounded-xl border border-white/10 bg-[#0e131f] py-2 pr-3 pl-8 text-xs text-white focus:border-brand focus:outline-none"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[#070a10] p-1">
+                {[
+                  { value: 'all', label: 'All' },
+                  { value: 'visible', label: 'Visible' },
+                  { value: 'hidden', label: 'Hidden' },
+                ].map((v) => (
+                  <button
+                    key={v.value}
+                    type="button"
+                    onClick={() => setVisibilityFilter(v.value)}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
+                      visibilityFilter === v.value
+                        ? 'bg-brand/20 font-extrabold text-brand'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-56 sm:w-64">
+                <Search
+                  size={14}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-400"
+                />
+                <input
+                  value={searchQ}
+                  onChange={(e) => setSearchQ(e.target.value)}
+                  placeholder="Search movie, critic, user, text..."
+                  className="w-full rounded-xl border border-white/10 bg-[#070a10] py-2 pr-8 pl-8 text-xs text-white focus:border-brand focus:outline-none"
+                />
+                {searchQ && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQ('')}
+                    className="absolute top-1/2 right-2.5 -translate-y-1/2 text-zinc-400 hover:text-white"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowAddCritic((v) => !v)}
-            className="admin-btn admin-btn-primary"
-          >
-            <Plus size={14} /> {showAddCritic ? 'Close Critic Form' : 'Publish Critic Review'}
-          </button>
-        </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand/35 bg-[#0e131f] p-3.5 shadow-lg">
+            <div>
+              <h4 className="flex items-center gap-2 text-sm font-extrabold text-brand">
+                <Award size={16} /> Publish Official Verified Critic Review
+              </h4>
+              <p className="mt-0.5 text-[11px] text-zinc-400">
+                Search for a movie or web series below to auto-fill its TMDB ID, then enter the critic review details.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                handleSwitchTab('all');
+                setReviewTypeFilter('critic');
+              }}
+              className="admin-btn admin-btn-secondary"
+            >
+              View Verified Critics ({criticReviewsCount})
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Collapsible Publish Verified Critic Review Form */}
-      {showAddCritic && (
-        <form
-          onSubmit={submitNewCritic}
-          className="space-y-3 rounded-2xl border border-brand/35 bg-[#0e131f] p-5 shadow-xl"
-        >
-          <h4 className="text-sm font-extrabold text-brand">
-            Publish Official Verified Critic Review
-          </h4>
-          <div className="grid gap-3 sm:grid-cols-5">
-            <CustomSelect
-              value={criticForm.type}
-              onChange={(val) => setCriticForm({ ...criticForm, type: val })}
-              options={[
-                { value: 'movie', label: '🎬 Movie' },
-                { value: 'tv', label: '📺 Web Series / TV' },
-              ]}
-            />
-            <input
-              required
-              type="number"
-              placeholder="Movie TMDB ID (e.g. 550) *"
-              value={criticForm.tmdbId}
-              onChange={(e) => setCriticForm({ ...criticForm, tmdbId: e.target.value })}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-            />
-            <input
-              required
-              placeholder="Critic Name (e.g. Taran Adarsh) *"
-              value={criticForm.criticName}
-              onChange={(e) => setCriticForm({ ...criticForm, criticName: e.target.value })}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-            />
-            <input
-              placeholder="Publication (e.g. Film Companion)"
-              value={criticForm.publication}
-              onChange={(e) => setCriticForm({ ...criticForm, publication: e.target.value })}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-            />
-            <input
-              required
-              type="number"
-              step="0.5"
-              min="1"
-              max="10"
-              placeholder="Rating (1-10)"
-              value={criticForm.rating}
-              onChange={(e) => setCriticForm({ ...criticForm, rating: e.target.value })}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <input
-              placeholder="Review Headline / Verdict Summary"
-              value={criticForm.headline}
-              onChange={(e) => setCriticForm({ ...criticForm, headline: e.target.value })}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-            />
-            <input
-              placeholder="External Source URL (optional)"
-              value={criticForm.externalUrl}
-              onChange={(e) => setCriticForm({ ...criticForm, externalUrl: e.target.value })}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white"
-            />
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row">
+      {/* ==================== PUBLISH VERIFIED CRITIC REVIEW SUB-VIEW ==================== */}
+      {subTab === 'publish' ? (
+        <div className="rounded-2xl border border-brand/35 bg-[#0e131f] p-5 shadow-xl sm:p-6">
+          {/* Quick Movie Lookup to Auto-Fill TMDB ID */}
+          <form onSubmit={searchMovieForCritic} className="mb-4 flex gap-2">
+            <div className="relative flex-1">
+              <Search
+                size={14}
+                className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-zinc-400"
+              />
+              <input
+                value={criticMovieQ}
+                onChange={(e) => setCriticMovieQ(e.target.value)}
+                placeholder="Search movie or series by title to auto-fill TMDB ID..."
+                className="w-full rounded-xl border border-white/10 bg-[#070a10] py-2 pr-4 pl-9 text-xs text-white focus:border-brand focus:outline-none"
+              />
+            </div>
+            <button type="submit" className="admin-btn admin-btn-secondary px-4">
+              Find Title
+            </button>
+          </form>
+
+          {criticMovieHits.length > 0 && (
+            <div className="no-scrollbar mb-4 flex gap-2.5 overflow-x-auto pb-2">
+              {criticMovieHits.map((m) => (
+                <button
+                  key={`${m.type}-${m.id}`}
+                  type="button"
+                  onClick={() => {
+                    setCriticForm({
+                      ...criticForm,
+                      tmdbId: m.id,
+                      type: m.type === 'tv' ? 'tv' : 'movie',
+                    });
+                    setCriticMovieHits([]);
+                  }}
+                  className="flex shrink-0 items-center gap-2.5 rounded-xl border border-white/15 bg-white/5 p-2 text-left text-xs transition hover:border-brand"
+                >
+                  <SafeImage
+                    src={m.posterUrl}
+                    alt={m.title}
+                    className="h-11 w-8 rounded object-cover"
+                  />
+                  <div>
+                    <p className="font-bold text-white">{m.title || m.name}</p>
+                    <p className="text-[10px] text-brand">
+                      TMDB #{m.id} • {m.year || '—'}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <form onSubmit={submitNewCritic} className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-5">
+              <CustomSelect
+                value={criticForm.type}
+                onChange={(val) => setCriticForm({ ...criticForm, type: val })}
+                options={[
+                  { value: 'movie', label: '🎬 Movie' },
+                  { value: 'tv', label: '📺 Web Series / TV' },
+                ]}
+              />
+              <input
+                required
+                type="number"
+                placeholder="Movie TMDB ID (e.g. 550) *"
+                value={criticForm.tmdbId}
+                onChange={(e) => setCriticForm({ ...criticForm, tmdbId: e.target.value })}
+                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white"
+              />
+              <input
+                required
+                placeholder="Critic Name (e.g. Taran Adarsh) *"
+                value={criticForm.criticName}
+                onChange={(e) =>
+                  setCriticForm({ ...criticForm, criticName: e.target.value })
+                }
+                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white"
+              />
+              <input
+                placeholder="Publication (e.g. Film Companion)"
+                value={criticForm.publication}
+                onChange={(e) =>
+                  setCriticForm({ ...criticForm, publication: e.target.value })
+                }
+                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white"
+              />
+              <input
+                required
+                type="number"
+                step="0.5"
+                min="1"
+                max="10"
+                placeholder="Rating (1-10)"
+                value={criticForm.rating}
+                onChange={(e) => setCriticForm({ ...criticForm, rating: e.target.value })}
+                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                placeholder="Review Headline / Verdict Summary"
+                value={criticForm.headline}
+                onChange={(e) => setCriticForm({ ...criticForm, headline: e.target.value })}
+                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white"
+              />
+              <input
+                placeholder="External Source URL (optional)"
+                value={criticForm.externalUrl}
+                onChange={(e) =>
+                  setCriticForm({ ...criticForm, externalUrl: e.target.value })
+                }
+                className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 text-xs text-white"
+              />
+            </div>
+
             <textarea
               required
-              rows={2}
+              rows={4}
               placeholder="Write the full critic review quote or analysis..."
               value={criticForm.text}
               onChange={(e) => setCriticForm({ ...criticForm, text: e.target.value })}
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white"
+              className="w-full rounded-xl border border-white/10 bg-white/5 p-3.5 text-xs text-white"
             />
-            <button type="submit" className="admin-btn admin-btn-primary self-end px-5 py-2.5">
-              Publish Critic
-            </button>
-          </div>
-        </form>
-      )}
 
-      {/* Requirement 4: Critics & Reviews Table (Click any row to open Detail & Edit Modal) */}
-      {subTab !== 'comments' ? (
+            <div className="flex justify-end border-t border-white/10 pt-3">
+              <button type="submit" className="admin-btn admin-btn-primary px-6 py-2.5">
+                <Plus size={14} /> Publish Verified Critic Review
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : subTab !== 'comments' ? (
+        /* ==================== REVIEWS TABLE ==================== */
         <div className="space-y-2">
-          <p className="text-[11px] text-zinc-400">
-            💡 Tip: Click any critic or audience review row below to open the full details & edit modal.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+            <p className="text-[11px] text-zinc-400">
+              💡 Tip: Click any critic or audience review row below to open the full details & edit modal.
+            </p>
+            <span className="text-[11px] font-bold text-zinc-400">
+              Showing <b className="text-white">{filteredReviews.length}</b> reviews
+            </span>
+          </div>
+
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
@@ -254,18 +429,21 @@ export default function ReviewsModerationSection({
                         className="cursor-pointer"
                         title="Click to inspect and edit this review"
                       >
-                        {/* 1. Movie Poster + Name */}
-                        <td className="min-w-47.5">
-                          <div className="flex items-center gap-2.5">
+                        <td className="max-w-52 overflow-hidden">
+                          <div className="flex min-w-0 items-center gap-2.5 overflow-hidden">
                             <SafeImage
                               src={r.moviePoster}
                               alt={r.movieTitle}
                               size="w185"
                               className="h-11 w-8 shrink-0 rounded-md border border-white/10 object-cover"
                             />
-                            <div className="min-w-0">
-                              <p className="truncate font-extrabold text-white">
-                                {r.movieTitle || `${String(r.type || 'movie').toUpperCase()} #${r.tmdbId}`}
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <p
+                                className="truncate font-extrabold text-white"
+                                title={r.movieTitle}
+                              >
+                                {r.movieTitle ||
+                                  `${String(r.type || 'movie').toUpperCase()} #${r.tmdbId}`}
                               </p>
                               <p className="text-[10px] text-zinc-400">
                                 {String(r.type || 'movie').toUpperCase()} #{r.tmdbId}
@@ -275,7 +453,6 @@ export default function ReviewsModerationSection({
                           </div>
                         </td>
 
-                        {/* 2. Person's Name Who Posted */}
                         <td className="whitespace-nowrap">
                           <div className="leading-tight">
                             <div className="flex items-center gap-1.5">
@@ -287,7 +464,7 @@ export default function ReviewsModerationSection({
                                     : 'bg-sky-500/20 text-sky-300'
                                 }`}
                               >
-                                {isCritic ? 'Critic' : 'User'}
+                                {isCritic ? 'Critic' : 'Audience'}
                               </span>
                             </div>
                             <p className="mt-0.5 text-[10px] text-zinc-400">
@@ -296,27 +473,26 @@ export default function ReviewsModerationSection({
                           </div>
                         </td>
 
-                        {/* 3. Rating + Headline/Text Preview */}
-                        <td className="min-w-55 max-w-md">
-                          <div className="flex items-center gap-2">
+                        <td className="max-w-xs overflow-hidden">
+                          <div className="flex items-center gap-2 overflow-hidden">
                             <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-brand/15 px-2 py-0.5 text-xs font-black text-brand">
                               ★ {Number(r.rating || 0).toFixed(1)}/10
                             </span>
                             {r.headline && (
-                              <span className="truncate font-bold text-white">{r.headline}</span>
+                              <span className="truncate font-bold text-white">
+                                {r.headline}
+                              </span>
                             )}
                           </div>
-                          <p className="mt-1 line-clamp-1 text-[11px] text-zinc-300">
+                          <p className="mt-1 truncate text-[11px] text-zinc-300">
                             {r.text || r.body || '—'}
                           </p>
                         </td>
 
-                        {/* 4. When Posted */}
                         <td className="whitespace-nowrap text-zinc-300">
                           {formatAdminDate(r.createdAt)}
                         </td>
 
-                        {/* 5. Visibility Status */}
                         <td className="whitespace-nowrap">
                           <span
                             className={`admin-status-badge ${
@@ -327,7 +503,6 @@ export default function ReviewsModerationSection({
                           </span>
                         </td>
 
-                        {/* 6. Inspect/Edit, Hide & Delete Buttons */}
                         <td
                           className="whitespace-nowrap text-right"
                           onClick={(e) => e.stopPropagation()}
@@ -336,14 +511,14 @@ export default function ReviewsModerationSection({
                             <button
                               type="button"
                               onClick={() => onSelectReviewForModal(r)}
-                              className="admin-btn admin-btn-sky"
+                              className="admin-btn admin-btn-sky admin-btn-sm"
                             >
-                              <Edit3 size={12} /> Inspect / Edit
+                              <Edit3 size={12} /> Edit
                             </button>
                             <button
                               type="button"
                               onClick={() => onToggleHideReview(r)}
-                              className={`admin-btn ${
+                              className={`admin-btn admin-btn-sm ${
                                 r.isHidden ? 'admin-btn-emerald' : 'admin-btn-amber'
                               }`}
                             >
@@ -353,9 +528,9 @@ export default function ReviewsModerationSection({
                             <button
                               type="button"
                               onClick={() => onDeleteReview(id)}
-                              className="admin-btn admin-btn-danger"
+                              className="admin-btn admin-btn-danger admin-btn-sm px-2"
                             >
-                              <Trash2 size={12} /> Delete
+                              <Trash2 size={12} />
                             </button>
                           </div>
                         </td>
@@ -368,7 +543,7 @@ export default function ReviewsModerationSection({
           </div>
         </div>
       ) : (
-        /* Comments Moderation Compact Table */
+        /* ==================== COMMENTS MODERATION TABLE ==================== */
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
@@ -394,17 +569,18 @@ export default function ReviewsModerationSection({
                   const id = c._id || c.id;
                   return (
                     <tr key={id}>
-                      <td>
-                        <div className="flex items-center gap-2.5">
+                      <td className="max-w-52 overflow-hidden">
+                        <div className="flex min-w-0 items-center gap-2.5 overflow-hidden">
                           <SafeImage
                             src={c.moviePoster}
                             alt={c.movieTitle}
                             size="w185"
                             className="h-10 w-7 shrink-0 rounded object-cover"
                           />
-                          <div>
-                            <p className="font-bold text-white">
-                              {c.movieTitle || `${String(c.type || 'movie').toUpperCase()} #${c.tmdbId}`}
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <p className="truncate font-bold text-white" title={c.movieTitle}>
+                              {c.movieTitle ||
+                                `${String(c.type || 'movie').toUpperCase()} #${c.tmdbId}`}
                             </p>
                             <p className="text-[10px] text-zinc-400">#{c.tmdbId}</p>
                           </div>
@@ -414,8 +590,8 @@ export default function ReviewsModerationSection({
                         <p className="font-bold text-white">{c.user?.name || 'User'}</p>
                         <p className="text-[10px] text-zinc-400">{c.user?.email || ''}</p>
                       </td>
-                      <td className="max-w-md">
-                        <p className="line-clamp-2 text-xs text-zinc-200">{c.body}</p>
+                      <td className="max-w-xs overflow-hidden">
+                        <p className="truncate text-xs text-zinc-200">{c.body}</p>
                       </td>
                       <td className="whitespace-nowrap text-zinc-400">
                         {formatAdminDate(c.createdAt)}
@@ -434,7 +610,7 @@ export default function ReviewsModerationSection({
                           <button
                             type="button"
                             onClick={() => onToggleHideComment(c)}
-                            className={`admin-btn ${
+                            className={`admin-btn admin-btn-sm ${
                               c.isHidden ? 'admin-btn-emerald' : 'admin-btn-amber'
                             }`}
                           >
@@ -444,9 +620,9 @@ export default function ReviewsModerationSection({
                           <button
                             type="button"
                             onClick={() => onDeleteComment(id)}
-                            className="admin-btn admin-btn-danger"
+                            className="admin-btn admin-btn-danger admin-btn-sm px-2"
                           >
-                            <Trash2 size={12} /> Delete
+                            <Trash2 size={12} />
                           </button>
                         </div>
                       </td>

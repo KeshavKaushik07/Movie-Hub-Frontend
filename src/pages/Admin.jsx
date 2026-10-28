@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { ROLES } from '../config/constants';
@@ -21,6 +21,7 @@ import UsersSection from '../components/admin/UsersSection';
 import CatalogSection from '../components/admin/CatalogSection';
 import CrawlerSection from '../components/admin/CrawlerSection';
 import ApiKeysSection from '../components/admin/ApiKeysSection';
+import SettingsSection from '../components/admin/SettingsSection';
 import {
   AdminOverviewSkeleton,
   AdminFeaturedSkeleton,
@@ -39,6 +40,9 @@ import {
   DeleteRoomConfirmModal,
 } from '../components/admin/AdminModals';
 
+const CATALOG_PAGE_SIZE = 100;
+const CATALOG_VISIBLE_LIMIT_KEY = 'movieshub_catalog_visible_limit_v1';
+
 export default function Admin() {
   const user = useSelector((s) => s.auth.user);
   const theme = useSelector((s) => s.theme.mode);
@@ -46,7 +50,7 @@ export default function Admin() {
   const isSuper = user?.role === ROLES.SUPERADMIN;
 
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useDispatch();
 
   const subPath = location.pathname.replace(/^\/admin\/?/, '') || 'overview';
@@ -63,7 +67,10 @@ export default function Admin() {
     const inferredType =
       patchType !== 'info'
         ? patchType
-        : lower.includes('fail') || lower.includes('could not') || lower.includes('error') || lower.includes('invalid')
+        : lower.includes('fail') ||
+            lower.includes('could not') ||
+            lower.includes('error') ||
+            lower.includes('invalid')
           ? 'error'
           : lower.includes('not found') || lower.includes('no movie')
             ? 'not-found'
@@ -141,10 +148,15 @@ export default function Admin() {
   const [allComments, setAllComments] = useState([]);
   const [selectedReviewForModal, setSelectedReviewForModal] = useState(null);
 
-  // Users & Staff
+  // Users & Staff (Separated in UI via /admin/users vs /admin/staff)
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
-  const [newStaff, setNewStaff] = useState({ name: '', email: '', password: '', role: ROLES.ADMIN });
+  const [newStaff, setNewStaff] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: ROLES.ADMIN,
+  });
   const [userToDelete, setUserToDelete] = useState(null);
   const [passwordModalUser, setPasswordModalUser] = useState(null);
   const [newUserPassword, setNewUserPassword] = useState('');
@@ -153,13 +165,44 @@ export default function Admin() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
 
-  // SuperAdmin Media DB, Crawler & API Keys
+  // Media & Box Office DB (100 per page + SuperAdmin Visible Data Limit per Page)
   const [dbTitles, setDbTitles] = useState([]);
   const [dbTitlesTotal, setDbTitlesTotal] = useState(undefined);
+  const [catalogFilteredTotal, setCatalogFilteredTotal] = useState(0);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogTotalPages, setCatalogTotalPages] = useState(1);
+  const [catalogLoading, setCatalogLoading] = useState(false);
   const [titleQuery, setTitleQuery] = useState('');
   const [titleTypeFilter, setTitleTypeFilter] = useState('');
+  const [catalogSort, setCatalogSort] = useState('updated');
+  const [catalogVisibleLimit, setCatalogVisibleLimit] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(CATALOG_VISIBLE_LIMIT_KEY));
+      return Number.isFinite(saved) && saved >= 1 && saved <= CATALOG_PAGE_SIZE
+        ? saved
+        : CATALOG_PAGE_SIZE;
+    } catch {
+      return CATALOG_PAGE_SIZE;
+    }
+  });
   const [modalTitle, setModalTitle] = useState(null);
   const [creatingNewTitle, setCreatingNewTitle] = useState(false);
+
+  const handleChangeCatalogVisibleLimit = (nextLimit) => {
+    const clamped = Math.min(
+      CATALOG_PAGE_SIZE,
+      Math.max(1, Number(nextLimit) || CATALOG_PAGE_SIZE),
+    );
+    setCatalogVisibleLimit(clamped);
+    try {
+      localStorage.setItem(CATALOG_VISIBLE_LIMIT_KEY, String(clamped));
+    } catch {
+      /* ignore */
+    }
+    notify(
+      `Now displaying ${clamped} out of ${CATALOG_PAGE_SIZE} data items on Page ${catalogPage}`,
+    );
+  };
 
   const [crawler, setCrawler] = useState(null);
   const [quotaForm, setQuotaForm] = useState({
@@ -197,6 +240,7 @@ export default function Admin() {
         setLoadedFlags((p) => ({ ...p, overview: true }));
       })
       .catch(() => setLoadedFlags((p) => ({ ...p, overview: true })));
+
   const loadFeatured = () =>
     featuredApi
       .listAdminFull()
@@ -209,6 +253,7 @@ export default function Admin() {
         setLoadedFlags((p) => ({ ...p, featured: true }));
       })
       .catch(() => setLoadedFlags((p) => ({ ...p, featured: true })));
+
   const loadBlogs = () =>
     blogApi
       .list({ status: 'all', limit: 100 })
@@ -217,6 +262,7 @@ export default function Admin() {
         setLoadedFlags((p) => ({ ...p, blogs: true }));
       })
       .catch(() => setLoadedFlags((p) => ({ ...p, blogs: true })));
+
   const loadCommunity = () =>
     communityApi
       .listRooms()
@@ -225,6 +271,7 @@ export default function Admin() {
         setLoadedFlags((p) => ({ ...p, community: true }));
       })
       .catch(() => setLoadedFlags((p) => ({ ...p, community: true })));
+
   const loadModeration = () => {
     reviewService.admin
       .reviews()
@@ -238,30 +285,75 @@ export default function Admin() {
       .then((d) => setAllComments(d.comments || []))
       .catch(() => {});
   };
+
   const loadUsers = () =>
     authService
-      .users({ q: userSearch })
+      .users({ q: userSearch, limit: 100 })
       .then((list) => {
         setUsers(Array.isArray(list) ? list : []);
         setLoadedFlags((p) => ({ ...p, users: true }));
       })
       .catch(() => setLoadedFlags((p) => ({ ...p, users: true })));
-  const loadCatalog = () => {
-    if (!isSuper) return;
-    reviewService.superadmin
-      .titles({ q: titleQuery, type: titleTypeFilter })
-      .then((d) => {
-        setDbTitles(d.items || []);
-        if (!titleQuery.trim() && !titleTypeFilter && Number.isFinite(d?.total)) {
-          setDbTitlesTotal(d.total);
-        }
-        setLoadedFlags((p) => ({ ...p, catalog: true }));
-      })
-      .catch(() => setLoadedFlags((p) => ({ ...p, catalog: true })));
-    loadFeatured();
-  };
+
+  const loadCatalog = useCallback(
+    (targetPage = catalogPage, overrides = {}) => {
+      const nextPage = Math.max(1, Number(targetPage) || 1);
+      const effectiveQ =
+        overrides.q !== undefined ? overrides.q : titleQuery;
+      const effectiveType =
+        overrides.type !== undefined ? overrides.type : titleTypeFilter;
+      const effectiveSort =
+        overrides.sort !== undefined ? overrides.sort : catalogSort;
+
+      const queryParams = {
+        page: nextPage,
+        limit: CATALOG_PAGE_SIZE,
+        sort: effectiveSort,
+      };
+      if (effectiveQ && String(effectiveQ).trim()) {
+        queryParams.q = String(effectiveQ).trim();
+      }
+      if (effectiveType === 'movie') {
+        queryParams.type = 'movie';
+        queryParams.subType = 'movie';
+      } else if (effectiveType === 'webseries') {
+        queryParams.type = 'tv';
+        queryParams.subType = 'webseries';
+      } else if (effectiveType === 'tv') {
+        queryParams.type = 'tv';
+        queryParams.subType = 'tv';
+      }
+
+      setCatalogLoading(true);
+      reviewService.superadmin
+        .titles(queryParams)
+        .then((d) => {
+          const items = Array.isArray(d?.items) ? d.items : [];
+          const total = Number.isFinite(Number(d?.total))
+            ? Number(d.total)
+            : items.length;
+          const totalPages = Math.max(
+            1,
+            Number(d?.totalPages) || Math.ceil(total / CATALOG_PAGE_SIZE) || 1,
+          );
+
+          setDbTitles(items);
+          setCatalogPage(Number(d?.page) || nextPage);
+          setCatalogFilteredTotal(total);
+          setCatalogTotalPages(totalPages);
+
+          if (!effectiveQ?.trim() && !effectiveType && Number.isFinite(d?.total)) {
+            setDbTitlesTotal(d.total);
+          }
+          setLoadedFlags((p) => ({ ...p, catalog: true }));
+        })
+        .catch(() => setLoadedFlags((p) => ({ ...p, catalog: true })))
+        .finally(() => setCatalogLoading(false));
+    },
+    [catalogPage, titleQuery, titleTypeFilter, catalogSort],
+  );
+
   const loadCrawler = () => {
-    if (!isSuper) return;
     reviewService.superadmin
       .crawlerStatus()
       .then((c) => {
@@ -277,11 +369,12 @@ export default function Admin() {
             maxPerYearTv: c.quotas.maxPerYearTv || 700,
           });
         }
+        setLoadedFlags((p) => ({ ...p, crawler: true }));
       })
-      .catch(() => {});
+      .catch(() => setLoadedFlags((p) => ({ ...p, crawler: true })));
   };
+
   const loadKeys = () => {
-    if (!isSuper) return;
     reviewService.superadmin
       .keys()
       .then((list) => {
@@ -291,19 +384,21 @@ export default function Admin() {
       .catch(() => setLoadedFlags((p) => ({ ...p, keys: true })));
   };
 
-  // Preload all real section lists on mount so Sidebar numbers always match real content
-  useEffect(() => {
+  const loadAllAdminData = () => {
     loadOverview();
     loadFeatured();
     loadBlogs();
     loadCommunity();
     loadModeration();
     loadUsers();
-    if (isSuper) {
-      loadCatalog();
-      loadCrawler();
-      loadKeys();
-    }
+    loadCatalog(1);
+    loadCrawler();
+    loadKeys();
+  };
+
+  // Preload all real section lists on mount so Sidebar numbers always match real content
+  useEffect(() => {
+    loadAllAdminData();
   }, [isSuper]); // eslint-disable-line
 
   const refreshActiveSection = (showSkeleton = false) => {
@@ -316,19 +411,44 @@ export default function Admin() {
     if (activeSection === 'blogs') loadBlogs();
     if (activeSection === 'community') loadCommunity();
     if (activeSection === 'reviews') loadModeration();
-    if (activeSection === 'users') loadUsers();
-    if (activeSection === 'catalog') loadCatalog();
+    if (activeSection === 'users' || activeSection === 'staff') loadUsers();
+    if (activeSection === 'catalog') loadCatalog(catalogPage);
     if (activeSection === 'crawler') loadCrawler();
     if (activeSection === 'api-keys') loadKeys();
+    if (activeSection === 'settings') {
+      loadUsers();
+      loadCrawler();
+      loadFeatured();
+      loadKeys();
+    }
   };
 
   useEffect(() => {
     setSidebarOpen(false);
     setSectionTransitioning(true);
     refreshActiveSection(false);
+    const mainEl = document.getElementById('admin-main-scroll');
+    if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'auto' });
     const t = setTimeout(() => setSectionTransitioning(false), 260);
     return () => clearTimeout(t);
   }, [activeSection]); // eslint-disable-line
+
+  // Sync Catalog query parameters (`?type=movie|webseries|tv` and `?action=create`)
+  useEffect(() => {
+    if (activeSection !== 'catalog') return;
+    const urlType = searchParams.get('type') || '';
+    const urlAction = searchParams.get('action') || '';
+
+    if (urlAction === 'create') {
+      setCreatingNewTitle(true);
+    }
+
+    if (['', 'movie', 'webseries', 'tv'].includes(urlType) && urlType !== titleTypeFilter) {
+      setTitleTypeFilter(urlType);
+      setCatalogPage(1);
+      loadCatalog(1, { type: urlType });
+    }
+  }, [activeSection, searchParams]); // eslint-disable-line
 
   useEffect(() => {
     const qTmdbId = searchParams.get('tmdbId');
@@ -369,9 +489,14 @@ export default function Admin() {
           prev.subtitle ||
           `Everything you need to know about ${assets.linkedTitleSnapshot?.title || 'this release'} — story, performances, and trade verdict.`,
       }));
-      notify(`Fetched backdrop, poster & ${assets.galleryImages?.length || 0} stills for ${assets.linkedTitleSnapshot?.title}!`);
+      notify(
+        `Fetched backdrop, poster & ${assets.galleryImages?.length || 0} stills for ${assets.linkedTitleSnapshot?.title}!`,
+      );
     } catch (err) {
-      notify(err.response?.data?.message || 'Could not fetch movie images for that ID', 'error');
+      notify(
+        err.response?.data?.message || 'Could not fetch movie images for that ID',
+        'error',
+      );
     } finally {
       setFetchingAssets(false);
     }
@@ -507,7 +632,10 @@ export default function Admin() {
       setHeroLimit(savedLimit);
       notify(`Home Hero Carousel slide count updated to ${savedLimit}!`);
     } catch (err) {
-      notify(err.response?.data?.message || 'Failed to update Hero Carousel slide count', 'error');
+      notify(
+        err.response?.data?.message || 'Failed to update Hero Carousel slide count',
+        'error',
+      );
     }
   };
 
@@ -536,8 +664,24 @@ export default function Admin() {
     }
   };
 
+  // Compute separated live counts for Sidebar dropdown badges
+  const regularUsersList = (users || []).filter((u) => u.role === ROLES.USER);
+  const adminUsersList = (users || []).filter((u) => u.role === ROLES.ADMIN);
+  const superAdminUsersList = (users || []).filter(
+    (u) => u.role === ROLES.SUPERADMIN,
+  );
+  const staffUsersList = (users || []).filter((u) =>
+    [ROLES.ADMIN, ROLES.SUPERADMIN].includes(u.role),
+  );
+  const criticReviewsCount = (allReviews || []).filter(
+    (r) => r.reviewType === 'critic',
+  ).length;
+  const audienceReviewsCount = (allReviews || []).filter(
+    (r) => r.reviewType !== 'critic',
+  ).length;
+
   return (
-    <div className="flex min-h-screen bg-[#070a10] text-white">
+    <div className="flex h-screen max-h-screen overflow-hidden bg-[#070a10] text-white">
       <AdminSidebar
         user={user}
         isSuper={isSuper}
@@ -551,13 +695,33 @@ export default function Admin() {
           blogs: loadedFlags.blogs ? blogs.length : undefined,
           community: loadedFlags.community ? commRooms.length : undefined,
           reviews: loadedFlags.moderation ? allReviews.length : undefined,
-          users: loadedFlags.users && !userSearch.trim() ? users.length : undefined,
+          criticReviews: loadedFlags.moderation ? criticReviewsCount : undefined,
+          audienceReviews: loadedFlags.moderation ? audienceReviewsCount : undefined,
+          comments: loadedFlags.moderation ? allComments.length : undefined,
+          regularUsers:
+            loadedFlags.users && !userSearch.trim() ? regularUsersList.length : undefined,
+          activeRegularUsers:
+            loadedFlags.users && !userSearch.trim()
+              ? regularUsersList.filter((u) => u.isActive !== false).length
+              : undefined,
+          suspendedRegularUsers:
+            loadedFlags.users && !userSearch.trim()
+              ? regularUsersList.filter((u) => u.isActive === false).length
+              : undefined,
+          staffUsers:
+            loadedFlags.users && !userSearch.trim() ? staffUsersList.length : undefined,
+          adminUsers:
+            loadedFlags.users && !userSearch.trim() ? adminUsersList.length : undefined,
+          superAdminUsers:
+            loadedFlags.users && !userSearch.trim()
+              ? superAdminUsersList.length
+              : undefined,
           titles: dbTitlesTotal ?? stats?.counts?.titles,
           apiKeys: loadedFlags.keys ? keys.length : undefined,
         }}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
         <AdminTopbar
           activeSection={activeSection}
           user={user}
@@ -569,293 +733,477 @@ export default function Admin() {
           onRefreshActiveSection={() => refreshActiveSection(true)}
         />
 
-        <main className="flex-1 p-4 sm:p-6">
+        <main
+          id="admin-main-scroll"
+          className="studio-scroll flex-1 overflow-y-auto px-4 pb-6 pt-0 sm:px-6"
+        >
           {activeSection === 'overview' &&
             (sectionTransitioning || (!stats && !loadedFlags.overview) ? (
-              <AdminOverviewSkeleton />
+              <div className="pt-4">
+                <AdminOverviewSkeleton />
+              </div>
             ) : (
               <OverviewSection stats={stats} isSuper={isSuper} />
             ))}
 
           {activeSection === 'featured' &&
             (sectionTransitioning || !loadedFlags.featured ? (
-              <AdminFeaturedSkeleton />
+              <div className="pt-4">
+                <AdminFeaturedSkeleton />
+              </div>
             ) : (
               <FeaturedSection
-              featuredItems={featuredItems}
-              heroLimit={heroLimit}
-              onUpdateHeroLimit={handleUpdateHeroLimit}
-              featSearchQ={featSearchQ}
-              setFeatSearchQ={setFeatSearchQ}
-              featSearchResults={featSearchResults}
-              setFeatSearchResults={setFeatSearchResults}
-              featSearchAttempted={featSearchAttempted}
-              setFeatSearchAttempted={setFeatSearchAttempted}
-              featForm={featForm}
-              setFeatForm={setFeatForm}
-              searchMovieForFeatured={searchMovieForFeatured}
-              handleAddFeatured={handleAddFeatured}
-              moveFeaturedItem={moveFeaturedItem}
-              onToggleFeaturedActive={(item) =>
-                featuredApi.update(item.featuredId, { isActive: !item.isActive }).then(loadFeatured)
-              }
-              onRemoveFeatured={(featuredId) =>
-                featuredApi.remove(featuredId).then(() => {
-                  loadFeatured();
-                  notify('Removed slide from Featured Carousel');
-                })
-              }
+                featuredItems={featuredItems}
+                heroLimit={heroLimit}
+                onUpdateHeroLimit={handleUpdateHeroLimit}
+                featSearchQ={featSearchQ}
+                setFeatSearchQ={setFeatSearchQ}
+                featSearchResults={featSearchResults}
+                setFeatSearchResults={setFeatSearchResults}
+                featSearchAttempted={featSearchAttempted}
+                setFeatSearchAttempted={setFeatSearchAttempted}
+                featForm={featForm}
+                setFeatForm={setFeatForm}
+                searchMovieForFeatured={searchMovieForFeatured}
+                handleAddFeatured={handleAddFeatured}
+                moveFeaturedItem={moveFeaturedItem}
+                onToggleFeaturedActive={(item) =>
+                  featuredApi
+                    .update(item.featuredId, { isActive: !item.isActive })
+                    .then(loadFeatured)
+                }
+                onRemoveFeatured={(featuredId) =>
+                  featuredApi.remove(featuredId).then(() => {
+                    loadFeatured();
+                    notify('Removed slide from Featured Carousel');
+                  })
+                }
               />
             ))}
 
           {activeSection === 'blogs' &&
             (sectionTransitioning || !loadedFlags.blogs ? (
-              <AdminBlogsSkeleton />
+              <div className="pt-4">
+                <AdminBlogsSkeleton />
+              </div>
             ) : (
               <BlogStudioSection
-              blogs={blogs}
-              editingBlogId={editingBlogId}
-              editorMode={editorMode}
-              setEditorMode={setEditorMode}
-              blogMovieSearchQ={blogMovieSearchQ}
-              setBlogMovieSearchQ={setBlogMovieSearchQ}
-              blogMovieHits={blogMovieHits}
-              setBlogMovieHits={setBlogMovieHits}
-              blogSearchAttempted={blogSearchAttempted}
-              setBlogSearchAttempted={setBlogSearchAttempted}
-              fetchingAssets={fetchingAssets}
-              blogForm={blogForm}
-              setBlogForm={setBlogForm}
-              searchMovieForBlog={searchMovieForBlog}
-              handleFetchMovieAssetsForBlog={handleFetchMovieAssetsForBlog}
-              insertIntoBlogContent={insertIntoBlogContent}
-              startEditingBlog={startEditingBlog}
-              resetBlogForm={resetBlogForm}
-              handleSaveBlog={handleSaveBlog}
-              onDeleteBlog={(id) =>
-                blogApi.remove(id).then(() => {
-                  loadBlogs();
-                  notify('Deleted blog article');
-                })
-              }
+                blogs={blogs}
+                editingBlogId={editingBlogId}
+                editorMode={editorMode}
+                setEditorMode={setEditorMode}
+                blogMovieSearchQ={blogMovieSearchQ}
+                setBlogMovieSearchQ={setBlogMovieSearchQ}
+                blogMovieHits={blogMovieHits}
+                setBlogMovieHits={setBlogMovieHits}
+                blogSearchAttempted={blogSearchAttempted}
+                setBlogSearchAttempted={setBlogSearchAttempted}
+                fetchingAssets={fetchingAssets}
+                blogForm={blogForm}
+                setBlogForm={setBlogForm}
+                searchMovieForBlog={searchMovieForBlog}
+                handleFetchMovieAssetsForBlog={handleFetchMovieAssetsForBlog}
+                insertIntoBlogContent={insertIntoBlogContent}
+                startEditingBlog={startEditingBlog}
+                resetBlogForm={resetBlogForm}
+                handleSaveBlog={handleSaveBlog}
+                onDeleteBlog={(id) =>
+                  blogApi.remove(id).then(() => {
+                    loadBlogs();
+                    notify('Deleted blog article');
+                  })
+                }
               />
             ))}
 
           {activeSection === 'community' &&
             (sectionTransitioning || !loadedFlags.community ? (
-              <AdminCommunitySkeleton />
+              <div className="pt-4">
+                <AdminCommunitySkeleton />
+              </div>
             ) : (
               <CommunitySection
-              commRooms={commRooms}
-              currentUser={user}
-              newRoomForm={newRoomForm}
-              setNewRoomForm={setNewRoomForm}
-              onCreateRoom={async (e) => {
-                e.preventDefault();
-                await communityApi.createRoom(newRoomForm);
-                setNewRoomForm({
-                  name: '',
-                  description: '',
-                  icon: '🎬',
-                  topic: 'general',
-                  slowModeSeconds: 0,
-                });
-                loadCommunity();
-                notify('Official Community Lounge created!');
-              }}
-              onToggleRoomLock={(r) =>
-                communityApi.updateRoom(r.id, { isLocked: !r.isLocked }).then(() => {
+                commRooms={commRooms}
+                currentUser={user}
+                newRoomForm={newRoomForm}
+                setNewRoomForm={setNewRoomForm}
+                onCreateRoom={async (e) => {
+                  e.preventDefault();
+                  await communityApi.createRoom(newRoomForm);
+                  setNewRoomForm({
+                    name: '',
+                    description: '',
+                    icon: '🎬',
+                    topic: 'general',
+                    slowModeSeconds: 0,
+                  });
                   loadCommunity();
-                  notify(`Community "${r.name}" ${!r.isLocked ? 'blocked' : 'unblocked'}`);
-                })
-              }
-              onRequestDeleteRoom={(r) => setRoomToDelete(r)}
-              onRefreshCommunity={loadCommunity}
-              notify={notify}
+                  notify('Official Community Lounge created!');
+                }}
+                onToggleRoomLock={(r) =>
+                  communityApi.updateRoom(r.id, { isLocked: !r.isLocked }).then(() => {
+                    loadCommunity();
+                    notify(
+                      `Community "${r.name}" ${!r.isLocked ? 'blocked' : 'unblocked'}`,
+                    );
+                  })
+                }
+                onRequestDeleteRoom={(r) => setRoomToDelete(r)}
+                onRefreshCommunity={loadCommunity}
+                notify={notify}
               />
             ))}
 
           {activeSection === 'reviews' &&
             (sectionTransitioning || !loadedFlags.moderation ? (
-              <AdminReviewsSkeleton />
+              <div className="pt-4">
+                <AdminReviewsSkeleton />
+              </div>
             ) : (
               <ReviewsModerationSection
-              allReviews={allReviews}
-              allComments={allComments}
-              onSelectReviewForModal={(r) => setSelectedReviewForModal(r)}
-              onToggleHideReview={(r) =>
-                reviewService.admin
-                  .moderateReview(r._id || r.id, { isHidden: !r.isHidden })
-                  .then(() => {
+                allReviews={allReviews}
+                allComments={allComments}
+                onSelectReviewForModal={(r) => setSelectedReviewForModal(r)}
+                onToggleHideReview={(r) =>
+                  reviewService.admin
+                    .moderateReview(r._id || r.id, { isHidden: !r.isHidden })
+                    .then(() => {
+                      loadModeration();
+                      notify(`Review ${!r.isHidden ? 'hidden' : 'made visible'}`);
+                    })
+                }
+                onDeleteReview={(id) =>
+                  reviewService.admin.deleteReview(id).then(() => {
                     loadModeration();
-                    notify(`Review ${!r.isHidden ? 'hidden' : 'made visible'}`);
+                    notify('Review deleted');
                   })
-              }
-              onDeleteReview={(id) =>
-                reviewService.admin.deleteReview(id).then(() => {
+                }
+                onAddCriticReview={async (payload) => {
+                  await reviewService.addCriticReview(payload);
                   loadModeration();
-                  notify('Review deleted');
-                })
-              }
-              onAddCriticReview={async (payload) => {
-                await reviewService.addCriticReview(payload);
-                loadModeration();
-                notify('Published verified critic review!');
-              }}
-              onToggleHideComment={(c) =>
-                reviewService.admin
-                  .moderateComment(c._id || c.id, { isHidden: !c.isHidden })
-                  .then(() => {
+                  notify('Published verified critic review!');
+                }}
+                onToggleHideComment={(c) =>
+                  reviewService.admin
+                    .moderateComment(c._id || c.id, { isHidden: !c.isHidden })
+                    .then(() => {
+                      loadModeration();
+                      notify(`Comment ${!c.isHidden ? 'hidden' : 'unhidden'}`);
+                    })
+                }
+                onDeleteComment={(id) =>
+                  reviewService.admin.deleteComment(id).then(() => {
                     loadModeration();
-                    notify(`Comment ${!c.isHidden ? 'hidden' : 'unhidden'}`);
+                    notify('Comment deleted');
                   })
-              }
-              onDeleteComment={(id) =>
-                reviewService.admin.deleteComment(id).then(() => {
-                  loadModeration();
-                  notify('Comment deleted');
-                })
-              }
+                }
               />
             ))}
 
+          {/* User Management (Regular Users) */}
           {activeSection === 'users' &&
             (sectionTransitioning || !loadedFlags.users ? (
-              <AdminUsersSkeleton />
+              <div className="pt-4">
+                <AdminUsersSkeleton />
+              </div>
             ) : (
               <UsersSection
-              users={users}
-              currentUser={user}
-              isSuper={isSuper}
-              userSearch={userSearch}
-              setUserSearch={setUserSearch}
-              onSearchUsers={loadUsers}
-              newStaff={newStaff}
-              setNewStaff={setNewStaff}
-              onCreateStaff={async (e) => {
-                e.preventDefault();
-                await authService.createStaff(newStaff);
-                setNewStaff({ name: '', email: '', password: '', role: ROLES.ADMIN });
-                loadUsers();
-                notify('Account created!');
-              }}
-              onChangeRole={(id, role) =>
-                authService.setRole(id, role).then(() => {
+                mode="users"
+                users={users}
+                currentUser={user}
+                isSuper={isSuper}
+                userSearch={userSearch}
+                setUserSearch={setUserSearch}
+                onSearchUsers={loadUsers}
+                newStaff={newStaff}
+                setNewStaff={setNewStaff}
+                onCreateStaff={async (e) => {
+                  e.preventDefault();
+                  await authService.createStaff({
+                    ...newStaff,
+                    role: newStaff.role || ROLES.USER,
+                  });
+                  setNewStaff({
+                    name: '',
+                    email: '',
+                    password: '',
+                    role: ROLES.USER,
+                  });
                   loadUsers();
-                  notify(`Updated account role to ${role}`);
-                })
-              }
-              onToggleActive={(u) =>
-                authService.setActive(u.id, u.isActive === false).then(() => {
-                  loadUsers();
-                  notify(`${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`);
-                })
-              }
-              onOpenPasswordModal={(u) => {
-                setPasswordModalUser(u);
-                setNewUserPassword('');
-                setConfirmUserPassword('');
-                setPasswordError('');
-                setShowNewPassword(false);
-              }}
-              onRequestDeleteUser={(u) => setUserToDelete(u)}
+                  notify('Regular User account created!');
+                }}
+                onChangeRole={(id, role) =>
+                  authService.setRole(id, role).then(() => {
+                    loadUsers();
+                    notify(`Updated account role to ${role}`);
+                  })
+                }
+                onToggleActive={(u) =>
+                  authService.setActive(u.id, u.isActive === false).then(() => {
+                    loadUsers();
+                    notify(`${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`);
+                  })
+                }
+                onOpenPasswordModal={(u) => {
+                  setPasswordModalUser(u);
+                  setNewUserPassword('');
+                  setConfirmUserPassword('');
+                  setPasswordError('');
+                  setShowNewPassword(false);
+                }}
+                onRequestDeleteUser={(u) => setUserToDelete(u)}
               />
             ))}
 
+          {/* Staff (Admin & Super Admins) */}
+          {activeSection === 'staff' &&
+            (sectionTransitioning || !loadedFlags.users ? (
+              <div className="pt-4">
+                <AdminUsersSkeleton />
+              </div>
+            ) : (
+              <UsersSection
+                mode="staff"
+                users={users}
+                currentUser={user}
+                isSuper={isSuper}
+                userSearch={userSearch}
+                setUserSearch={setUserSearch}
+                onSearchUsers={loadUsers}
+                newStaff={newStaff}
+                setNewStaff={setNewStaff}
+                onCreateStaff={async (e) => {
+                  e.preventDefault();
+                  await authService.createStaff({
+                    ...newStaff,
+                    role: newStaff.role || ROLES.ADMIN,
+                  });
+                  setNewStaff({
+                    name: '',
+                    email: '',
+                    password: '',
+                    role: ROLES.ADMIN,
+                  });
+                  loadUsers();
+                  notify('Staff account provisioned!');
+                }}
+                onChangeRole={(id, role) =>
+                  authService.setRole(id, role).then(() => {
+                    loadUsers();
+                    notify(`Updated staff role to ${role}`);
+                  })
+                }
+                onToggleActive={(u) =>
+                  authService.setActive(u.id, u.isActive === false).then(() => {
+                    loadUsers();
+                    notify(`${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`);
+                  })
+                }
+                onOpenPasswordModal={(u) => {
+                  setPasswordModalUser(u);
+                  setNewUserPassword('');
+                  setConfirmUserPassword('');
+                  setPasswordError('');
+                  setShowNewPassword(false);
+                }}
+                onRequestDeleteUser={(u) => setUserToDelete(u)}
+              />
+            ))}
+
+          {/* Media & Box Office DB */}
           {activeSection === 'catalog' &&
-            isSuper &&
             (sectionTransitioning || !loadedFlags.catalog ? (
-              <AdminCatalogSkeleton />
+              <div className="pt-4">
+                <AdminCatalogSkeleton />
+              </div>
             ) : (
               <CatalogSection
-              dbTitles={dbTitles}
-              featuredItems={featuredItems}
-              region={region}
-              titleQuery={titleQuery}
-              setTitleQuery={setTitleQuery}
-              titleTypeFilter={titleTypeFilter}
-              setTitleTypeFilter={setTitleTypeFilter}
-              onSearchCatalog={loadCatalog}
-              onCreateNewTitle={() => setCreatingNewTitle(true)}
-              onEditTitle={(t) => setModalTitle(t)}
-              onSyncTitle={async (t) => {
-                try {
-                  await reviewService.superadmin.syncTitle(t.type, t.id, true);
-                  notify(`Synced "${t.title}" with official TMDB data!`);
-                  loadCatalog();
-                } catch (err) {
-                  notify(err.response?.data?.message || 'Failed to sync with TMDB', 'error');
+                dbTitles={dbTitles}
+                featuredItems={featuredItems}
+                region={region}
+                titleQuery={titleQuery}
+                setTitleQuery={setTitleQuery}
+                titleTypeFilter={titleTypeFilter}
+                onChangeTypeFilter={(nextType) => {
+                  setTitleTypeFilter(nextType);
+                  setCatalogPage(1);
+                  if (nextType) {
+                    setSearchParams({ type: nextType });
+                  } else {
+                    setSearchParams({});
+                  }
+                  loadCatalog(1, { type: nextType });
+                }}
+                catalogSort={catalogSort}
+                onChangeSort={(nextSort) => {
+                  setCatalogSort(nextSort);
+                  setCatalogPage(1);
+                  loadCatalog(1, { sort: nextSort });
+                }}
+                catalogPage={catalogPage}
+                catalogTotalPages={catalogTotalPages}
+                catalogTotalItems={catalogFilteredTotal}
+                catalogPageSize={CATALOG_PAGE_SIZE}
+                catalogVisibleLimit={catalogVisibleLimit}
+                onChangeVisibleLimit={handleChangeCatalogVisibleLimit}
+                catalogLoading={catalogLoading}
+                onPageChange={(nextPage) => {
+                  setCatalogPage(nextPage);
+                  loadCatalog(nextPage);
+                }}
+                onSearchCatalog={(pageArg = 1, overrides = {}) => {
+                  setCatalogPage(pageArg);
+                  loadCatalog(pageArg, overrides);
+                }}
+                onCreateNewTitle={() => setCreatingNewTitle(true)}
+                onEditTitle={(t) => setModalTitle(t)}
+                onSyncTitle={async (t) => {
+                  try {
+                    await reviewService.superadmin.syncTitle(t.type, t.id, true);
+                    notify(`Synced "${t.title}" with official TMDB data!`);
+                    loadCatalog(catalogPage);
+                  } catch (err) {
+                    notify(
+                      err.response?.data?.message || 'Failed to sync with TMDB',
+                      'error',
+                    );
+                  }
+                }}
+                onDeleteTitle={(t) =>
+                  reviewService.superadmin.deleteTitle(t.type, t.id).then(() => {
+                    loadCatalog(catalogPage);
+                    notify(`Deleted "${t.title}" from database`);
+                  })
                 }
-              }}
-              onDeleteTitle={(t) =>
-                reviewService.superadmin.deleteTitle(t.type, t.id).then(() => {
-                  loadCatalog();
-                  notify(`Deleted "${t.title}" from database`);
-                })
-              }
-              onQuickAddToFeatured={handleQuickAddToFeatured}
+                onQuickAddToFeatured={handleQuickAddToFeatured}
               />
             ))}
 
           {activeSection === 'crawler' &&
-            isSuper &&
             (sectionTransitioning || !crawler ? (
-              <AdminCrawlerSkeleton />
+              <div className="pt-4">
+                <AdminCrawlerSkeleton />
+              </div>
             ) : (
               <CrawlerSection
-              crawler={crawler}
-              quotaForm={quotaForm}
-              setQuotaForm={setQuotaForm}
-              onStartCrawler={() =>
-                reviewService.superadmin.crawlerStart({ restart: false }).then(() => {
-                  loadCrawler();
-                  notify('Crawler started / resumed');
-                })
-              }
-              onStopCrawler={() =>
-                reviewService.superadmin.crawlerStop().then(() => {
-                  loadCrawler();
-                  notify('Crawler stop requested');
-                })
-              }
-              onSaveQuotas={() =>
-                reviewService.superadmin.crawlerUpdateCap(quotaForm).then(() => {
-                  loadCrawler();
-                  notify('Crawler quotas updated!');
-                })
-              }
+                crawler={crawler}
+                quotaForm={quotaForm}
+                setQuotaForm={setQuotaForm}
+                onStartCrawler={() =>
+                  reviewService.superadmin.crawlerStart({ restart: false }).then(() => {
+                    loadCrawler();
+                    notify('Crawler started / resumed');
+                  })
+                }
+                onStopCrawler={() =>
+                  reviewService.superadmin.crawlerStop().then(() => {
+                    loadCrawler();
+                    notify('Crawler stop requested');
+                  })
+                }
+                onSaveQuotas={() =>
+                  reviewService.superadmin.crawlerUpdateCap(quotaForm).then(() => {
+                    loadCrawler();
+                    notify('Crawler quotas updated!');
+                  })
+                }
               />
             ))}
 
           {activeSection === 'api-keys' &&
-            isSuper &&
             (sectionTransitioning || !loadedFlags.keys ? (
-              <AdminApiKeysSkeleton />
+              <div className="pt-4">
+                <AdminApiKeysSkeleton />
+              </div>
             ) : (
               <ApiKeysSection
-              keys={keys}
-              newKey={newKey}
-              setNewKey={setNewKey}
-              onAddKey={async (e) => {
-                e.preventDefault();
-                await reviewService.superadmin.addKey(newKey);
-                setNewKey({ label: '', key: '', priority: 10 });
-                loadKeys();
-                notify('TMDB API Key encrypted & added to pool!');
-              }}
-              onDeleteKey={(id) =>
-                reviewService.superadmin.deleteKey(id).then(() => {
+                keys={keys}
+                newKey={newKey}
+                setNewKey={setNewKey}
+                onAddKey={async (e) => {
+                  e.preventDefault();
+                  await reviewService.superadmin.addKey(newKey);
+                  setNewKey({ label: '', key: '', priority: 10 });
                   loadKeys();
-                  notify('Removed TMDB API key');
-                })
-              }
-              onTestKey={(id) =>
-                reviewService.superadmin.testKey(id).then((res) => {
-                  loadKeys();
-                  notify(res?.valid ? 'API Key verified valid with TMDB!' : 'API Key test completed');
-                })
-              }
-            />
+                  notify('TMDB API Key encrypted & added to pool!');
+                }}
+                onDeleteKey={(id) =>
+                  reviewService.superadmin.deleteKey(id).then(() => {
+                    loadKeys();
+                    notify('Removed TMDB API key');
+                  })
+                }
+                onTestKey={(id) =>
+                  reviewService.superadmin.testKey(id).then((res) => {
+                    loadKeys();
+                    notify(
+                      res?.valid || res?.result === 'valid'
+                        ? 'API Key verified valid with TMDB!'
+                        : 'API Key test completed',
+                    );
+                  })
+                }
+              />
+            ))}
+
+          {activeSection === 'settings' &&
+            (sectionTransitioning ? (
+              <div className="pt-4">
+                <AdminOverviewSkeleton />
+              </div>
+            ) : (
+              <SettingsSection
+                user={user}
+                isSuper={isSuper}
+                theme={theme}
+                onToggleTheme={() => dispatch(toggleTheme())}
+                users={users}
+                stats={stats}
+                heroLimit={heroLimit}
+                onUpdateHeroLimit={handleUpdateHeroLimit}
+                catalogVisibleLimit={catalogVisibleLimit}
+                onChangeCatalogVisibleLimit={handleChangeCatalogVisibleLimit}
+                crawler={crawler}
+                quotaForm={quotaForm}
+                setQuotaForm={setQuotaForm}
+                onStartCrawler={() =>
+                  reviewService.superadmin.crawlerStart({ restart: false }).then(() => {
+                    loadCrawler();
+                    notify('Crawler started / resumed');
+                  })
+                }
+                onStopCrawler={() =>
+                  reviewService.superadmin.crawlerStop().then(() => {
+                    loadCrawler();
+                    notify('Crawler stop requested');
+                  })
+                }
+                onSaveQuotas={() =>
+                  reviewService.superadmin.crawlerUpdateCap(quotaForm).then(() => {
+                    loadCrawler();
+                    notify('Crawler quotas updated!');
+                  })
+                }
+                featuredItems={featuredItems}
+                blogs={blogs}
+                commRooms={commRooms}
+                keys={keys}
+                onOpenPasswordModal={(u) => {
+                  setPasswordModalUser(u);
+                  setNewUserPassword('');
+                  setConfirmUserPassword('');
+                  setPasswordError('');
+                  setShowNewPassword(false);
+                }}
+                onToggleActive={(u) =>
+                  authService.setActive(u.id, u.isActive === false).then(() => {
+                    loadUsers();
+                    notify(`${u.name} ${u.isActive === false ? 'activated' : 'suspended'}`);
+                  })
+                }
+                onRefreshAll={loadAllAdminData}
+                notify={notify}
+              />
             ))}
         </main>
       </div>
@@ -867,8 +1215,13 @@ export default function Admin() {
           onClose={() => {
             setModalTitle(null);
             setCreatingNewTitle(false);
+            if (searchParams.get('action') === 'create') {
+              const nextParams = new URLSearchParams(searchParams);
+              nextParams.delete('action');
+              setSearchParams(nextParams);
+            }
           }}
-          onSaved={loadCatalog}
+          onSaved={() => loadCatalog(catalogPage)}
         />
       )}
 
@@ -916,7 +1269,10 @@ export default function Admin() {
           }
           setPasswordSaving(true);
           try {
-            await authService.adminChangePassword(passwordModalUser.id, newUserPassword.trim());
+            await authService.adminChangePassword(
+              passwordModalUser.id,
+              newUserPassword.trim(),
+            );
             notify(`Password updated for ${passwordModalUser.name}!`);
             setPasswordModalUser(null);
           } catch (err) {
@@ -955,7 +1311,10 @@ export default function Admin() {
             setRoomToDelete(null);
             loadCommunity();
           } catch (err) {
-            notify(err.response?.data?.message || 'Failed to delete community room', 'error');
+            notify(
+              err.response?.data?.message || 'Failed to delete community room',
+              'error',
+            );
             setRoomToDelete(null);
           }
         }}
