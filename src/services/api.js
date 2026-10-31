@@ -6,7 +6,7 @@ import {
   toSlug,
 } from '../utils/formatters';
 
-const CACHE_PREFIX = 'movieshub_cache_v8:';
+const CACHE_PREFIX = 'movieshub_cache_v9:';
 const MAX_CACHE_ENTRIES = 100;
 // Minimum interval before re-checking `/discover/sync-check` for the same cached key (unless a mutation occurred)
 const SYNC_CHECK_COOLDOWN_MS = 0;
@@ -835,10 +835,28 @@ export const buildDetailCacheKey = (type, slugOrId) => {
     : 'movie';
   const rawParam = decodeURIComponent(String(slugOrId || '')).trim();
   const isNumeric = /^\d+$/.test(rawParam);
-  const mapped = !isNumeric ? resolveSlugMapping(rawParam) : null;
+  // ALWAYS check resolveSlugMapping FIRST even if rawParam is numeric (e.g. Suriya's movie "24" has slug "24" -> id 362165!)
+  let mapped = resolveSlugMapping(rawParam);
+  if (!mapped) {
+    const cachedListMatch = getAllCachedTitles().find(
+      (m) =>
+        ((m.type || m.media_type || 'movie') === cleanType || cleanType === 'tv') &&
+        toSlug(m.title || m.name) === rawParam.toLowerCase(),
+    );
+    if (cachedListMatch?.id) {
+      mapped = {
+        id: cachedListMatch.id,
+        type: (cachedListMatch.type || cachedListMatch.media_type) === 'tv' ? 'tv' : 'movie',
+        title: cachedListMatch.title || cachedListMatch.name || '',
+      };
+    }
+  }
   const effectiveType = mapped?.type || cleanType;
-  const key = `detail:${effectiveType}:${rawParam.toLowerCase()}`;
-  return { key, effectiveType, rawParam, isNumeric, mapped };
+  const resolvedTargetId = mapped?.id ? Number(mapped.id) : null;
+  const key = resolvedTargetId
+    ? `detail:${effectiveType}:id:${resolvedTargetId}`
+    : `detail:${effectiveType}:slug:${rawParam.toLowerCase()}`;
+  return { key, effectiveType, rawParam, isNumeric, mapped, resolvedTargetId };
 };
 
 export const tmdb = {
@@ -1007,46 +1025,41 @@ export const tmdb = {
   },
 
   peekDetail: (type, slugOrId) => {
-    const { key, effectiveType, rawParam, mapped } = buildDetailCacheKey(
+    const { key, effectiveType, rawParam, resolvedTargetId } = buildDetailCacheKey(
       type,
       slugOrId,
     );
     const direct = readCache(key);
-    if (direct) return normalizeDetailData(direct);
-    if (mapped?.id) {
-      const byId = readCache(`detail:${effectiveType}:${mapped.id}`);
-      if (byId) return normalizeDetailData(byId);
+    if (direct && direct.hasFullDetails !== false) return normalizeDetailData(direct);
+    if (resolvedTargetId) {
+      const byId = readCache(`detail:${effectiveType}:id:${resolvedTargetId}`);
+      if (byId && byId.hasFullDetails !== false) return normalizeDetailData(byId);
     }
-    for (const [k, entry] of memoryCache.entries()) {
-      if (!k.startsWith('detail:') || !entry?.data) continue;
-      const d = entry.data;
-      if (
-        String(d.id || d.tmdbId) === rawParam ||
-        toSlug(d.title || d.name) === rawParam.toLowerCase()
-      ) {
-        return normalizeDetailData(d);
-      }
-    }
+    const bySlug = readCache(`detail:${effectiveType}:slug:${rawParam.toLowerCase()}`);
+    if (bySlug && bySlug.hasFullDetails !== false) return normalizeDetailData(bySlug);
     return null;
   },
 
   detail: async (type, slugOrId, options = {}) => {
-    const { key, effectiveType, rawParam, isNumeric, mapped } =
+    const { key, effectiveType, rawParam, resolvedTargetId } =
       buildDetailCacheKey(type, slugOrId);
-    const targetId = isNumeric ? Number(rawParam) : mapped?.id ? Number(mapped.id) : null;
+    const targetId = resolvedTargetId || null;
 
     return requestBackendWithCache(
       key,
       async () => {
+        // 1. If we resolved a verified targetId from slug mapping / card click, fetch explicitly by ID (?byId=true)
         if (targetId) {
           try {
-            const r = await backend.get(`/titles/${effectiveType}/${targetId}`);
+            const r = await backend.get(`/titles/${effectiveType}/${targetId}`, {
+              params: { byId: 'true' },
+            });
             const d = normalizeDetailData(r.data.detail || r.data.titleObj || r.data);
             if (d?.id) {
               const slug = toSlug(d.title || d.name);
               registerSlugMapping(slug, d);
-              writeCache(`detail:${effectiveType}:${d.id}`, d);
-              if (slug) writeCache(`detail:${effectiveType}:${slug}`, d);
+              writeCache(`detail:${effectiveType}:id:${d.id}`, d);
+              if (slug) writeCache(`detail:${effectiveType}:slug:${slug}`, d);
               patchSingleTitleInCache(d);
             }
             return d;
@@ -1054,6 +1067,7 @@ export const tmdb = {
             /* fall through */
           }
         }
+        // 2. Otherwise fetch by rawParam (backend checks exact numeric title match like "24" before falling back to tmdbId)
         try {
           const r = await backend.get(
             `/titles/${effectiveType}/${encodeURIComponent(rawParam)}`,
@@ -1062,8 +1076,8 @@ export const tmdb = {
           if (d?.id) {
             const slug = toSlug(d.title || d.name);
             registerSlugMapping(slug, d);
-            writeCache(`detail:${effectiveType}:${d.id}`, d);
-            if (slug) writeCache(`detail:${effectiveType}:${slug}`, d);
+            writeCache(`detail:${effectiveType}:id:${d.id}`, d);
+            if (slug) writeCache(`detail:${effectiveType}:slug:${slug}`, d);
             patchSingleTitleInCache(d);
           }
           return d;
@@ -1080,11 +1094,13 @@ export const tmdb = {
           if (best?.id) {
             const bestType =
               (best.type || best.media_type) === 'tv' ? 'tv' : 'movie';
-            const r3 = await backend.get(`/titles/${bestType}/${best.id}`);
+            const r3 = await backend.get(`/titles/${bestType}/${best.id}`, {
+              params: { byId: 'true' },
+            });
             const d3 = normalizeDetailData(r3.data.detail || r3.data.titleObj || r3.data);
             if (d3?.id) {
               registerSlugMapping(rawParam.toLowerCase(), d3);
-              writeCache(`detail:${bestType}:${d3.id}`, d3);
+              writeCache(`detail:${bestType}:id:${d3.id}`, d3);
               patchSingleTitleInCache(d3);
             }
             return d3;

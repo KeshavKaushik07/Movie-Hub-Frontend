@@ -100,7 +100,8 @@ export default function Home() {
   );
   const top10Today = feed?.top10Today || [];
   const top10Week = feed?.top10Week || [];
-  const celebrities = feed?.celebrities || [];
+  const indianCelebrities = feed?.indianCelebrities || feed?.celebrities || [];
+  const hollywoodCelebrities = feed?.hollywoodCelebrities || [];
   const blogs = feed?.blogs || [];
 
   // Deduplicate titles across rows so the same movie/series never repeats in row after row
@@ -239,17 +240,17 @@ export default function Home() {
         region={prefs.region}
       />
 
-      {/* 7. Top Celebrities in Your Region */}
-      {celebrities.filter((c) => c && c.profileUrl).length > 0 && (
+      {/* 7A. Top Indian Celebrities & Filmmakers */}
+      {indianCelebrities.filter((c) => c && c.profileUrl).length > 0 && (
         <ScrollRow
-          title={prefs.region === 'IN' ? 'Top Indian Celebrities & Filmmakers' : 'Top Global Celebrities & Directors'}
-          subtitle="Tap any star or director to open all their movies and web series"
+          title="Top Indian Celebrities & Filmmakers"
+          subtitle="Tap any Indian star or director to explore their complete movies & web series filmography"
         >
-          {celebrities
+          {indianCelebrities
             .filter((c) => c && c.profileUrl)
             .map((celeb) => (
               <Link
-                key={celeb.name}
+                key={`in-${celeb.name}`}
                 to={getPersonPath(celeb, celeb.id, celeb.gender)}
                 className="group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand/50 sm:w-44"
               >
@@ -267,7 +268,46 @@ export default function Home() {
                     {celeb.name}
                   </h3>
                   <span className="mt-1 inline-block rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
-                    {celeb.industry || celeb.department || 'Actor'}
+                    {celeb.industry || celeb.department || 'Indian Cinema'}
+                  </span>
+                  <p className="mt-1 line-clamp-2 text-[10px] text-zinc-400">
+                    {celeb.knownFor || 'View complete filmography'}
+                  </p>
+                </div>
+              </Link>
+            ))}
+        </ScrollRow>
+      )}
+
+      {/* 7B. Top Hollywood Celebrities & Filmmakers */}
+      {hollywoodCelebrities.filter((c) => c && c.profileUrl).length > 0 && (
+        <ScrollRow
+          title="Top Hollywood Celebrities & Filmmakers"
+          subtitle="Tap any Hollywood actor, actress, or visionary director to open all their movies & series"
+        >
+          {hollywoodCelebrities
+            .filter((c) => c && c.profileUrl)
+            .map((celeb) => (
+              <Link
+                key={`hw-${celeb.name}`}
+                to={getPersonPath(celeb, celeb.id, celeb.gender)}
+                className="group flex w-36 shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0e131f] text-center transition duration-300 active:scale-95 hover:-translate-y-1 hover:border-brand/50 sm:w-44"
+              >
+                <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-950">
+                  <SafeImage
+                    src={celeb.profileUrl}
+                    alt={celeb.name}
+                    size="h632"
+                    variant="poster"
+                    className="h-full w-full object-contain object-center transition duration-500 group-hover:scale-105"
+                  />
+                </div>
+                <div className="p-3">
+                  <h3 className="w-full truncate text-xs font-bold text-white group-hover:text-brand sm:text-sm">
+                    {celeb.name}
+                  </h3>
+                  <span className="mt-1 inline-block rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-bold text-brand">
+                    {celeb.industry || celeb.department || 'Hollywood'}
                   </span>
                   <p className="mt-1 line-clamp-2 text-[10px] text-zinc-400">
                     {celeb.knownFor || 'View complete filmography'}

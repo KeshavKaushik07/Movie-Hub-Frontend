@@ -19,11 +19,53 @@ import { notifyPatch } from '../utils/notify';
 
 const USER_STORAGE_KEY = 'user';
 const ALT_USER_STORAGE_KEY = 'movieshub_user';
+const SESSION_TOKENS_KEY = 'movieshub_session_tokens_v1';
 const LOGOUT_EVENT_KEY = 'movieshub_logout_at';
 const AUTH_CHANNEL_NAME = 'movieshub_auth_sync_v1';
 
 let inMemoryAccessToken = null;
 let inMemoryRefreshToken = null;
+
+const readStoredTokens = () => {
+  try {
+    const raw = localStorage.getItem(SESSION_TOKENS_KEY);
+    if (!raw) return { access: null, refresh: null };
+    const parsed = safeJsonParse(raw);
+    return {
+      access: parsed?.access || null,
+      refresh: parsed?.refresh || null,
+    };
+  } catch {
+    return { access: null, refresh: null };
+  }
+};
+
+const writeStoredTokens = (access, refresh) => {
+  try {
+    const current = readStoredTokens();
+    const nextAccess = access !== undefined ? access : current.access;
+    const nextRefresh = refresh !== undefined ? refresh : current.refresh;
+    if (!nextAccess && !nextRefresh) {
+      localStorage.removeItem(SESSION_TOKENS_KEY);
+    } else {
+      localStorage.setItem(
+        SESSION_TOKENS_KEY,
+        JSON.stringify({
+          access: nextAccess || null,
+          refresh: nextRefresh || null,
+          updatedAt: Date.now(),
+        }),
+      );
+    }
+  } catch {
+    /* ignore */
+  }
+};
+
+// Hydrate tokens on module boot so page reloads and cross-domain (Vercel <-> Render) requests never lose session!
+const initialTokens = readStoredTokens();
+inMemoryAccessToken = initialTokens.access;
+inMemoryRefreshToken = initialTokens.refresh;
 let storeRef = null;
 let refreshPromise = null;
 let isLoggedOut = false;
@@ -335,6 +377,7 @@ export const saveSessionSnapshot = ({
   if (refresh !== undefined && refresh !== null) {
     inMemoryRefreshToken = refresh || null;
   }
+  writeStoredTokens(inMemoryAccessToken, inMemoryRefreshToken);
 
   let cleanUser = null;
   if (user !== undefined) {
@@ -381,6 +424,7 @@ export const clearSessionSnapshot = ({ broadcast = true } = {}) => {
   try {
     localStorage.removeItem(USER_STORAGE_KEY);
     localStorage.removeItem(ALT_USER_STORAGE_KEY);
+    localStorage.removeItem(SESSION_TOKENS_KEY);
     if (broadcast) {
       localStorage.setItem(LOGOUT_EVENT_KEY, String(lastLogoutAt));
     }
@@ -413,10 +457,21 @@ export const setInMemoryAccessToken = (
   }
 };
 
-export const getInMemoryAccessToken = () =>
-  inMemoryAccessToken || storeRef?.getState()?.auth?.access || null;
+export const getInMemoryAccessToken = () => {
+  if (inMemoryAccessToken) return inMemoryAccessToken;
+  const fromStore = storeRef?.getState()?.auth?.access;
+  if (fromStore) return fromStore;
+  const stored = readStoredTokens().access;
+  if (stored) inMemoryAccessToken = stored;
+  return stored || null;
+};
 
-export const getRefreshToken = () => inMemoryRefreshToken || null;
+export const getRefreshToken = () => {
+  if (inMemoryRefreshToken) return inMemoryRefreshToken;
+  const stored = readStoredTokens().refresh;
+  if (stored) inMemoryRefreshToken = stored;
+  return stored || null;
+};
 
 export const injectStore = (s) => {
   storeRef = s;
@@ -614,7 +669,7 @@ backend.interceptors.response.use(
             };
             return backend(original);
           }
-          if (rStatus === 401 || rStatus === 403) {
+          if (rStatus === 403 || (rStatus === 401 && getRefreshToken())) {
             clearSessionSnapshot({ broadcast: true });
             if (storeRef) {
               storeRef.dispatch({ type: 'auth/clearSession', payload: { fromBroadcast: true } });

@@ -52,7 +52,17 @@ export const authService = {
       return { user: null, access: null };
     }
 
-    // 1. Ask any other open tab for the active in-memory token via BroadcastChannel (<100ms)
+    // 1. If we already have a stored/in-memory access token, return session immediately and refresh silently in background
+    const existingAccess = getInMemoryAccessToken();
+    if (existingAccess && readSavedUser()) {
+      performTokenRefresh().catch(() => {});
+      return {
+        access: existingAccess,
+        user: readSavedUser() || savedUser,
+      };
+    }
+
+    // 2. Ask any other open tab for the active in-memory token via BroadcastChannel (<100ms)
     const tabToken = await requestTokenFromOpenTabs(100);
     if (tabToken && readSavedUser()) {
       return {
@@ -99,8 +109,8 @@ export const authService = {
       }
 
       const status = err?.response?.status;
-      // Rule 3: Refresh token is expired, invalid, or user account is unauthorized/deactivated
-      if (status === 401 || status === 403) {
+      // Only force logout if account is deactivated (403) or if we had no valid access token AND refresh failed
+      if (status === 403 || (status === 401 && !getInMemoryAccessToken())) {
         clearSessionSnapshot({ broadcast: true });
         const authErr = new Error(
           err?.response?.data?.message || 'Session expired, please log in again',

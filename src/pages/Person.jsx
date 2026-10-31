@@ -68,15 +68,12 @@ export default function Person() {
             : 'Actor';
         document.title = `${resolvedPerson.name || decodedName} (${roleLabel}) — Movies, Web Series & TV Shows Filmography | Movies Hub`;
 
-        // Ensure browser URL strictly uses `/actor/Name-With-Hyphens` (male) or `/actoress/Name-With-Hyphens` (female)
-        const canonicalUrl = getPersonPath(
-          resolvedPerson,
-          personId || resolvedPerson.id,
+        // Register the resolved person ID for this slug without ever redirecting to a different person's name!
+        getPersonPath(
+          { ...resolvedPerson, name: decodedName },
+          resolvedPerson.id || personId,
+          resolvedPerson.gender,
         );
-        const currentUrl = `${window.location.pathname}${window.location.search}`;
-        if (canonicalUrl && currentUrl !== canonicalUrl) {
-          nav(canonicalUrl, { replace: true });
-        }
       })
       .finally(() => setLoading(false));
   }, [decodedName, personId, nav]);
