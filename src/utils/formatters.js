@@ -141,9 +141,41 @@ export const resolvePersonSlugMapping = (slug) => {
   return null;
 };
 
+const PERSON_GENDER_STORAGE_KEY = 'movieshub_person_gender_v2';
 const personGenderMemory = new Map();
 
+// Hydrate remembered person genders from localStorage on startup
+try {
+  const raw = localStorage.getItem(PERSON_GENDER_STORAGE_KEY);
+  if (raw) {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      for (const [k, v] of Object.entries(parsed)) {
+        if (v === 1 || v === 2) personGenderMemory.set(k, v);
+      }
+    }
+  }
+} catch {
+  /* ignore */
+}
+
+const rememberPersonGender = (nameKey, genderNum) => {
+  if (!nameKey || (genderNum !== 1 && genderNum !== 2)) return;
+  personGenderMemory.set(nameKey, genderNum);
+  try {
+    const raw = localStorage.getItem(PERSON_GENDER_STORAGE_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    if (obj[nameKey] !== genderNum) {
+      obj[nameKey] = genderNum;
+      localStorage.setItem(PERSON_GENDER_STORAGE_KEY, JSON.stringify(obj));
+    }
+  } catch {
+    /* ignore */
+  }
+};
+
 const KNOWN_FEMALE_NAMES = new Set([
+  // Indian (Bollywood, Tollywood, Kollywood, Mollywood, Sandalwood)
   'deepika', 'alia', 'samantha', 'rashmika', 'katrina', 'kareena', 'priyanka', 'anushka',
   'shraddha', 'kriti', 'kiara', 'taapsee', 'vidya', 'kangana', 'nayanthara', 'trisha',
   'pooja', 'tamannaah', 'tamanna', 'kajal', 'madhuri', 'sridevi', 'rekha',
@@ -164,7 +196,8 @@ const KNOWN_FEMALE_NAMES = new Set([
   'mumtaz', 'zeenat', 'parveen', 'neetu', 'dimple', 'poonam', 'padmini',
   'savitri', 'jamuna', 'sarada', 'suhasini', 'nadhiya', 'bhanupriya', 'radha', 'ambika',
   'khushbu', 'roja', 'devayani', 'rambha', 'laila', 'sadha', 'gopika',
-  'zendaya', 'margot', 'scarlett', 'emma', 'jennifer', 'angelina', 'natalie', 'anne',
+  // Global, Hollywood, British, European, Voice Actresses & International
+  'hynden', 'zendaya', 'margot', 'scarlett', 'emma', 'jennifer', 'angelina', 'natalie', 'anne',
   'emily', 'florence', 'sydney', 'ana', 'gal', 'elizabeth', 'brie', 'cate', 'kate',
   'meryl', 'viola', 'sandra', 'julia', 'nicole', 'charlize', 'amy', 'jessica', 'rachel',
   'amanda', 'lily', 'jenna', 'millie', 'sadie', 'anya', 'daisy', 'saoirse', 'rebecca',
@@ -174,10 +207,83 @@ const KNOWN_FEMALE_NAMES = new Set([
   'maggie', 'judi', 'helen', 'julianne', 'sigourney', 'jodie', 'michelle',
   'awkwafina', 'constance', 'sonoya', 'karen', 'pom', 'zoe', 'zoë', 'letitia',
   'lupita', 'danai', 'tessa', 'hailee', 'chloë', 'chloe', 'sophie', 'maisie', 'emilia',
-  'lena', 'gwendoline', 'natalia', 'maya', 'robin', 'gillian', 'kaley',
+  'lena', 'gwendoline', 'natalia', 'maya', 'gillian', 'kaley',
   'courteney', 'lisa', 'sarah', 'ellen', 'kristen', 'dakota', 'elle', 'kirsten',
   'blake', 'leighton', 'nina', 'candice', 'kat', 'phoebe', 'freya', 'billie',
+  'tara', 'grey', 'cree', 'ashley', 'laura', 'bailey', 'tricia', 'janet', 'wendy',
+  'nancy', 'pamela', 'kathleen', 'susan', 'linda', 'barbara', 'patricia', 'deborah',
+  'cynthia', 'ashly', 'cherami', 'erica', 'kira', 'cristina', 'stephanie', 'melissa',
+  'megan', 'brittany', 'kayla', 'amber', 'danielle', 'chelsea', 'heather', 'tiffany',
+  'kimberly', 'christina', 'crystal', 'erin', 'allison', 'alexandra', 'victoria',
+  'brooke', 'katherine', 'catherine', 'christine', 'marie', 'julie', 'joyce', 'virginia',
+  'kelly', 'lauren', 'joan', 'evelyn', 'judith', 'cheryl', 'hannah', 'martha', 'gloria',
+  'teresa', 'ann', 'madison', 'frances', 'kathryn', 'janice', 'jean', 'abigail', 'alice',
+  'judy', 'sophia', 'denise', 'doris', 'marilyn', 'beverly', 'isabella', 'theresa',
+  'charlotte', 'alexis', 'lori', 'betty', 'donna', 'carol', 'ruth', 'sharon', 'shirley',
+  'angela', 'brenda', 'anna', 'debra', 'carolyn', 'diane', 'mildred', 'rose', 'kathy',
+  'tammy', 'irene', 'jane', 'louise', 'wanda', 'bonnie', 'ruby', 'lois', 'tina', 'phyllis',
+  'norma', 'paula', 'annie', 'lillian', 'peggy', 'gladys', 'rita', 'dawn', 'connie',
+  'edna', 'carmen', 'rosa', 'cindy', 'edith', 'sherry', 'sylvia', 'josephine', 'thelma',
+  'shannon', 'sheila', 'ethel', 'elaine', 'marjorie', 'carrie', 'monica', 'esther',
+  'pauline', 'juanita', 'anita', 'rhonda', 'hazel', 'debbie', 'april', 'lucille',
+  'joanne', 'eleanor', 'valerie', 'alicia', 'suzanne', 'michele', 'gail', 'bertha',
+  'darlene', 'veronica', 'jill', 'geraldine', 'cathy', 'joann', 'lorraine', 'lynn',
+  'sally', 'regina', 'beatrice', 'dolores', 'bernice', 'audrey', 'yvonne', 'annette',
+  'june', 'marion', 'stacy', 'ida', 'vivian', 'roberta', 'holly', 'melanie', 'loretta',
+  'yolanda', 'jeanette', 'laurie', 'katie', 'alma', 'sue', 'elsie', 'beth', 'jeanne',
+  'vicki', 'carla', 'rosemary', 'eileen', 'terri', 'gertrude', 'lucy', 'tonya', 'ella',
+  'stacey', 'wilma', 'gina', 'kristin', 'agnes', 'vera', 'charlene', 'bessie', 'delores',
+  'melinda', 'pearl', 'arlene', 'maureen', 'colleen', 'tamara', 'joy', 'georgia', 'lillie',
+  'claudia', 'marcia', 'tanya', 'nellie', 'minnie', 'marlene', 'heidi', 'glenda', 'lydia',
+  'courtney', 'marian', 'stella', 'caroline', 'dora', 'vickie', 'mattie', 'maxine', 'irma',
+  'mabel', 'marsha', 'myrtle', 'christy', 'deanna', 'patsy', 'hilda', 'gwendolyn', 'jennie',
+  'margie', 'cassandra', 'leah', 'penny', 'kay', 'priscilla', 'naomi', 'carole', 'brandy',
+  'olga', 'dianne', 'tracey', 'leona', 'jenny', 'felicia', 'sonia', 'miriam', 'velma',
+  'becky', 'violet', 'kristina', 'toni', 'misty', 'mae', 'shelly', 'ramona', 'sherri',
+  'erika', 'lindsey', 'lindsay', 'geneva', 'guadalupe', 'belinda', 'margarita', 'sheryl',
+  'cora', 'faye', 'ada', 'natasha', 'sabrina', 'isabel', 'marguerite', 'hattie', 'harriet',
+  'molly', 'cecilia', 'kristi', 'brandi', 'blanche', 'sandy', 'rosie', 'joanna', 'iris',
+  'eunice', 'angie', 'inez', 'lynda', 'madeline', 'amelia', 'alberta', 'genevieve',
+  'monique', 'jodi', 'janie', 'sonya', 'kristine', 'candace', 'fannie', 'maryann', 'opal',
+  'alison', 'yvette', 'melody', 'luz', 'susie', 'flora', 'shelley', 'kristy', 'mamie',
+  'lula', 'lola', 'verna', 'beulah', 'antoinette', 'juana', 'jeannette', 'pam', 'kelli',
+  'whitney', 'bridget', 'karla', 'celia', 'latoya', 'patty', 'shelia', 'gayle', 'della',
+  'vicky', 'lynne', 'sheri', 'marianne', 'kara', 'jacquelyn', 'erma', 'blanca', 'myra',
+  'leticia', 'krista', 'roxanne', 'angelica', 'robyn', 'adrienne', 'rosalie', 'bethany',
+  'bernadette', 'traci', 'jody', 'kendra', 'jasmine', 'nichole', 'rachael', 'mable',
+  'ernestine', 'muriel', 'marcella', 'elena', 'krystal', 'nadine', 'kari', 'estelle',
+  'dianna', 'paulette', 'lora', 'doreen', 'rosemarie', 'desiree', 'antonia', 'hope',
+  'ginger', 'janis', 'betsy', 'christie', 'freda', 'mercedes', 'meredith', 'lynette',
+  'teri', 'ebony', 'leigh', 'meghan', 'eloise', 'rochelle', 'gretchen', 'cecelia',
+  'raquel', 'henrietta', 'alyssa', 'jana', 'kelley', 'gwen', 'laverne', 'olive', 'tasha',
+  'silvia', 'elvira', 'delia', 'patti', 'lorena', 'kellie', 'sonja', 'lila', 'lana',
+  'darla', 'may', 'mindy', 'essie', 'mandy', 'lorene', 'elsa', 'josefina', 'jeannie',
+  'miranda', 'dixie', 'lucia', 'marta', 'faith', 'lela', 'johanna', 'shari', 'camille',
+  'tami', 'shawna', 'elisa', 'eboni', 'melba', 'ora', 'nettie', 'tabitha', 'winifred',
+  'kristie', 'marina', 'selena', 'ariana', 'camila', 'dua', 'taylor', 'beyonce', 'rihanna',
+  'adele', 'celine', 'shakira', 'madonna', 'cher', 'barbra', 'dolly', 'rebel', 'isla',
+  'rose', 'naomie', 'thandiwe', 'gugu', 'lashana', 'michaela', 'simone', 'charithra',
+  'nicola', 'claudia', 'phoebe', 'adjoa', 'golda', 'ruth', 'fiona', 'imelda', 'lesley',
+  'olivia', 'gillian', 'keeley', 'suranne', 'jodie', 'vicky', 'morfydd', 'aisling',
+  'saoirse', 'kerry', 'evanna', 'jessica', 'holliday', 'lily', 'vanessa', 'hera',
+  'sylvia', 'noomi', 'alicia', 'rebecca', 'ingrid', 'greta', 'liv', 'bibi', 'astrid',
+  'zarah', 'marlene', 'romy', 'hanna', 'nina', 'paula', 'sandra', 'diane', 'franka',
+  'martina', 'sibylle', 'karoline', 'jella', 'leonie', 'luise', 'mala', 'helena',
+  'penélope', 'paz', 'rossy', 'carmen', 'blanca', 'úrsula', 'ursula', 'ester', 'najwa',
+  'alba', 'itziar', 'belén', 'belen', 'maribel', 'elena', 'aitana', 'milena', 'laia',
+  'monica', 'sophia', 'claudia', 'gina', 'ornella', 'asia', 'valeria', 'jasmine',
+  'alba', 'matilda', 'sveva', 'miriam', 'cristiana', 'margherita', 'vittoria',
+  'catherine', 'isabelle', 'juliette', 'marion', 'audrey', 'léa', 'lea', 'eva',
+  'bérénice', 'berenice', 'mélanie', 'melanie', 'clémence', 'clemence', 'adèle',
+  'virginie', 'fanny', 'brigitte', 'jeanne', 'simone', 'delphine', 'emmanuelle',
+  'sophie', 'charlotte', 'camille', 'noémie', 'noemie', 'golshifteh', 'zar',
+  'ho-yeon', 'hoyeon', 'ji-hyun', 'jihyun', 'hye-kyo', 'hyekyo', 'ye-jin', 'yejin',
+  '태리', 'suzy', 'bae', 'iu', 'yoona', 'so-hee', 'sohee', 'go-eun', 'goeun',
+  'do-yeon', 'doyeon', '여정', 'yuh-jung', 'min-hee', 'minhee', 'bo-young', 'boyoung',
+  'shin-hye', 'shinhye', 'min-young', 'minyoung', 'se-jeong', 'sejeong', 'eun-bin', 'eunbin',
 ]);
+
+const FEMALE_CHARACTER_PATTERNS = /\b(princess|queen|girl|woman|lady|mother|mom|mama|mum|sister|wife|daughter|bride|aunt|auntie|grandma|grandmother|nanny|goddess|witch|waitress|actress|hostess|stewardess|maid|nun|baroness|duchess|countess|empress|mrs\.?|ms\.?|miss|madam|madame|mademoiselle|senora|senorita|fraulein|frau|heroine|female|she|her|starfire|bubblegum|wonder woman|black widow|catwoman|supergirl|batgirl|harley quinn|lois lane|mary jane|gwen stacy|jean grey|mystique|scarlet witch|gamora|nebula|mantis|shuri|okoye|valkyrie|captain marvel|yelena|kate bishop|padme|ahsoka|hermione|ginny|bellatrix|galadriel|arwen|eowyn|katniss|cinderella|rapunzel|maleficent|cruella|ursula)\b/i;
 
 /**
  * Formats an actor/actoress name with hyphens (-) instead of spaces (%20):
@@ -201,7 +307,8 @@ export const parsePersonSlugToName = (slug = '') =>
     .trim();
 
 /**
- * Determines whether a person URL should use "/actor" (male) or "/actoress" (female).
+ * Determines whether a person URL should use "/actor" (male) or "/actoress" (female)
+ * for EVERY industry (Hollywood, Bollywood, Anime, Korean, European, etc.).
  * TMDB gender convention: 1 = female ("actoress"), 2 = male ("actor").
  */
 export const resolvePersonRoleSegment = (personOrName, genderOverride = null) => {
@@ -211,43 +318,65 @@ export const resolvePersonRoleSegment = (personOrName, genderOverride = null) =>
       : { name: String(personOrName || '') };
   const rawName = parsePersonSlugToName(obj.name || '');
   const nameKey = rawName.toLowerCase();
-  const genderVal =
-    genderOverride ?? obj.gender ?? (nameKey ? personGenderMemory.get(nameKey) : null);
 
+  // 1. Check explicit gender value (1 = female -> actoress, 2 = male -> actor)
+  const explicitGender = genderOverride ?? obj.gender;
   if (
-    genderVal === 1 ||
-    String(genderVal).toLowerCase() === 'female' ||
-    String(genderVal).toLowerCase() === 'actoress' ||
-    String(genderVal).toLowerCase() === 'actress'
+    explicitGender === 1 ||
+    explicitGender === '1' ||
+    String(explicitGender).toLowerCase() === 'female' ||
+    String(explicitGender).toLowerCase() === 'actoress' ||
+    String(explicitGender).toLowerCase() === 'actress'
   ) {
-    if (nameKey) personGenderMemory.set(nameKey, 1);
+    rememberPersonGender(nameKey, 1);
     return 'actoress';
   }
   if (
-    genderVal === 2 ||
-    String(genderVal).toLowerCase() === 'male' ||
-    String(genderVal).toLowerCase() === 'actor'
+    explicitGender === 2 ||
+    explicitGender === '2' ||
+    String(explicitGender).toLowerCase() === 'male' ||
+    String(explicitGender).toLowerCase() === 'actor'
   ) {
-    if (nameKey) personGenderMemory.set(nameKey, 2);
+    rememberPersonGender(nameKey, 2);
     return 'actor';
   }
 
+  // 2. Check biography pronouns & keywords ("she", "her", "actress" vs "he", "him", "his", "actor")
   const bio = String(obj.biography || '');
   if (bio) {
-    const femMatches = (bio.match(/\b(she|her|actress|heroine)\b/gi) || []).length;
-    const maleMatches = (bio.match(/\b(he|him|his|actor)\b/gi) || []).length;
+    const femMatches = (bio.match(/\b(she|her|hers|actress|heroine|women|woman|daughter|wife|mother|sister)\b/gi) || []).length;
+    const maleMatches = (bio.match(/\b(he|him|his|actor|son|husband|father|brother)\b/gi) || []).length;
     if (femMatches > maleMatches) {
-      if (nameKey) personGenderMemory.set(nameKey, 1);
+      rememberPersonGender(nameKey, 1);
       return 'actoress';
     }
     if (maleMatches > femMatches) {
-      if (nameKey) personGenderMemory.set(nameKey, 2);
+      rememberPersonGender(nameKey, 2);
       return 'actor';
     }
   }
 
-  const firstWord = nameKey.split(/\s+/)[0]?.replace(/[^a-z]/g, '');
+  // 3. Check persistent memory (from previous visits or Person page loads)
+  const remembered = nameKey ? personGenderMemory.get(nameKey) : null;
+  if (remembered === 1) return 'actoress';
+  if (remembered === 2) return 'actor';
+
+  // 4. Check character role name if available on a Cast card (e.g. "Starfire", "Princess Bubblegum", "Queen", "Mother")
+  const charStr = String(obj.character || '');
+  if (charStr && FEMALE_CHARACTER_PATTERNS.test(charStr)) {
+    rememberPersonGender(nameKey, 1);
+    return 'actoress';
+  }
+  const charFirstWord = charStr.toLowerCase().replace(/^\(voice\)|voice of/i, '').trim().split(/\s+/)[0]?.replace(/[^a-z]/g, '');
+  if (charFirstWord && KNOWN_FEMALE_NAMES.has(charFirstWord)) {
+    rememberPersonGender(nameKey, 1);
+    return 'actoress';
+  }
+
+  // 5. Check person's first name against global + Indian female names dictionary
+  const firstWord = nameKey.split(/\s+/)[0]?.replace(/[^a-z\u00C0-\u024F]/g, '');
   if (firstWord && KNOWN_FEMALE_NAMES.has(firstWord)) {
+    rememberPersonGender(nameKey, 1);
     return 'actoress';
   }
   if (
@@ -256,17 +385,13 @@ export const resolvePersonRoleSegment = (personOrName, genderOverride = null) =>
     nameKey === 'saiyami kher' ||
     nameKey === 'meena kumari'
   ) {
+    rememberPersonGender(nameKey, 1);
     return 'actoress';
   }
 
   return 'actor';
 };
 
-/**
- * Generates clean, bot-friendly Actor / Actoress URLs with hyphens (-) and NO query params:
- * Male:   /actor/Shiva-Rajkumar
- * Female: /actoress/Deepika-Padukone
- */
 export const getPersonPath = (
   personOrName,
   idOverride = null,

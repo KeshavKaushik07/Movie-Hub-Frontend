@@ -562,6 +562,7 @@ export default function Details() {
       crewMap.set(key, {
         id: obj.id || null,
         name,
+        gender: obj.gender || 0,
         jobs: job ? [job] : [],
         department: dept,
         photoSrc,
@@ -570,6 +571,7 @@ export default function Details() {
       const existing = crewMap.get(key);
       if (job && !existing.jobs.includes(job)) existing.jobs.push(job);
       if (!existing.id && obj.id) existing.id = obj.id;
+      if (!existing.gender && obj.gender) existing.gender = obj.gender;
       if (!existing.photoSrc && photoSrc) existing.photoSrc = photoSrc;
     }
   };

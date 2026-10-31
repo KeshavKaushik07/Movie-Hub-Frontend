@@ -68,12 +68,16 @@ export default function Person() {
             : 'Actor';
         document.title = `${resolvedPerson.name || decodedName} (${roleLabel}) — Movies, Web Series & TV Shows Filmography | Movies Hub`;
 
-        // Register the resolved person ID for this slug without ever redirecting to a different person's name!
-        getPersonPath(
+        // Keep the exact same name slug (`decodedName`) so `:name` never changes (zero loop!),
+        // while updating the URL role segment (`/actor/...` <-> `/actoress/...`) to match the person's gender/biography!
+        const canonicalRoleUrl = getPersonPath(
           { ...resolvedPerson, name: decodedName },
           resolvedPerson.id || personId,
           resolvedPerson.gender,
         );
+        if (canonicalRoleUrl && window.location.pathname !== canonicalRoleUrl) {
+          nav(`${canonicalRoleUrl}${window.location.search || ''}`, { replace: true });
+        }
       })
       .finally(() => setLoading(false));
   }, [decodedName, personId, nav]);
