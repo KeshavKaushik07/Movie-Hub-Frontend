@@ -27,7 +27,7 @@ import {
   Users,
   Clapperboard,
 } from 'lucide-react';
-import { tmdb, featuredApi, communityApi } from '../services/api';
+import { tmdb, featuredApi, communityApi, subscribeCacheUpdates } from '../services/api';
 import { reviewService } from '../services/reviewService';
 import { OTT_LIST, ROLES, ROUTES, toGenreSlug, getOttPath, toBrowseTypeSlug } from '../config/constants';
 import { getMovieFinancials, registerSlugMapping, getPersonPath, getTitlePath } from '../utils/formatters';
@@ -66,8 +66,9 @@ export default function Details() {
   const isSuperAdmin = user?.role === ROLES.SUPERADMIN;
   const isLight = theme === 'light';
 
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => tmdb.peekDetail(type, id));
+  const [loading, setLoading] = useState(() => !tmdb.peekDetail(type, id));
+  const loadedTitleIdentityRef = useRef(null);
   const [activeVideoKey, setActiveVideoKey] = useState(null);
   const [deadMediaKeys, setDeadMediaKeys] = useState({});
   const [deadActorIds, setDeadActorIds] = useState({});
@@ -92,36 +93,85 @@ export default function Details() {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatText, setChatText] = useState('');
 
-  const loadDetail = () => {
-    setLoading(true);
+  const applyLoadedDetail = (d, resetSelections = true) => {
+    setData(d);
+    if (d) {
+      registerSlugMapping(d);
+      loadedTitleIdentityRef.current = {
+        id: String(d.id || d.tmdbId || ''),
+        slug: String(d.slug || '').toLowerCase(),
+        rawParam: decodeURIComponent(String(id || '')).toLowerCase(),
+      };
+    }
+    if (resetSelections) {
+      setActiveVideoKey(null);
+      setDeadMediaKeys({});
+      setDeadActorIds({});
+      setDeadCrewIds({});
+      if (d?.seasons?.length) {
+        const unwrappedSeasons = d.seasons.map((rawS, idx) => {
+          const s = rawS?._doc ? { ...rawS, ...rawS._doc } : rawS || {};
+          const parsed = Number(s.seasonNumber ?? s.season_number);
+          return Number.isInteger(parsed) && parsed >= 0 ? parsed : idx + 1;
+        });
+        const firstRegular =
+          unwrappedSeasons.find((num) => num > 0) ?? unwrappedSeasons[0] ?? 1;
+        setSelectedSeason(firstRegular);
+      } else {
+        setSelectedSeason(1);
+      }
+    }
+  };
+
+  const loadDetail = (options = {}) => {
+    const cached = !options.forceRefresh ? tmdb.peekDetail(type, id) : null;
+    if (cached) {
+      applyLoadedDetail(cached, false);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     tmdb
-      .detail(type, id)
+      .detail(type, id, options)
       .then((d) => {
-        setData(d);
-        if (d) registerSlugMapping(d);
-        setActiveVideoKey(null);
-        setDeadMediaKeys({});
-        setDeadActorIds({});
-        setDeadCrewIds({});
-        if (d?.seasons?.length) {
-          const unwrappedSeasons = d.seasons.map((rawS, idx) => {
-            const s = rawS?._doc ? { ...rawS, ...rawS._doc } : rawS || {};
-            const parsed = Number(s.seasonNumber ?? s.season_number);
-            return Number.isInteger(parsed) && parsed >= 0 ? parsed : idx + 1;
-          });
-          const firstRegular = unwrappedSeasons.find((num) => num > 0) ?? unwrappedSeasons[0] ?? 1;
-          setSelectedSeason(firstRegular);
-        } else {
-          setSelectedSeason(1);
-        }
+        applyLoadedDetail(d, !cached);
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
+    const cleanParam = decodeURIComponent(String(id || '')).toLowerCase();
+    const cur = loadedTitleIdentityRef.current;
+    // Prevent canonical URL slug replacement (/movie/550 -> /movie/fight-club) from triggering a duplicate reload!
+    if (
+      cur &&
+      data &&
+      (cleanParam === cur.id ||
+        cleanParam === cur.slug ||
+        cleanParam === cur.rawParam)
+    ) {
+      return;
+    }
     window.scrollTo(0, 0);
     loadDetail();
   }, [type, id]); // eslint-disable-line
+
+  useEffect(() => {
+    const cleanParam = decodeURIComponent(String(id || '')).toLowerCase();
+    const unsubscribe = subscribeCacheUpdates(({ key, data: updated }) => {
+      if (!key.startsWith('detail:') || !updated) return;
+      const currentId = Number(data?.id || data?.tmdbId);
+      const updatedId = Number(updated?.id || updated?.tmdbId);
+      const updatedSlug = String(updated?.slug || '').toLowerCase();
+      if (
+        (currentId && updatedId && currentId === updatedId) ||
+        (cleanParam && (String(updatedId) === cleanParam || updatedSlug === cleanParam || key.endsWith(`:${cleanParam}`)))
+      ) {
+        setData(updated);
+      }
+    });
+    return unsubscribe;
+  }, [id, data?.id, data?.tmdbId]);
 
   const resolvedId =
     data?.id ||

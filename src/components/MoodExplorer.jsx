@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkles, ArrowRight } from 'lucide-react';
-import { tmdb } from '../services/api';
+import { tmdb, subscribeCacheUpdates, stableParamsKey } from '../services/api';
 import { resolveGenreId, toBrowseTypeSlug } from '../config/constants';
 import MovieCard from './MovieCard';
 import { MoodRowSkeleton } from './ui/Skeletons';
@@ -79,19 +79,32 @@ const MOODS = [
  */
 export default function MoodExplorer() {
   const [selected, setSelected] = useState(MOODS[0]);
-  const [items, setItems] = useState([]);
+  const buildMoodParams = (mood) => ({
+    ...mood.params,
+    genre: mood.params.genre
+      ? resolveGenreId(mood.params.genre, mood.type)
+      : undefined,
+    limit: 12,
+  });
+
+  const [items, setItems] = useState(() => {
+    const cached = tmdb.peekDiscover(MOODS[0].type, buildMoodParams(MOODS[0]));
+    return (cached?.items || cached?.results || []).slice(0, 12);
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    const apiParams = {
-      ...selected.params,
-      genre: selected.params.genre
-        ? resolveGenreId(selected.params.genre, selected.type)
-        : undefined,
-      limit: 12,
-    };
+    const apiParams = buildMoodParams(selected);
+    const cacheKey = `discover:${selected.type}:${stableParamsKey(apiParams)}`;
+    const cached = tmdb.peekDiscover(selected.type, apiParams);
+    if (cached) {
+      setItems((cached.items || cached.results || []).slice(0, 12));
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     tmdb
       .discover(selected.type, apiParams)
       .then((res) => {
@@ -103,8 +116,16 @@ export default function MoodExplorer() {
       .catch(() => {
         if (alive) setLoading(false);
       });
+
+    const unsubscribe = subscribeCacheUpdates(({ key, data }) => {
+      if (alive && key === cacheKey && data) {
+        setItems((data.items || data.results || []).slice(0, 12));
+      }
+    });
+
     return () => {
       alive = false;
+      unsubscribe();
     };
   }, [selected]);
 

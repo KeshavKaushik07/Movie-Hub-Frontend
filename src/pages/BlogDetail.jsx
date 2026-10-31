@@ -116,16 +116,24 @@ export default function BlogDetail() {
   const user = useSelector((s) => s.auth.user);
   const isStaff = user && [ROLES.ADMIN, ROLES.SUPERADMIN].includes(user.role);
 
-  const [blog, setBlog] = useState(null);
-  const [related, setRelated] = useState([]);
+  const initialCachedArticle = blogApi.peekGet(slug);
+  const [blog, setBlog] = useState(() => initialCachedArticle?.blog || null);
+  const [related, setRelated] = useState(() => initialCachedArticle?.related || []);
   const [comments, setComments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !initialCachedArticle?.blog);
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [replyText, setReplyText] = useState('');
 
   const loadArticle = () => {
-    setLoading(true);
+    const cached = blogApi.peekGet(slug);
+    if (cached?.blog) {
+      setBlog(cached.blog);
+      setRelated(cached.related || []);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     blogApi
       .get(slug)
       .then((res) => {

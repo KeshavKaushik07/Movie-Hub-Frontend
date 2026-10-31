@@ -10,7 +10,7 @@ import {
   SlidersHorizontal,
   Compass,
 } from 'lucide-react';
-import { tmdb } from '../services/api';
+import { tmdb, subscribeCacheUpdates, stableParamsKey } from '../services/api';
 import { getPersonPath, isUpcomingRelease } from '../utils/formatters';
 import {
   OTT_LIST,
@@ -45,20 +45,30 @@ const GENRE_CARDS = [
 export default function Home() {
   const dispatch = useDispatch();
   const prefs = useSelector((s) => s.preferences);
-  const [feed, setFeed] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const homeParams = {
+    region: prefs.region,
+    industries: (prefs.industries || []).join(','),
+    genres: (prefs.genres || []).join(','),
+  };
+  const homeCacheKey = `home:${stableParamsKey(homeParams)}`;
+
+  const [feed, setFeed] = useState(() => tmdb.peekHome(homeParams));
+  const [loading, setLoading] = useState(() => !tmdb.peekHome(homeParams));
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
+    const cached = tmdb.peekHome(homeParams);
+    if (cached) {
+      setFeed(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     tmdb
-      .home({
-        region: prefs.region,
-        industries: (prefs.industries || []).join(','),
-        genres: (prefs.genres || []).join(','),
-      })
+      .home(homeParams)
       .then((data) => {
-        if (alive) {
+        if (alive && data) {
           setFeed(data);
           setLoading(false);
         }
@@ -66,10 +76,18 @@ export default function Home() {
       .catch(() => {
         if (alive) setLoading(false);
       });
+
+    const unsubscribe = subscribeCacheUpdates(({ key, data }) => {
+      if (alive && key === homeCacheKey && data) {
+        setFeed(data);
+      }
+    });
+
     return () => {
       alive = false;
+      unsubscribe();
     };
-  }, [prefs.region, prefs.industries, prefs.genres]);
+  }, [homeCacheKey]); // eslint-disable-line
 
   if (loading && !feed) {
     return <HomeSkeleton />;

@@ -6,7 +6,17 @@ import {
   toSlug,
 } from '../utils/formatters';
 
-const CACHE_PREFIX = 'movieshub_cache_v6:';
+const CACHE_PREFIX = 'movieshub_cache_v8:';
+const MAX_CACHE_ENTRIES = 100;
+// Minimum interval before re-checking `/discover/sync-check` for the same cached key (unless a mutation occurred)
+const SYNC_CHECK_COOLDOWN_MS = 0;
+
+// Fast 1st-tier in-memory cache so navigating Back between pages is 0ms without JSON.parse overhead
+const memoryCache = new Map();
+const inFlightRequests = new Map();
+const inFlightSyncChecks = new Map();
+const cacheSubscribers = new Set();
+let lastGlobalSyncCheckAt = 0;
 
 // Automatically purge older cache versions or any broken season:undefined entries on load
 try {
@@ -22,6 +32,28 @@ try {
 } catch {
   /* ignore */
 }
+
+/**
+ * Subscribe to background Delta-Sync or Full-Refresh cache updates.
+ * Listeners receive `{ key, data, mode }`.
+ */
+export const subscribeCacheUpdates = (listener) => {
+  if (typeof listener !== 'function') return () => {};
+  cacheSubscribers.add(listener);
+  return () => {
+    cacheSubscribers.delete(listener);
+  };
+};
+
+const notifyCacheSubscribers = (key, data, mode = 'delta') => {
+  cacheSubscribers.forEach((listener) => {
+    try {
+      listener({ key, data, mode });
+    } catch {
+      /* ignore listener errors */
+    }
+  });
+};
 
 // Unwraps Mongoose subdocument wrapper objects ({ _doc: { ... }, posterUrl: ... }) if returned by backend
 export const unwrapSubdoc = (item) => {
@@ -219,8 +251,10 @@ export const normalizeDetailData = (rawDetail) => {
   };
 };
 
-// Clear all cached catalog/detail responses in localStorage & sessionStorage after edits/syncs
+// Clear all cached catalog/detail responses in memory, localStorage & sessionStorage (used only for bulk resets)
 export const clearCatalogCache = () => {
+  memoryCache.clear();
+  lastGlobalSyncCheckAt = 0;
   try {
     for (const k of Object.keys(localStorage)) {
       if (k.startsWith(CACHE_PREFIX) || k.startsWith('movieshub_cache')) {
@@ -241,15 +275,44 @@ export const clearCatalogCache = () => {
   }
 };
 
-const MAX_CACHE_ENTRIES = 60;
+const readCacheEntry = (key) => {
+  if (memoryCache.has(key)) {
+    return memoryCache.get(key);
+  }
+  try {
+    const raw = localStorage.getItem(`${CACHE_PREFIX}${key}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.data !== undefined) {
+      const entry = {
+        savedAt: Number(parsed.savedAt) || Date.now(),
+        lastCheckedAt: Number(parsed.lastCheckedAt || parsed.savedAt) || Date.now(),
+        data: parsed.data,
+      };
+      memoryCache.set(key, entry);
+      return entry;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+};
 
-const writeCache = (key, data) => {
+const readCache = (key) => readCacheEntry(key)?.data ?? null;
+
+export const peekCache = (key) => readCache(key);
+
+const writeCache = (key, data, savedAt = Date.now()) => {
+  const entry = {
+    savedAt,
+    lastCheckedAt: Date.now(),
+    data,
+  };
+  memoryCache.set(key, entry);
+
   try {
     const fullKey = `${CACHE_PREFIX}${key}`;
-    localStorage.setItem(
-      fullKey,
-      JSON.stringify({ savedAt: Date.now(), data }),
-    );
+    localStorage.setItem(fullKey, JSON.stringify(entry));
     const allKeys = Object.keys(localStorage).filter((k) =>
       k.startsWith(CACHE_PREFIX),
     );
@@ -264,7 +327,9 @@ const writeCache = (key, data) => {
         })
         .sort((a, b) => a.t - b.t);
       for (const item of sorted.slice(0, allKeys.length - MAX_CACHE_ENTRIES)) {
-        if (!item.k.includes('home')) localStorage.removeItem(item.k);
+        if (!item.k.includes('home')) {
+          localStorage.removeItem(item.k);
+        }
       }
     }
   } catch {
@@ -272,12 +337,255 @@ const writeCache = (key, data) => {
   }
 };
 
-const readCache = (key) => {
+const touchCacheEntryChecked = (key, serverTime = Date.now()) => {
+  const entry = readCacheEntry(key);
+  if (!entry) return;
+  entry.lastCheckedAt = Date.now();
+  if (serverTime) entry.savedAt = serverTime;
+  memoryCache.set(key, entry);
   try {
-    const raw = localStorage.getItem(`${CACHE_PREFIX}${key}`);
-    return raw ? (JSON.parse(raw)?.data ?? null) : null;
+    localStorage.setItem(`${CACHE_PREFIX}${key}`, JSON.stringify(entry));
   } catch {
-    return null;
+    /* ignore */
+  }
+};
+
+/**
+ * Patches ONLY the changed items (1..10 titles/details/blogs) in-place across all cached
+ * Home feeds, Browse grids, OTT Hub lists, Person filmographies, and Detail entries
+ * WITHOUT re-fetching the whole page!
+ */
+export const applyDeltaSyncToCache = ({
+  updatedTitles = [],
+  updatedDetails = [],
+  updatedBlogs = [],
+  serverTime = Date.now(),
+} = {}) => {
+  if (
+    !updatedTitles.length &&
+    !updatedDetails.length &&
+    !updatedBlogs.length
+  ) {
+    return;
+  }
+
+  const titlePatchMap = new Map();
+  for (const t of updatedTitles) {
+    if (!t?.id && !t?.tmdbId) continue;
+    const id = Number(t.id || t.tmdbId);
+    const baseType = (t.type || t.media_type) === 'tv' ? 'tv' : 'movie';
+    titlePatchMap.set(`${baseType}:${id}`, t);
+    titlePatchMap.set(`id:${id}`, t);
+  }
+
+  const detailPatchMap = new Map();
+  for (const rawD of updatedDetails) {
+    const d = normalizeDetailData(rawD);
+    if (!d?.id && !d?.tmdbId) continue;
+    const id = Number(d.id || d.tmdbId);
+    const baseType = (d.type || d.media_type) === 'tv' ? 'tv' : 'movie';
+    detailPatchMap.set(`${baseType}:${id}`, d);
+    detailPatchMap.set(`id:${id}`, d);
+    if (!titlePatchMap.has(`${baseType}:${id}`)) {
+      titlePatchMap.set(`${baseType}:${id}`, d);
+      titlePatchMap.set(`id:${id}`, d);
+    }
+  }
+
+  const blogPatchMap = new Map();
+  for (const b of updatedBlogs) {
+    if (!b?.id && !b?.slug) continue;
+    if (b.id) blogPatchMap.set(`id:${b.id}`, b);
+    if (b.slug) blogPatchMap.set(`slug:${String(b.slug).toLowerCase()}`, b);
+  }
+
+  const patchItemArray = (arr) => {
+    if (!Array.isArray(arr) || !titlePatchMap.size) return { list: arr, changed: false };
+    let changed = false;
+    const nextList = arr.map((item) => {
+      if (!item || (!item.id && !item.tmdbId)) return item;
+      const id = Number(item.id || item.tmdbId);
+      const itemType =
+        (item.type || item.media_type) === 'tv' || item.subType === 'webseries'
+          ? 'tv'
+          : 'movie';
+      const patch =
+        titlePatchMap.get(`${itemType}:${id}`) || titlePatchMap.get(`id:${id}`);
+      if (!patch) return item;
+      changed = true;
+      return {
+        ...item,
+        ...patch,
+        // Preserve rank or featured slide flags if present in a Hero or Top 10 list
+        ...(item.rank !== undefined ? { rank: item.rank } : {}),
+        ...(item.isFeaturedSlide !== undefined
+          ? { isFeaturedSlide: item.isFeaturedSlide }
+          : {}),
+      };
+    });
+    return { list: changed ? nextList : arr, changed };
+  };
+
+  const patchBlogArray = (arr) => {
+    if (!Array.isArray(arr) || !blogPatchMap.size) return { list: arr, changed: false };
+    let changed = false;
+    const nextList = arr.map((b) => {
+      if (!b) return b;
+      const patch =
+        (b.id && blogPatchMap.get(`id:${b.id}`)) ||
+        (b.slug && blogPatchMap.get(`slug:${String(b.slug).toLowerCase()}`));
+      if (!patch) return b;
+      changed = true;
+      return { ...b, ...patch };
+    });
+    return { list: changed ? nextList : arr, changed };
+  };
+
+  // Collect all cache keys across memoryCache and localStorage
+  const allKeys = new Set(memoryCache.keys());
+  try {
+    for (const fullKey of Object.keys(localStorage)) {
+      if (fullKey.startsWith(CACHE_PREFIX)) {
+        allKeys.add(fullKey.slice(CACHE_PREFIX.length));
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  for (const key of allKeys) {
+    const entry = readCacheEntry(key);
+    if (!entry || !entry.data || typeof entry.data !== 'object') continue;
+    const data = entry.data;
+    let entryChanged = false;
+    let nextData = data;
+
+    if (key.startsWith('detail:')) {
+      const id = Number(data.id || data.tmdbId);
+      const baseType = (data.type || data.media_type) === 'tv' ? 'tv' : 'movie';
+      const detailPatch =
+        detailPatchMap.get(`${baseType}:${id}`) || detailPatchMap.get(`id:${id}`);
+      if (detailPatch) {
+        nextData = normalizeDetailData({
+          ...data,
+          ...detailPatch,
+          similar: detailPatch.similar || data.similar,
+          criticReviews: detailPatch.criticReviews || data.criticReviews,
+        });
+        entryChanged = true;
+      }
+      // Also patch any updated movies inside this movie's `similar` list (e.g. when a Similar Movie was clicked and enriched from TMDB!)
+      if (nextData?.similar) {
+        const simResults = patchItemArray(nextData.similar.results);
+        const simItems = patchItemArray(nextData.similar.items);
+        if (simResults.changed || simItems.changed) {
+          nextData = {
+            ...nextData,
+            similar: {
+              ...nextData.similar,
+              ...(Array.isArray(nextData.similar.results)
+                ? { results: simResults.list }
+                : {}),
+              ...(Array.isArray(nextData.similar.items)
+                ? { items: simItems.list }
+                : {}),
+            },
+          };
+          entryChanged = true;
+        }
+      }
+    } else if (key.startsWith('home:')) {
+      const heroRes = patchItemArray(data.hero);
+      const upcomingRes = patchItemArray(data.upcoming?.items);
+      const todayRes = patchItemArray(data.top10Today);
+      const weekRes = patchItemArray(data.top10Week);
+      const blogsRes = patchBlogArray(data.blogs);
+      let rowsChanged = false;
+      const nextRows = Array.isArray(data.rows)
+        ? data.rows.map((r) => {
+            const res = patchItemArray(r.items);
+            if (res.changed) {
+              rowsChanged = true;
+              return { ...r, items: res.list };
+            }
+            return r;
+          })
+        : data.rows;
+
+      if (
+        heroRes.changed ||
+        upcomingRes.changed ||
+        todayRes.changed ||
+        weekRes.changed ||
+        blogsRes.changed ||
+        rowsChanged
+      ) {
+        nextData = {
+          ...data,
+          hero: heroRes.list,
+          upcoming: data.upcoming
+            ? { ...data.upcoming, items: upcomingRes.list }
+            : data.upcoming,
+          top10Today: todayRes.list,
+          top10Week: weekRes.list,
+          blogs: blogsRes.list,
+          rows: nextRows,
+        };
+        entryChanged = true;
+      }
+    } else if (key.startsWith('blogs:list:')) {
+      const itemsRes = patchBlogArray(data.items);
+      if (itemsRes.changed) {
+        nextData = { ...data, items: itemsRes.list };
+        entryChanged = true;
+      }
+    } else {
+      const itemsRes = patchItemArray(data.items);
+      const resultsRes = patchItemArray(data.results);
+      if (itemsRes.changed || resultsRes.changed) {
+        nextData = {
+          ...data,
+          ...(Array.isArray(data.items) ? { items: itemsRes.list } : {}),
+          ...(Array.isArray(data.results) ? { results: resultsRes.list } : {}),
+        };
+        entryChanged = true;
+      }
+    }
+
+    if (entryChanged) {
+      // Preserve the entry's original savedAt during in-place delta patches so subsequent sync-checks
+      // for that page/movie never miss backend updates that occurred since the page was originally loaded!
+      const preservedSavedAt = entry.savedAt || serverTime;
+      writeCache(key, nextData, preservedSavedAt);
+      notifyCacheSubscribers(key, nextData, 'delta');
+    }
+  }
+};
+
+/**
+ * Targeted single-title cache update (used when SuperAdmin edits a movie or a user posts a review).
+ * Updates ONLY that movie across all cached pages without wiping unrelated cached pages!
+ */
+export const patchSingleTitleInCache = (updatedTitleOrDetail) => {
+  if (!updatedTitleOrDetail) return;
+  applyDeltaSyncToCache({
+    updatedTitles: [updatedTitleOrDetail],
+    updatedDetails: [updatedTitleOrDetail],
+    serverTime: Date.now(),
+  });
+};
+
+/**
+ * Forces the next visit/check for a specific movie detail to re-verify against the backend
+ * (e.g. after a user submits a review or comment on that movie).
+ */
+export const markTitleForDeltaSync = (type, tmdbId) => {
+  lastGlobalSyncCheckAt = 0;
+  for (const [key, entry] of memoryCache.entries()) {
+    if (key.includes(String(tmdbId).toLowerCase()) || key.startsWith('detail:')) {
+      entry.lastCheckedAt = 0;
+      entry.savedAt = Math.max(1, (entry.savedAt || Date.now()) - 60_000);
+    }
   }
 };
 
@@ -349,35 +657,194 @@ const filterOfflineTitles = (type, params = {}) => {
   };
 };
 
+/**
+ * Runs a lightweight background `/discover/sync-check` against the backend:
+ * - `mode === 'none'`: 0 items changed -> do nothing!
+ * - `mode === 'delta'`: 1..10 items changed -> patch ONLY those changed items in-place!
+ * - `mode === 'full'`: >10 items changed ("a lot of data changed") -> re-fetch full page in background!
+ */
+const revalidateKeyWithDeltaCheck = async (
+  cacheKey,
+  cachedEntry,
+  requestFn,
+  detailMeta = null,
+) => {
+  const now = Date.now();
+  const lastCheck = cachedEntry.lastCheckedAt || cachedEntry.savedAt || 0;
+  if (
+    now - lastCheck < SYNC_CHECK_COOLDOWN_MS &&
+    (! !detailMeta || now - lastGlobalSyncCheckAt < SYNC_CHECK_COOLDOWN_MS)
+  ) {
+    return;
+  }
+
+  const syncLockKey = detailMeta?.tmdbId
+    ? `detail:${detailMeta.type}:${detailMeta.tmdbId}`
+    : 'catalog_global';
+
+  if (inFlightSyncChecks.has(syncLockKey)) {
+    return inFlightSyncChecks.get(syncLockKey);
+  }
+
+  const syncPromise = (async () => {
+    try {
+      const payload = {
+        since: cachedEntry.savedAt || now - 60_000,
+        ...(detailMeta ? detailMeta : {}),
+      };
+      const res = await backend
+        .post('/discover/sync-check', payload, { silentPatch: true })
+        .then((r) => r.data);
+
+      lastGlobalSyncCheckAt = Date.now();
+
+      if (!res || !res.changed || res.mode === 'none') {
+        // Nothing changed on backend — keep cached page as-is!
+        touchCacheEntryChecked(cacheKey, res?.serverTime || Date.now());
+        return;
+      }
+
+      if (res.mode === 'delta') {
+        // Only specific items changed on backend — patch ONLY those items in-place!
+        applyDeltaSyncToCache(res);
+        return;
+      }
+
+      if (res.mode === 'full') {
+        // A lot of data changed on backend (>10 items or structural update) — re-fetch full page!
+        const freshData = await requestFn();
+        if (freshData) {
+          writeCache(cacheKey, freshData, res.serverTime || Date.now());
+          notifyCacheSubscribers(cacheKey, freshData, 'full');
+        }
+      }
+    } catch {
+      /* ignore background sync check network errors */
+    } finally {
+      inFlightSyncChecks.delete(syncLockKey);
+    }
+  })();
+
+  inFlightSyncChecks.set(syncLockKey, syncPromise);
+  return syncPromise;
+};
+
+/**
+ * Cache-First + Selective Delta-Sync Request Engine:
+ * 1. If `cacheKey` is already in cache (e.g. navigating Back to Home/Browse/OTT or re-opening a Movie),
+ *    returns the cached data IMMEDIATELY (0ms wait, zero skeleton flash) and triggers a background
+ *    `sync-check` that only fetches changed items (or re-fetches all only if a lot of data changed).
+ * 2. If `cacheKey` is not in cache yet, fetches from backend, caches, and returns.
+ */
 const requestBackendWithCache = async (
   cacheKey,
   requestFn,
   offlineSynthesizer = null,
+  options = {},
 ) => {
-  try {
-    const data = await requestFn();
-    if (data) writeCache(cacheKey, data);
-    return data;
-  } catch (err) {
-    const cached = readCache(cacheKey);
-    if (cached) return cached;
-    if (offlineSynthesizer) {
-      const fallback = offlineSynthesizer();
-      if (fallback) return fallback;
-    }
-    throw err;
+  const { forceRefresh = false, detailMeta = null } = options;
+  const cachedEntry = !forceRefresh ? readCacheEntry(cacheKey) : null;
+
+  const isIncompleteDetail =
+    cacheKey.startsWith('detail:') &&
+    cachedEntry?.data &&
+    cachedEntry.data.hasFullDetails === false;
+
+  if (
+    cachedEntry &&
+    cachedEntry.data !== null &&
+    cachedEntry.data !== undefined &&
+    !isIncompleteDetail
+  ) {
+    const resolvedDetailMeta =
+      cacheKey.startsWith('detail:')
+        ? {
+            type:
+              detailMeta?.type ||
+              ((cachedEntry.data.type || cachedEntry.data.media_type) === 'tv'
+                ? 'tv'
+                : 'movie'),
+            tmdbId: Number(
+              detailMeta?.tmdbId ||
+                cachedEntry.data.id ||
+                cachedEntry.data.tmdbId ||
+                0,
+            ),
+            cachedUpdatedAt: cachedEntry.data.updatedAt || null,
+            hasFullDetails: Boolean(cachedEntry.data.hasFullDetails),
+            cachedBudget: Number(cachedEntry.data.budget || 0),
+            cachedRevenue: Number(cachedEntry.data.revenue || 0),
+            cachedSiteRating: Number(cachedEntry.data.siteRating || 0),
+          }
+        : detailMeta;
+    // Trigger non-blocking selective delta check in the background
+    revalidateKeyWithDeltaCheck(
+      cacheKey,
+      cachedEntry,
+      requestFn,
+      resolvedDetailMeta,
+    );
+    return cachedEntry.data;
   }
+
+  if (inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey);
+  }
+
+  const reqPromise = (async () => {
+    try {
+      const data = await requestFn();
+      if (data) writeCache(cacheKey, data);
+      return data;
+    } catch (err) {
+      const fallbackCached = readCache(cacheKey);
+      if (fallbackCached) return fallbackCached;
+      if (offlineSynthesizer) {
+        const fallback = offlineSynthesizer();
+        if (fallback) return fallback;
+      }
+      throw err;
+    } finally {
+      inFlightRequests.delete(cacheKey);
+    }
+  })();
+
+  inFlightRequests.set(cacheKey, reqPromise);
+  return reqPromise;
 };
 
-const stableParamsKey = (params = {}) =>
+export const stableParamsKey = (params = {}) =>
   Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== '')
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${k}=${v}`)
     .join('&');
 
+export const buildDetailCacheKey = (type, slugOrId) => {
+  const rawTypeStr = String(type || '').toLowerCase().trim();
+  const cleanType = [
+    'webseries',
+    'web-series',
+    'tv',
+    'tv-show',
+    'tv-shows',
+    'tv-series',
+    'series',
+  ].includes(rawTypeStr)
+    ? 'tv'
+    : 'movie';
+  const rawParam = decodeURIComponent(String(slugOrId || '')).trim();
+  const isNumeric = /^\d+$/.test(rawParam);
+  const mapped = !isNumeric ? resolveSlugMapping(rawParam) : null;
+  const effectiveType = mapped?.type || cleanType;
+  const key = `detail:${effectiveType}:${rawParam.toLowerCase()}`;
+  return { key, effectiveType, rawParam, isNumeric, mapped };
+};
+
 export const tmdb = {
-  home: (params = {}) => {
+  peekHome: (params = {}) => readCache(`home:${stableParamsKey(params)}`),
+
+  home: (params = {}, options = {}) => {
     const key = `home:${stableParamsKey(params)}`;
     return requestBackendWithCache(
       key,
@@ -401,10 +868,13 @@ export const tmdb = {
           ],
         };
       },
+      options,
     );
   },
 
-  trending: (type = 'movie') =>
+  peekTrending: (type = 'movie') => readCache(`trending:${type}`),
+
+  trending: (type = 'movie', options = {}) =>
     requestBackendWithCache(
       `trending:${type}`,
       () =>
@@ -412,9 +882,15 @@ export const tmdb = {
           .get('/discover/lists/trending', { params: { type } })
           .then((r) => r.data),
       () => filterOfflineTitles(type),
+      options,
     ),
 
-  list: (type, category, params = {}) => {
+  peekList: (type, category, params = {}) => {
+    const normalized = String(category).replace('_', '-');
+    return readCache(`list:${type}:${normalized}:${stableParamsKey(params)}`);
+  },
+
+  list: (type, category, params = {}, options = {}) => {
     const normalized = String(category).replace('_', '-');
     const key = `list:${type}:${normalized}:${stableParamsKey(params)}`;
     return requestBackendWithCache(
@@ -460,10 +936,14 @@ export const tmdb = {
         return data;
       },
       () => filterOfflineTitles(type, params),
+      options,
     );
   },
 
-  discover: (type, params = {}) => {
+  peekDiscover: (type, params = {}) =>
+    readCache(`discover:${type}:${stableParamsKey(params)}`),
+
+  discover: (type, params = {}, options = {}) => {
     const key = `discover:${type}:${stableParamsKey(params)}`;
     return requestBackendWithCache(
       key,
@@ -506,10 +986,14 @@ export const tmdb = {
         return data;
       },
       () => filterOfflineTitles(type, params),
+      options,
     );
   },
 
-  search: (q, params = {}) => {
+  peekSearch: (q, params = {}) =>
+    readCache(`search:${q}:${stableParamsKey(params)}`),
+
+  search: (q, params = {}, options = {}) => {
     const key = `search:${q}:${stableParamsKey(params)}`;
     return requestBackendWithCache(
       key,
@@ -518,29 +1002,53 @@ export const tmdb = {
           .get('/discover/search', { params: { q, ...params } })
           .then((r) => r.data),
       () => filterOfflineTitles(params.type, { ...params, q }),
+      options,
     );
   },
 
-  detail: async (type, slugOrId) => {
-    const rawTypeStr = String(type || '').toLowerCase().trim();
-    const cleanType = ['webseries', 'web-series', 'tv', 'tv-show', 'tv-shows', 'tv-series', 'series'].includes(rawTypeStr)
-      ? 'tv'
-      : 'movie';
-    const rawParam = decodeURIComponent(String(slugOrId || '')).trim();
-    const isNumeric = /^\d+$/.test(rawParam);
-    const mapped = !isNumeric ? resolveSlugMapping(rawParam) : null;
-    const effectiveType = mapped?.type || cleanType;
-    const key = `detail:${effectiveType}:${rawParam.toLowerCase()}`;
+  peekDetail: (type, slugOrId) => {
+    const { key, effectiveType, rawParam, mapped } = buildDetailCacheKey(
+      type,
+      slugOrId,
+    );
+    const direct = readCache(key);
+    if (direct) return normalizeDetailData(direct);
+    if (mapped?.id) {
+      const byId = readCache(`detail:${effectiveType}:${mapped.id}`);
+      if (byId) return normalizeDetailData(byId);
+    }
+    for (const [k, entry] of memoryCache.entries()) {
+      if (!k.startsWith('detail:') || !entry?.data) continue;
+      const d = entry.data;
+      if (
+        String(d.id || d.tmdbId) === rawParam ||
+        toSlug(d.title || d.name) === rawParam.toLowerCase()
+      ) {
+        return normalizeDetailData(d);
+      }
+    }
+    return null;
+  },
+
+  detail: async (type, slugOrId, options = {}) => {
+    const { key, effectiveType, rawParam, isNumeric, mapped } =
+      buildDetailCacheKey(type, slugOrId);
+    const targetId = isNumeric ? Number(rawParam) : mapped?.id ? Number(mapped.id) : null;
 
     return requestBackendWithCache(
       key,
       async () => {
-        const targetId = isNumeric ? rawParam : mapped?.id;
         if (targetId) {
           try {
             const r = await backend.get(`/titles/${effectiveType}/${targetId}`);
             const d = normalizeDetailData(r.data.detail || r.data.titleObj || r.data);
-            if (d?.id) registerSlugMapping(toSlug(d.title || d.name), d);
+            if (d?.id) {
+              const slug = toSlug(d.title || d.name);
+              registerSlugMapping(slug, d);
+              writeCache(`detail:${effectiveType}:${d.id}`, d);
+              if (slug) writeCache(`detail:${effectiveType}:${slug}`, d);
+              patchSingleTitleInCache(d);
+            }
             return d;
           } catch {
             /* fall through */
@@ -551,7 +1059,13 @@ export const tmdb = {
             `/titles/${effectiveType}/${encodeURIComponent(rawParam)}`,
           );
           const d = normalizeDetailData(r.data.detail || r.data.titleObj || r.data);
-          if (d?.id) registerSlugMapping(toSlug(d.title || d.name), d);
+          if (d?.id) {
+            const slug = toSlug(d.title || d.name);
+            registerSlugMapping(slug, d);
+            writeCache(`detail:${effectiveType}:${d.id}`, d);
+            if (slug) writeCache(`detail:${effectiveType}:${slug}`, d);
+            patchSingleTitleInCache(d);
+          }
           return d;
         } catch (err) {
           const searchWords = rawParam.replace(/-/g, ' ').trim();
@@ -568,7 +1082,11 @@ export const tmdb = {
               (best.type || best.media_type) === 'tv' ? 'tv' : 'movie';
             const r3 = await backend.get(`/titles/${bestType}/${best.id}`);
             const d3 = normalizeDetailData(r3.data.detail || r3.data.titleObj || r3.data);
-            if (d3?.id) registerSlugMapping(rawParam.toLowerCase(), d3);
+            if (d3?.id) {
+              registerSlugMapping(rawParam.toLowerCase(), d3);
+              writeCache(`detail:${bestType}:${d3.id}`, d3);
+              patchSingleTitleInCache(d3);
+            }
             return d3;
           }
           throw err;
@@ -584,7 +1102,18 @@ export const tmdb = {
           ) || null;
         return found ? normalizeDetailData(found) : null;
       },
+      {
+        ...options,
+        detailMeta: targetId ? { type: effectiveType, tmdbId: targetId } : null,
+      },
     ).then((res) => normalizeDetailData(res));
+  },
+
+  peekSeason: (tvId, seasonNumber = 1) => {
+    const parsed = Number(seasonNumber);
+    const safeSeason = Number.isInteger(parsed) && parsed >= 0 ? parsed : 1;
+    const cached = readCache(`season:${tvId}:${safeSeason}`);
+    return cached ? normalizeSeasonData(cached, safeSeason) : null;
   },
 
   season: (tvId, seasonNumber = 1) => {
@@ -598,12 +1127,23 @@ export const tmdb = {
     ).then((res) => normalizeSeasonData(res, safeSeason));
   },
 
+  peekPerson: (name, id = null) =>
+    readCache(`person:${String(name || '').toLowerCase()}:${id || ''}`) ||
+    readCache(`person:${String(name || '').toLowerCase()}:`),
+
   person: (name, id = null) => {
+    const cleanNameKey = String(name || '').toLowerCase();
     const params = { name, ...(id ? { id } : {}) };
-    const key = `person:${name}:${id || ''}`;
-    return requestBackendWithCache(key, () =>
-      backend.get('/discover/person', { params }).then((r) => r.data),
-    );
+    const key = `person:${cleanNameKey}:${id || ''}`;
+    return requestBackendWithCache(key, async () => {
+      const data = await backend.get('/discover/person', { params }).then((r) => r.data);
+      // Also alias under both `:id` and `:` so canonical URL replacement never re-fetches!
+      writeCache(`person:${cleanNameKey}:`, data);
+      if (data?.person?.id) {
+        writeCache(`person:${cleanNameKey}:${data.person.id}`, data);
+      }
+      return data;
+    });
   },
 
   celebrities: (region = 'IN') =>
@@ -650,18 +1190,57 @@ export const featuredApi = {
     }),
 };
 
-// Blog & Editorial CMS API (Public + Admin/SuperAdmin)
+// Blog & Editorial CMS API (Public + Admin/SuperAdmin) with Smart Delta Caching
 export const blogApi = {
-  list: (params = {}) => backend.get('/blogs', { params }).then((r) => r.data),
-  get: (slugOrId) => backend.get(`/blogs/${slugOrId}`).then((r) => r.data),
+  peekList: (params = {}) => readCache(`blogs:list:${stableParamsKey(params)}`),
+  list: (params = {}, options = {}) => {
+    const key = `blogs:list:${stableParamsKey(params)}`;
+    return requestBackendWithCache(
+      key,
+      () => backend.get('/blogs', { params }).then((r) => r.data),
+      null,
+      options,
+    );
+  },
+  peekGet: (slugOrId) => readCache(`blogs:detail:${String(slugOrId || '').toLowerCase()}`),
+  get: (slugOrId, options = {}) => {
+    const key = `blogs:detail:${String(slugOrId || '').toLowerCase()}`;
+    return requestBackendWithCache(
+      key,
+      () => backend.get(`/blogs/${slugOrId}`).then((r) => r.data),
+      null,
+      options,
+    );
+  },
   previewMovieAssets: (type, tmdbId) =>
     backend
       .get(`/blogs/movie-assets/${type}/${tmdbId}`)
       .then((r) => r.data.assets),
-  create: (payload) => backend.post('/blogs', payload).then((r) => r.data.blog),
+  create: (payload) =>
+    backend.post('/blogs', payload).then((r) => {
+      const blog = r.data.blog;
+      if (blog) applyDeltaSyncToCache({ updatedBlogs: [blog] });
+      return blog;
+    }),
   update: (id, payload) =>
-    backend.patch(`/blogs/${id}`, payload).then((r) => r.data.blog),
-  remove: (id) => backend.delete(`/blogs/${id}`).then((r) => r.data),
+    backend.patch(`/blogs/${id}`, payload).then((r) => {
+      const blog = r.data.blog;
+      if (blog) {
+        applyDeltaSyncToCache({ updatedBlogs: [blog] });
+        if (blog.slug) {
+          writeCache(`blogs:detail:${String(blog.slug).toLowerCase()}`, {
+            success: true,
+            blog,
+          });
+        }
+      }
+      return blog;
+    }),
+  remove: (id) =>
+    backend.delete(`/blogs/${id}`).then((r) => {
+      clearCatalogCache();
+      return r.data;
+    }),
   toggleLike: (id) => backend.post(`/blogs/${id}/like`).then((r) => r.data),
   listComments: (blogId) =>
     backend.get(`/blogs/${blogId}/comments`).then((r) => r.data.comments || []),

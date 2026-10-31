@@ -13,7 +13,7 @@ import {
   UserCheck,
   ArrowRight,
 } from 'lucide-react';
-import { tmdb } from '../services/api';
+import { tmdb, subscribeCacheUpdates, stableParamsKey } from '../services/api';
 import {
   MOVIE_GENRES,
   TV_GENRES,
@@ -92,15 +92,77 @@ export default function Browse() {
   const [sort, setSort] = useState(params.get('sort') || 'popularity');
   const [page, setPage] = useState(1);
 
-  const [items, setItems] = useState([]);
-  const [matchedPerson, setMatchedPerson] = useState(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalResults, setTotalResults] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [fetchError, setFetchError] = useState('');
-
   const q = sanitizeText(params.get('q') || '', 120);
+
+  const peekCurrentBrowse = (
+    mType = mediaType,
+    lPreset = listPreset,
+    searchQ = q,
+    gSlug = genre,
+    yr = year,
+    ind = industry,
+    ottKey = ott,
+    minR = minRating,
+    srt = sort,
+    pg = page,
+  ) => {
+    const resolvedGenreId = gSlug ? resolveGenreId(gSlug, mType) || gSlug : undefined;
+    const resolvedOttKey = ottKey ? resolveOttKey(ottKey) : undefined;
+    const filterParams = {
+      page: pg,
+      sort: srt,
+      genre: resolvedGenreId,
+      year: yr || undefined,
+      industry: ind || undefined,
+      ott: resolvedOttKey,
+      minRating: minR || undefined,
+      list: lPreset || undefined,
+    };
+    const isListCall = Boolean(lPreset && !gSlug && !yr && !ind && !ottKey && !searchQ);
+    const cacheKey = searchQ
+      ? `search:${searchQ}:${stableParamsKey({ type: mType, ...filterParams })}`
+      : isListCall
+        ? `list:${mType}:${String(lPreset).replace('_', '-')}:${stableParamsKey(filterParams)}`
+        : `discover:${mType}:${stableParamsKey(filterParams)}`;
+    const cached = searchQ
+      ? tmdb.peekSearch(searchQ, { type: mType, ...filterParams })
+      : isListCall
+        ? tmdb.peekList(mType, lPreset, filterParams)
+        : tmdb.peekDiscover(mType, filterParams);
+    return { cached, filterParams, isListCall, cacheKey };
+  };
+
+  const initialPeek = peekCurrentBrowse(
+    normalizedMediaType,
+    params.get('list') || '',
+    q,
+    initialGenreSlug,
+    params.get('year') || '',
+    params.get('industry') || '',
+    initialOttKey === 'all' ? '' : initialOttKey,
+    params.get('minRating') || '',
+    params.get('sort') || 'popularity',
+    1,
+  );
+
+  const [items, setItems] = useState(() => {
+    const rawList = initialPeek.cached?.results || initialPeek.cached?.items || [];
+    return (params.get('list') || '') === 'upcoming'
+      ? rawList.filter((it) => isUpcomingRelease(it))
+      : rawList;
+  });
+  const [matchedPerson, setMatchedPerson] = useState(
+    () => (q ? initialPeek.cached?.matchedPerson || null : null),
+  );
+  const [totalPages, setTotalPages] = useState(() =>
+    Math.min(initialPeek.cached?.total_pages || initialPeek.cached?.totalPages || 1, 500),
+  );
+  const [totalResults, setTotalResults] = useState(() =>
+    initialPeek.cached?.total_results || initialPeek.cached?.total || 0,
+  );
+  const [loading, setLoading] = useState(() => !initialPeek.cached);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(() => Boolean(initialPeek.cached));
+  const [fetchError, setFetchError] = useState('');
   const [searchInput, setSearchInput] = useState(q);
   const genreMap = mediaType === 'movie' ? MOVIE_GENRES : TV_GENRES;
 
@@ -191,55 +253,59 @@ export default function Browse() {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
     setFetchError('');
     if (!q) setMatchedPerson(null);
 
-    // Internally resolve clean genre slug (`thriller`) to TMDB numeric ID (`53`) and OTT slug (`prime-video`) to backend key (`prime`)
-    const resolvedGenreId = genre
-      ? resolveGenreId(genre, mediaType) || genre
-      : undefined;
-    const resolvedOttKey = ott ? resolveOttKey(ott) : undefined;
-
-    const filterParams = {
-      page,
+    const { cached, filterParams, isListCall, cacheKey } = peekCurrentBrowse(
+      mediaType,
+      listPreset,
+      q,
+      genre,
+      year,
+      industry,
+      ott,
+      minRating,
       sort,
-      genre: resolvedGenreId,
-      year: year || undefined,
-      industry: industry || undefined,
-      ott: resolvedOttKey,
-      minRating: minRating || undefined,
-      list: listPreset || undefined,
+      page,
+    );
+
+    const applyBrowseData = (d) => {
+      const rawList = d?.results || d?.items || [];
+      const list =
+        listPreset === 'upcoming'
+          ? rawList.filter((it) => isUpcomingRelease(it))
+          : rawList;
+      setItems(list);
+      setMatchedPerson(q ? d?.matchedPerson || null : null);
+      setTotalPages(Math.min(d?.total_pages || d?.totalPages || 1, 500));
+      setTotalResults(
+        listPreset === 'upcoming'
+          ? list.length
+          : d?.total_results || d?.total || list.length,
+      );
+      setLoading(false);
+      setHasLoadedOnce(true);
+      return list;
     };
+
+    if (cached) {
+      applyBrowseData(cached);
+    } else {
+      setLoading(true);
+    }
 
     const req = q
       ? tmdb.search(q, { type: mediaType, ...filterParams })
-      : listPreset && !genre && !year && !industry && !ott
+      : isListCall
         ? tmdb.list(mediaType, listPreset, filterParams)
         : tmdb.discover(mediaType, filterParams);
 
     req
       .then((d) => {
         if (!alive) return;
-        const rawList = d?.results || d?.items || [];
-        // Strictly ensure only genuinely unreleased titles appear when browsing `list=upcoming`
-        const list =
-          listPreset === 'upcoming'
-            ? rawList.filter((it) => isUpcomingRelease(it))
-            : rawList;
+        const list = applyBrowseData(d);
 
-        setItems(list);
-        setMatchedPerson(q ? d?.matchedPerson || null : null);
-        setTotalPages(Math.min(d?.total_pages || d?.totalPages || 1, 500));
-        setTotalResults(
-          listPreset === 'upcoming'
-            ? list.length
-            : d?.total_results || d?.total || list.length,
-        );
-        setLoading(false);
-        setHasLoadedOnce(true);
-
-        if (page === 1 && q) {
+        if (page === 1 && q && !cached) {
           if (list.length === 0) {
             notifyPatch({
               type: 'not-found',
@@ -270,8 +336,15 @@ export default function Browse() {
         setHasLoadedOnce(true);
       });
 
+    const unsubscribe = subscribeCacheUpdates(({ key, data }) => {
+      if (alive && key === cacheKey && data) {
+        applyBrowseData(data);
+      }
+    });
+
     return () => {
       alive = false;
+      unsubscribe();
     };
   }, [
     mediaType,

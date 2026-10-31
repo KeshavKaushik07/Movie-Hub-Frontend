@@ -15,19 +15,21 @@ import {
   getPersonPath,
   parsePersonSlugToName,
   resolvePersonRoleSegment,
+  resolvePersonSlugMapping,
 } from '../utils/formatters';
 
 export default function Person() {
   const { name } = useParams();
   const [searchParams] = useSearchParams();
-  const personId = searchParams.get('id');
+  const mappedSlugInfo = resolvePersonSlugMapping(name || '');
+  const personId = searchParams.get('id') || mappedSlugInfo?.id || null;
   const nav = useNavigate();
   const location = useLocation();
 
   // Convert hyphenated slug ("Shiva-Rajkumar") or URL-encoded spaces ("Shiva%20Rajkumar") into clean display/search name ("Shiva Rajkumar")
   const decodedName = parsePersonSlugToName(name || '');
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => tmdb.peekPerson(decodedName, personId));
+  const [loading, setLoading] = useState(() => !tmdb.peekPerson(decodedName, personId));
   const [filter, setFilter] = useState('all');
 
   // Immediately normalize `/person/Shiva%20Rajkumar` -> `/actor/Shiva-Rajkumar` or `/actoress/Deepika-Padukone` on mount
@@ -47,8 +49,14 @@ export default function Person() {
   }, [decodedName, personId, location.pathname, location.search, nav]);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    setLoading(true);
+    const cached = tmdb.peekPerson(decodedName, personId);
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+    } else {
+      window.scrollTo(0, 0);
+      setLoading(true);
+    }
     tmdb
       .person(decodedName, personId)
       .then((res) => {

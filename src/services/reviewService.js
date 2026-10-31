@@ -1,5 +1,9 @@
 import { backend } from './backendApi';
-import { clearCatalogCache } from './api';
+import {
+  clearCatalogCache,
+  patchSingleTitleInCache,
+  markTitleForDeltaSync,
+} from './api';
 
 const normType = (t) => (t === 'webseries' ? 'tv' : t);
 
@@ -17,7 +21,10 @@ export const reviewService = {
         text,
         spoiler,
       })
-      .then((r) => r.data.review),
+      .then((r) => {
+        markTitleForDeltaSync(normType(type), tmdbId);
+        return r.data.review;
+      }),
 
   addCriticReview: ({
     type,
@@ -40,7 +47,10 @@ export const reviewService = {
         externalUrl,
         isFeatured,
       })
-      .then((r) => r.data.review),
+      .then((r) => {
+        markTitleForDeltaSync(normType(type), tmdbId);
+        return r.data.review;
+      }),
 
   toggleReviewLike: (id) => backend.post(`/reviews/${id}/like`).then((r) => r.data),
 
@@ -56,7 +66,10 @@ export const reviewService = {
   addComment: ({ type, tmdbId, body, parent = null, spoiler = false }) =>
     backend
       .post(`/titles/${normType(type)}/${tmdbId}/comments`, { body, parent, spoiler })
-      .then((r) => r.data.comment),
+      .then((r) => {
+        markTitleForDeltaSync(normType(type), tmdbId);
+        return r.data.comment;
+      }),
 
   deleteComment: (id) => backend.delete(`/comments/${id}`),
 
@@ -89,19 +102,20 @@ export const reviewService = {
     titles: (params = {}) => backend.get('/superadmin/titles', { params }).then((r) => r.data),
     createTitle: (payload) =>
       backend.post('/superadmin/titles', payload).then((r) => {
-        clearCatalogCache();
+        if (r.data?.title) patchSingleTitleInCache(r.data.title);
         return r.data.title;
       }),
     updateTitle: (type, tmdbId, payload) =>
       backend.patch(`/superadmin/titles/${normType(type)}/${tmdbId}`, payload).then((r) => {
-        clearCatalogCache();
+        // Patch ONLY the edited movie across cached pages instead of wiping the entire catalog cache!
+        if (r.data?.title) patchSingleTitleInCache(r.data.title);
         return r.data.title;
       }),
     syncTitle: (type, tmdbId, unlockAll = true) =>
       backend
         .post(`/superadmin/titles/${normType(type)}/${tmdbId}/sync`, { unlockAll })
         .then((r) => {
-          clearCatalogCache();
+          if (r.data?.title) patchSingleTitleInCache(r.data.title);
           return r.data.title;
         }),
     deleteTitle: (type, tmdbId) =>

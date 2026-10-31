@@ -22,23 +22,39 @@ export default function Blogs() {
   const user = useSelector((s) => s.auth.user);
   const isStaff = user && [ROLES.ADMIN, ROLES.SUPERADMIN].includes(user.role);
 
-  const [blogs, setBlogs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('all');
   const [sort, setSort] = useState('recent');
   const [q, setQ] = useState('');
 
+  const getBlogParams = () => ({
+    category: category === 'all' ? undefined : category,
+    sort,
+    q: q.trim() || undefined,
+    limit: 24,
+  });
+
+  const [blogs, setBlogs] = useState(
+    () => blogApi.peekList({ category: undefined, sort: 'recent', q: undefined, limit: 24 })?.items || [],
+  );
+  const [loading, setLoading] = useState(
+    () => !blogApi.peekList({ category: undefined, sort: 'recent', q: undefined, limit: 24 }),
+  );
+
   const loadBlogs = () => {
-    setLoading(true);
+    const queryParams = getBlogParams();
+    const cached = blogApi.peekList(queryParams);
+    if (cached?.items) {
+      setBlogs(cached.items);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     blogApi
-      .list({
-        category: category === 'all' ? undefined : category,
-        sort,
-        q: q.trim() || undefined,
-        limit: 24,
-      })
+      .list(queryParams)
       .then((res) => setBlogs(res.items || []))
-      .catch(() => setBlogs([]))
+      .catch(() => {
+        if (!cached) setBlogs([]);
+      })
       .finally(() => setLoading(false));
   };
 

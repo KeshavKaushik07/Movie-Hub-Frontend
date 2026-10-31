@@ -25,7 +25,7 @@ import {
   fromBrowseTypeSlug,
   toBrowseTypeSlug,
 } from '../config/constants';
-import { tmdb } from '../services/api';
+import { tmdb, subscribeCacheUpdates } from '../services/api';
 import MovieCard from '../components/MovieCard';
 import InfoPatch from '../components/ui/InfoPatch';
 import { OttGridSkeleton, OttHubPageSkeleton } from '../components/ui/Skeletons';
@@ -145,12 +145,37 @@ export default function OttHub() {
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
 
     const ottParam =
       selectedOtt === 'all'
         ? OTT_LIST.map((o) => o.key).join(',')
         : selectedOtt;
+
+    // Synchronously check if requested OTT data is already cached so navigating Back is instant (0ms skeleton)
+    if (mediaFilter === 'all') {
+      const movieGenreId = selectedGenre ? resolveGenreId(selectedGenre, 'movie') : undefined;
+      const seriesGenreId = selectedGenre ? resolveGenreId(selectedGenre, 'webseries') : undefined;
+      const cM = tmdb.peekDiscover('movie', { ott: ottParam, genre: movieGenreId, sort: sortBy, page, limit: 14 });
+      const cS = tmdb.peekDiscover('webseries', { ott: ottParam, genre: seriesGenreId, sort: sortBy, page, limit: 14 });
+      const cT = tmdb.peekDiscover('tv', { ott: ottParam, genre: seriesGenreId, sort: sortBy, page, limit: 10 });
+      if (cM && cS && cT) {
+        setHasLoadedOnce(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+    } else {
+      const resolvedGenreId = selectedGenre ? resolveGenreId(selectedGenre, mediaFilter) : undefined;
+      const cSingle = tmdb.peekDiscover(mediaFilter, { ott: ottParam, genre: resolvedGenreId, sort: sortBy, page, limit: 24 });
+      if (cSingle) {
+        setItems(cSingle.items || cSingle.results || []);
+        setTotalPages(cSingle.totalPages || cSingle.total_pages || 1);
+        setHasLoadedOnce(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+    }
 
     const fetchPage = async () => {
       try {
@@ -263,8 +288,14 @@ export default function OttHub() {
     };
 
     fetchPage();
+    const unsubscribe = subscribeCacheUpdates(({ key }) => {
+      if (alive && key.startsWith('discover:')) {
+        fetchPage();
+      }
+    });
     return () => {
       alive = false;
+      unsubscribe();
     };
   }, [selectedOtt, mediaFilter, selectedGenre, sortBy, page]);
 
